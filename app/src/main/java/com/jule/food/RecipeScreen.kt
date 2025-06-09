@@ -1038,6 +1038,7 @@ fun RecipeSmallDisplay(
             val style = if (shadow) MaterialTheme.typography.bodyMedium.copy(shadow = Shadow(offset = Offset(3f, 3f))) else MaterialTheme.typography.bodyMedium
             Box(modifier = Modifier
                 .fillMaxWidth()
+                .height(20.dp)
                 .padding(horizontal = 5.dp)
             ) {
                 VariableText(
@@ -1387,10 +1388,14 @@ fun SpecificRecipeScreenPreview() {
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun GalleryPreview() {
-//    FoodTheme {
-//        RecipeImageGallery(images = listOf(R.drawable.lasagne, R.drawable.cauliflower_wings, R.drawable.mac_and_cheese), fill = true)
-//    }
-//}
+@Preview(showBackground = true)
+@Composable
+fun RecipeImagePreview() {
+    FoodTheme {
+        RecipeSmallDisplay(
+            recipe = Recipe(name = "Dorade in Salzkruste"),
+            onClick = {},
+
+        )
+    }
+}
