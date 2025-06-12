@@ -4,6 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -142,26 +146,32 @@ fun SpecificRecipeScreen(
                     focusManager.clearFocus(true)
                 }), verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SpecificRecipeHeader(
-                recipeNameValue = titleValue,
-                onRecipeNameChanged = {
-                    if (!isRecipeError(it.text))
-                        lastValueWithoutError = it.text
-                    titleValue = it
-                },
-                onBack = onBack,
-                onStartEditing = {
-                    isEditing = true
-                },
-                editingText = isEditing,
-                onDelete = onDelete,
-                onSubmit = {
-                    isEditing = false
-                    onChangeRecipeName(lastValueWithoutError)
-                    titleValue = titleValue.copy(text = lastValueWithoutError)
-                },
-                focusRequester = titleFocusRequester
-            )
+            with (LocalNavAnimatedVisibilityScope.current!!) {
+                SpecificRecipeHeader(
+                    recipeNameValue = titleValue,
+                    onRecipeNameChanged = {
+                        if (!isRecipeError(it.text))
+                            lastValueWithoutError = it.text
+                        titleValue = it
+                    },
+                    onBack = onBack,
+                    onStartEditing = {
+                        isEditing = true
+                    },
+                    editingText = isEditing,
+                    onDelete = onDelete,
+                    onSubmit = {
+                        isEditing = false
+                        onChangeRecipeName(lastValueWithoutError)
+                        titleValue = titleValue.copy(text = lastValueWithoutError)
+                    },
+                    focusRequester = titleFocusRequester,
+                    modifier = Modifier.animateEnterExit(
+                        enter = slideInVertically() + fadeIn(),
+                        exit = slideOutVertically() + fadeOut()
+                    )
+                )
+            }
             SpecificRecipeTags(
                 recipe = recipe,
                 recipes = recipes,

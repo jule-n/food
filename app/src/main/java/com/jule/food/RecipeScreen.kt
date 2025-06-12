@@ -54,9 +54,11 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -70,11 +72,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -318,7 +324,7 @@ fun RecipeGridScreen(
     val selectedTagIds = remember { mutableStateListOf<UUID>() }
 
 
-    var isSearching by remember { mutableStateOf(false) }
+//    var isSearching by remember { mutableStateOf(false) }
 
     var searchValue by remember { mutableStateOf("") }
 
@@ -341,7 +347,7 @@ fun RecipeGridScreen(
 
     val recipesSelected = recipes.filter {recipe ->
         if (selectedTagIds.isEmpty() || recipe.tags.containsAll(selectedTagIds)) {
-            if (isSearching) {
+            if (searchValue != "") {
                 return@filter recipe.name.contains(other = searchValue, ignoreCase = true)
             }
             return@filter true
@@ -371,9 +377,8 @@ fun RecipeGridScreen(
     }
 
     BackHandler(
-        enabled = isSearching,
+        enabled = searchValue != "",
         onBack = {
-            isSearching = false
             searchValue = ""
             focusManager.clearFocus(true)
         }
@@ -382,90 +387,117 @@ fun RecipeGridScreen(
         modifier = Modifier
             .fillMaxSize()
             .clickable(
-                enabled = isSearching,
+                enabled = searchValue != "",
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
                     focusManager.clearFocus(true)
-                    if (searchValue == "")
-                        isSearching = false
                 }
             )
     ) {
-        with (LocalNavAnimatedVisibilityScope.current!!) {
-            RecipeTopBar(
-                isSearching = isSearching,
-                onStartSearching = {
-                    isSearching = true
-                },
-                onStopSearching = {
-                    isSearching = false
-                    searchValue = ""
-                    focusManager.clearFocus()
-                },
-                searchValue = searchValue,
-                onSearchValueChange = { searchValue = it },
-                focusRequesterSearch = focusRequesterSearch,
-                onOpenFilterDialogue = { showFilterDialog = true },
-                badgeNumber = if (selectedTagIds.size > 0) selectedTagIds.size else null,
-                modifier = Modifier.animateEnterExit(enter = slideInVertically() + fadeIn(), exit = slideOutVertically() + fadeOut())
-            )
-        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val state = rememberSearchBarState()
+                SearchBar(
+                    state = state,
+                    shape = CircleShape,
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = searchValue,
+                            onQueryChange = { searchValue = it },
+                            onSearch = {  },
+                            expanded = false,
+                            onExpandedChange = { },
+                            leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                            placeholder = {
+                                Text("Search Recipes", textAlign = TextAlign.Center)
+                            },
+                            colors = SearchBarDefaults.inputFieldColors(unfocusedContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp))
+                        )
+                    }
+                )
+                Spacer(Modifier.height(20.dp))
+//                    RecipeTopBar(
+//                        isSearching = isSearching,
+//                        onStartSearching = {
+//                            isSearching = true
+//                        },
+//                        onStopSearching = {
+//                            isSearching = false
+//                            searchValue = ""
+//                            focusManager.clearFocus()
+//                        },
+//                        searchValue = searchValue,
+//                        onSearchValueChange = { searchValue = it },
+//                        focusRequesterSearch = focusRequesterSearch,
+//                        onOpenFilterDialogue = { showFilterDialog = true },
+//                        badgeNumber = if (selectedTagIds.size > 0) selectedTagIds.size else null,
+//
+//                    )
 
 
-//        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-//        var flowRowExpanded by remember { mutableStateOf(false) }
-//        val flowRowHeight by animateDpAsState(targetValue = if (flowRowExpanded) Dp.Unspecified else FilterChipDefaults.Height*2+10.dp)
-//        val flowRowHeight = if (flowRowExpanded) Dp.Unspecified else FilterChipDefaults.Height*2+10.dp
-        var maxLines by remember { mutableIntStateOf(2) }
+                var maxLines by remember { mutableIntStateOf(2) }
 
-        if (favoriteTagIds.isNotEmpty()) {
-            ContextualTagSelectionFlowRow(
-                tags = possibleTagsToSelect.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 },
-                itemCount = possibleTagsToSelect.size,
-                selectedTags = selectedTagIds,
-                removeFromSelectedTags = { selectedTagIds.remove(it) },
-                addToSelectedTags = { selectedTagIds.add(it) },
-                maxLines = maxLines,
-                overflow = ContextualFlowRowOverflow.expandOrCollapseIndicator(minRowsToShowCollapse = 3, expandIndicator = {
-                    val more = possibleTagsToSelect.size - shownItemCount
-                    FilterChip(
-                        selected = false,
-                        onClick = { maxLines = Int.MAX_VALUE },
-                        label = { Text(stringResource(R.string.more_items, more)) },
-                        modifier = Modifier.height(FilterChipDefaults.Height)
-                    )
-                }, collapseIndicator = {
-                    FilterChip(
-                        selected = false,
-                        onClick = { maxLines = 2 },
-                        label = { Text(stringResource(R.string.show_less)) },
-                        modifier = Modifier.height(FilterChipDefaults.Height)
-                    )
-                }),
-                modifier = Modifier
-                    .padding(horizontal = 10.dp)
-                    .animateContentSize(),
-                onLongClick = { id ->
-                    editTag = getTagFromId(id, tags)
-                    showEditTagSheet = true
+                if (favoriteTagIds.isNotEmpty()) {
+                    ContextualTagSelectionFlowRow(
+                        tags = possibleTagsToSelect.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 },
+                        itemCount = possibleTagsToSelect.size,
+                        selectedTags = selectedTagIds,
+                        removeFromSelectedTags = { selectedTagIds.remove(it) },
+                        addToSelectedTags = { selectedTagIds.add(it) },
+                        maxLines = maxLines,
+                        overflow = ContextualFlowRowOverflow.expandOrCollapseIndicator(
+                            minRowsToShowCollapse = 3,
+                            expandIndicator = {
+                                val more = possibleTagsToSelect.size - shownItemCount
+                                FilterChip(
+                                    selected = false,
+                                    onClick = { maxLines = Int.MAX_VALUE },
+                                    label = { Text(stringResource(R.string.more_items, more)) },
+                                    modifier = Modifier.height(FilterChipDefaults.Height)
+                                )
+                            },
+                            collapseIndicator = {
+                                FilterChip(
+                                    selected = false,
+                                    onClick = { maxLines = 2 },
+                                    label = { Text(stringResource(R.string.show_less)) },
+                                    modifier = Modifier.height(FilterChipDefaults.Height)
+                                )
+                            }),
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp)
+                            .fillMaxWidth()
+                            .animateContentSize(),
+                        onLongClick = { id ->
+                            editTag = getTagFromId(id, tags)
+                            showEditTagSheet = true
 //                    scope.launch {
 //                        editTagSheetState.show()
 //                    }
 //                    showEditTagDialog = true
+                        }
+                    )
                 }
-            )
+                Spacer(Modifier.height(10.dp))
+            }
         }
-        Spacer(Modifier.height(20.dp))
-            RecipeGrid(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 10.dp),
-                recipes = recipesSelected,
-                onClickRecipe = { listIndex -> onChangeSelectedRecipe(recipesSelected[listIndex].id) },
-                recipeGridState = recipeGridState,
-            )
-//        }
+        Spacer(Modifier.height(10.dp))
+        RecipeGrid(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp),
+            recipes = recipesSelected,
+            onClickRecipe = { listIndex -> onChangeSelectedRecipe(recipesSelected[listIndex].id) },
+            recipeGridState = recipeGridState,
+        )
     }
     Box(modifier = Modifier.fillMaxSize()) {
         ExtendedFloatingActionButton(
@@ -985,7 +1017,7 @@ fun RecipeGrid(
     recipeGridState: LazyGridState,
     modifier: Modifier = Modifier
 ) {
-    LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Adaptive(80.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
+    LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Fixed(3), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
         itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
             RecipeSmallDisplay(
                 recipe = recipe, onClick = { onClickRecipe(index) }, modifier = Modifier.animateItem(placementSpec = null)
@@ -1010,6 +1042,8 @@ fun RecipeSmallDisplay(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
         modifier = modifier
     ) {
         Column(
@@ -1038,17 +1072,17 @@ fun RecipeSmallDisplay(
             val style = if (shadow) MaterialTheme.typography.bodyMedium.copy(shadow = Shadow(offset = Offset(3f, 3f))) else MaterialTheme.typography.bodyMedium
             Box(modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp)
+                .height(36.dp)
                 .padding(horizontal = 5.dp)
             ) {
                 VariableText(
                     text = recipe.name,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
 //                    maxLines = if (recipe.name.contains(" ") || recipe.name.contains("-")) 2 else 1,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center),
-                    style = style.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Simple),
+                    style = MaterialTheme.typography.bodyMedium.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Simple),
                     minTextSize = minTextSize,
                     maxTextSize = maxTextSize
 //                    overflow
