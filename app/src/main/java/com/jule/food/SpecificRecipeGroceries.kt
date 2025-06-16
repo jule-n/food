@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,12 +74,12 @@ fun SpecificRecipeGroceries(
     addToGroceries: (List<GroceryItem>, Int) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onOpenGroceryScreen: () -> Unit,
-    onChangeGroceries: (List<GroceryItem>) -> Unit
+    modifier: Modifier = Modifier
 ) {
-    var showGroceryEditDialog by remember { mutableStateOf(false) }
     var showGroceryAddDialog by remember { mutableStateOf(false) }
 
     SpecificRecipeSection(
+        modifier = modifier.height(180.dp),
         icon = R.drawable.grocery,
         title = stringResource(id = R.string.groceries),
         actionButtons = {
@@ -88,14 +91,29 @@ fun SpecificRecipeGroceries(
             }
         }
     ) {
-        GroceryGrid(
-            groceryItems = recipe.groceries.sortedBy { it.name },
-            onClickItem = {},
-            onLongClickItem = {},
-            center = true,
-            modifier = Modifier.padding(horizontal = 20.dp),
-            minSize = 70.dp
-        )
+        LazyHorizontalGrid (
+            rows = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+        ) {
+            items(recipe.groceries.sortedBy { it.name }) { grocery ->
+                GroceryItemDisplay(
+                    grocery,
+                    onClick = { },
+                    onLongClick = { },
+                    center = true
+                )
+            }
+        }
+//        GroceryGrid(
+//            groceryItems = recipe.groceries.sortedBy { it.name },
+//            onClickItem = {},
+//            onLongClickItem = {},
+//            center = true,
+//            modifier = Modifier.padding(horizontal = 20.dp),
+//            minSize = 70.dp
+//        )
     }
     if (showGroceryAddDialog) {
         val selectedItems = remember { recipe.groceries.toMutableStateList() }
@@ -195,131 +213,6 @@ fun SpecificRecipeGroceries(
             }
         }
     }
-    if (showGroceryEditDialog) {
-        val temporaryGroceries = remember { recipe.groceries.toMutableStateList() }
-        var showChooseImageDialog by remember { mutableStateOf(false) }
-        var chosenImageIndex: Int? by remember { mutableStateOf(null) }
-        var showBackgroundImage by remember { mutableStateOf(false) }
-        var showAddGroceryDialog by remember { mutableStateOf(false) }
-        Dialog(
-            onDismissRequest = {
-                onChangeGroceries(temporaryGroceries)
-                showGroceryEditDialog = false
-           },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.7f).clip(RoundedCornerShape(10))) {
-                if (showBackgroundImage) {
-                    ZoomableImage(recipe.images[chosenImageIndex!!], modifier = Modifier.fillMaxSize())
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(color = MaterialTheme.colorScheme.background))
-                }
-                Box(modifier = Modifier) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        val textCol = if (showBackgroundImage) Color.White else MaterialTheme.colorScheme.onBackground
-                        val backgroundCol = if (showBackgroundImage) Color.Black.copy(alpha = 0.3f) else MaterialTheme.colorScheme.background
-                        val style = if (showBackgroundImage) MaterialTheme.typography.titleMedium.copy(shadow = Shadow(offset = Offset(3f, 3f))) else MaterialTheme.typography.titleMedium
-                        Surface(color = backgroundCol, shape = RoundedCornerShape(10)) {
-                            Text(text = stringResource(R.string.edit_groceries), color = textCol, style = style, modifier = Modifier.padding(5.dp))
-                        }
-                        GroceryGrid(
-                            groceryItems = temporaryGroceries,
-                            onClickItem = { index -> temporaryGroceries.removeAt(index) },
-                            onLongClickItem = {},
-                            minSize = 70.dp,
-                            center = true,
-                            itemColor = if (showBackgroundImage) backgroundCol else null,
-                            textColor = if (showBackgroundImage) Color.White else MaterialTheme.colorScheme.onPrimary,
-                            detailTextColor = if (showBackgroundImage) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                        )
-                        Box(
-                            modifier = Modifier.weight(1f)
-                        ) {
-
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            ButtonWithIcon(
-                                text = { Text(stringResource(R.string.add_grocery)) },
-                                onClick = { showAddGroceryDialog = true },
-                                icon = R.drawable.add
-                            )
-                            ButtonWithIcon(
-                                text = { Text(stringResource(R.string.background)) },
-                                onClick = { showChooseImageDialog = true },
-                                icon = R.drawable.outline_image_24
-                            )
-                        }
-                    }
-
-                }
-            }
-        }
-        val groceryDialogFocusRequester = remember { FocusRequester() }
-        LaunchedEffect(showAddGroceryDialog) {
-            if (showAddGroceryDialog) {
-                groceryDialogFocusRequester.requestFocus()
-            }
-        }
-        if (showAddGroceryDialog) {
-            AddGroceryDialog(
-                onDismissRequest = { showAddGroceryDialog = false },
-                onConfirm = { newGrocery ->
-                    temporaryGroceries.add(newGrocery)
-                },
-                focusRequester = groceryDialogFocusRequester,
-                focusDetailsOnNext = true
-            )
-        }
-
-        if (showChooseImageDialog) {
-            DefaultDialog(
-                title = stringResource(R.string.choose_image),
-                onDismissRequest = { showChooseImageDialog = false }
-            ) {
-                val lazyGridState = rememberLazyGridState()
-
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 80.dp),
-//                        modifier = Modifier.fillMaxSize(),
-                    state = lazyGridState,
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item {
-                        Surface(shape = RoundedCornerShape(10), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth().aspectRatio(0.75f), onClick = {
-                            chosenImageIndex = null
-                            showBackgroundImage = false
-                            showChooseImageDialog = false
-                        }) {
-                            Box() {
-                                Text(stringResource(R.string.none), modifier = Modifier.align(Alignment.Center))
-                            }
-                        }
-                    }
-                    itemsIndexed(recipe.images, key = {_, image -> image }) { index, image ->
-                        Surface(shape = RoundedCornerShape(10), modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(0.75f),
-                            onClick = {
-                                chosenImageIndex = index
-                                showBackgroundImage = true
-                                showChooseImageDialog = false
-                            }
-                        ) {
-                            AsyncImage(
-                                model = image,
-                                contentDescription = null,
-                                placeholder = painterResource(R.drawable.hamburger),
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 
@@ -350,7 +243,7 @@ fun SpecificRecipeGroceriesPreview() {
 //    recipeViewModel.addRecipe(recipe)
     FoodTheme() {
         Surface(modifier = Modifier.fillMaxSize()) {
-            SpecificRecipeGroceries(recipe = recipe, addToGroceries = { _, _ ->}, onChangeGroceries = {}, onOpenGroceryScreen = {}, groceryCategories = listOf(GroceryItemCategory("Default"), GroceryItemCategory("Vegan")))
+            SpecificRecipeGroceries(recipe = recipe, addToGroceries = { _, _ ->}, onOpenGroceryScreen = {}, groceryCategories = listOf(GroceryItemCategory("Default"), GroceryItemCategory("Vegan")))
         }
     }
 
