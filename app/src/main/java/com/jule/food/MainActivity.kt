@@ -167,7 +167,8 @@ class MainActivity : AppCompatActivity() {
                         groceryCategories = groceryViewModel.groceryItemCategories,
                         addToGroceries = { groceries, categoryIndex ->
                             groceryViewModel.addToGroceries(groceries, categoryIndex)
-                        }
+                        },
+                        onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }
                     )
             }
         }
@@ -231,7 +232,7 @@ fun AppPreview() {
     var language by remember { mutableStateOf(Languages.English) }
 
     FoodTheme(darkTheme = darkTheme) {
-        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _ ->}, groceryCategories = listOf())
+        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _ ->}, groceryCategories = listOf(), onDeleteRecipeImage = { _, _ ->})
     }
 }
 

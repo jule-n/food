@@ -71,12 +71,17 @@ fun deleteFile(path: String) {
     if (file.exists()) {
         val isDeleted = file.delete()
         if (isDeleted) {
-            Log.d("ImageSaver", "Image deleted: $path")
+            Log.d("deleteFile", "Image deleted: $path")
         } else {
-            Log.e("ImageSaver", "Failed to delete image: $path")
+            Log.e("deleteFile", "Failed to delete image: $path")
         }
     } else {
-        Log.w("ImageSaver", "Image file does not exist: $path")
+        Log.w("deleteFile", "Image file does not exist: $path")
+    }
+}
+fun deleteFiles(paths: List<String>) {
+    paths.forEach {
+        deleteFile(it)
     }
 }
 

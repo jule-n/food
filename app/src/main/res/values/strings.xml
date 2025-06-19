@@ -76,4 +76,9 @@
     <string name="more_items">+ %d more</string>
     <string name="deleted">Deleted</string>
     <string name="edit_grocery">Edit Grocery</string>
+    <string name="notes">Notes</string>
+    <string name="change_recipe_name">Change Recipe Name</string>
+    <string name="reorder_images">Reorder Images</string>
+    <string name="delete_recipe">Delete Recipe</string>
+    <string name="are_you_sure_you_want_to_delete_this_item">Are you sure you want to delete \"%s\"?</string>
 </resources>

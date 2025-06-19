@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
 //    kotlin("jvm") version "2.1.10"
     kotlin("plugin.serialization") version "1.9.0"
 }
@@ -69,11 +72,11 @@ dependencies {
     implementation("androidx.compose.material3:material3-android:1.4.0-alpha15")
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.sh.reorderable)
+//    implementation("androidx.navigation:navigation-compose:2.9.0")
+    implementation("sh.calvin.reorderable:reorderable:2.5.1")
 //    implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation(libs.coil.compose)
     implementation(libs.stfalconimageviewer)
-    implementation("com.github.0xZhangKe:ImageViewer:1.0.3")
     implementation (libs.picasso)
     implementation(libs.androidx.appcompat)
     implementation(libs.play.services.base)
@@ -89,4 +92,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 //    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
     implementation("me.saket.telephoto:zoomable:0.14.0")
+    implementation("io.github.aghajari:LazyFlowLayout:1.1.0")
 }

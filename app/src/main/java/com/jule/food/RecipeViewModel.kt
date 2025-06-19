@@ -145,8 +145,21 @@ class RecipeViewModel : ViewModel() {
     private var _showRecipeEnabled by mutableStateOf(false)
     val showRecipeEnabled get() = _showRecipeEnabled
 
+    private var _recentRecipeIds = mutableStateListOf<UUID>()
+    val recentRecipeIds get() = _recentRecipeIds
+
     fun changeSelectedRecipe(newId: UUID) {
         _selectedRecipeId = newId
+
+
+        if (!_recentRecipeIds.contains(newId)) {
+            _recentRecipeIds.add(0, newId)
+            if (_recentRecipeIds.size > 3)
+                _recentRecipeIds.removeAt(_recentRecipeIds.lastIndex)
+        } else {
+            _recentRecipeIds.remove(newId)
+            _recentRecipeIds.add(0, newId)
+        }
     }
     fun changeSelectedRecipe(recipe: Recipe) {
         _selectedRecipeId = recipe.id
@@ -188,14 +201,15 @@ class RecipeViewModel : ViewModel() {
         _recipes[index].groceries.clear()
         _recipes[index].groceries.addAll(newGroceries)
     }
-    fun deleteRecipeImages(paths: List<String>) {
-        paths.forEach { image ->
-            deleteFile(image)
-        }
+    fun deleteRecipeImage(id: UUID, imagePath: String) {
+        val index = _recipes.indexOfFirst { it.id == id }
+        _recipes[index].images.remove(imagePath)
+        deleteFile(imagePath)
     }
 
     fun removeRecipe(id: UUID) {
         val index = _recipes.indexOfFirst { it.id == id }
+        deleteFiles(_recipes[index].images)
         _recipes.removeAt(index)
     }
     fun addTag(tag: Tag) {
@@ -298,6 +312,6 @@ class RecipeViewModel : ViewModel() {
 
     fun deleteImageFiles() {
         val images = getImagePaths()
-        deleteRecipeImages(images)
+        deleteFiles(images)
     }
 }

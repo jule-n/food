@@ -1,5 +1,6 @@
 package com.jule.food
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,14 +27,19 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +75,7 @@ import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 import java.io.File
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SpecificRecipeGroceries(
     recipe: Recipe,
@@ -79,15 +87,15 @@ fun SpecificRecipeGroceries(
     var showGroceryAddDialog by remember { mutableStateOf(false) }
 
     SpecificRecipeSection(
-        modifier = modifier.height(180.dp),
+        modifier = modifier.heightIn(max = 180.dp),
         icon = R.drawable.grocery,
         title = stringResource(id = R.string.groceries),
         actionButtons = {
-            IconButton(onClick = { showGroceryAddDialog = true }, enabled = recipe.groceries.isNotEmpty()) {
-                Icon(painterResource(R.drawable.add_shopping_cart), contentDescription = "Add to shopping cart")
-            }
             IconButton(onClick = { onOpenGroceryScreen() }) {
                 Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
+            }
+            FilledIconButton(onClick = { showGroceryAddDialog = true }, shapes = IconButtonDefaults.shapes(), enabled = recipe.groceries.isNotEmpty()) {
+                Icon(painterResource(R.drawable.grocery), contentDescription = "Add to shopping cart")
             }
         }
     ) {
@@ -117,7 +125,7 @@ fun SpecificRecipeGroceries(
     }
     if (showGroceryAddDialog) {
         val selectedItems = remember { recipe.groceries.toMutableStateList() }
-        var chosenCategoryIndex: Int by remember { mutableStateOf(0) }
+        var chosenCategoryIndex: Int by remember { mutableIntStateOf(0) }
 
         DefaultDialog(
             title = stringResource(R.string.add_groceries_to_cart),
@@ -130,16 +138,20 @@ fun SpecificRecipeGroceries(
 //                showGroceryAddDialog = false
             }
         ) {
+            LaunchedEffect(chosenCategoryIndex) {
+                Log.d("Groceries", "Chosen category: $chosenCategoryIndex")
+            }
             SettingsScreenCategory(
                 name = stringResource(R.string.category)
             ) {
                 LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     itemsIndexed(groceryCategories) { index, category ->
-                        val isSelected = chosenCategoryIndex == index
+                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                         Surface(
                             onClick = { chosenCategoryIndex = index },
                             enabled = true,
-                            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
+                            color = color,
+//                            color = if (chosenCategoryIndex == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
                             shape = RoundedCornerShape(20)
                         ) {
                             Row(

@@ -74,4 +74,10 @@
     <string name="show_less">Weniger zeigen</string>
     <string name="more_items">+ %d weitere</string>
     <string name="deleted">Gelöscht</string>
+    <string name="edit_grocery">Einkauf bearbeiten</string>
+    <string name="notes">Notizen</string>
+    <string name="change_recipe_name">Rezeptname ändern</string>
+    <string name="reorder_images">Bilder sortieren</string>
+    <string name="delete_recipe">Rezept löschen</string>
+    <string name="are_you_sure_you_want_to_delete_this_item">Möchtest du wirklich \"%s\" löschen?</string>
 </resources>

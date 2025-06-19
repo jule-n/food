@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.FocusInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,10 +53,12 @@ import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -69,6 +73,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -144,7 +149,7 @@ fun GroceryScreen(
         modifier = modifier,
         bottomBar = bottomBar,
     ) { innerPadding ->
-        GroceryScreenWithoutViews(darkTheme = darkTheme, groceryViewModel = groceryViewModel, currentTheme = currentTheme, onChangeTheme = onChangeTheme, language = language, onChangeLanguage = onChangeLanguage, onOpenSettings = onOpenSettings, snackbarHostState = snackbarHostState, modifier = Modifier.padding(innerPadding))
+        GroceryScreenWithoutViews(groceryViewModel = groceryViewModel, onOpenSettings = onOpenSettings, snackbarHostState = snackbarHostState, modifier = Modifier.padding(innerPadding))
     }
 }
 
@@ -154,28 +159,19 @@ fun isCategoryError(name: String): Boolean {
 
 // Problem: wenn ich die Katergorie lösche, die über der ist (heißt, ein index kleiner) die ich ausgewählt habe, stürt die app ab.
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GroceryScreenWithoutViews(
-    darkTheme: Boolean,
     groceryViewModel: GroceryViewModel,
-    currentTheme: ThemeSetting,
-    onChangeTheme: (ThemeSetting) -> Unit,
-    language: Languages,
-    onChangeLanguage: (Languages) -> Unit,
     onOpenSettings: () -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
-
-    val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
 
     val categories = groceryViewModel.groceryItemCategories
     val currentCategoryIndex = groceryViewModel.selectedCategoryIndex
     val selectedCategory = if (categories.isEmpty()) GroceryItemCategory("") else categories[currentCategoryIndex]
-
-    val interactionSource = remember { MutableInteractionSource() }
 
     var editingItemIndex: Int? by remember { mutableStateOf(null) }
     var showEditGroceryDialog by remember { mutableStateOf(false) }
@@ -188,7 +184,6 @@ fun GroceryScreenWithoutViews(
     var showAddGroceryDialog by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-    val deletedItemString = stringResource(id = R.string.deleted_item)
 
     fun exitEditMode(cancel: Boolean = true) {
         if (groceryInputState.text == "" || cancel) {
@@ -206,14 +201,6 @@ fun GroceryScreenWithoutViews(
     Box(
         modifier = modifier
             .fillMaxSize()
-//            .clickable(
-//                enabled = true,
-//                interactionSource = interactionSource,
-//                indication = null,
-//                onClick = {
-//                    focusManager.clearFocus(true)
-//                }
-//            )
     ) {
         Column {
             GroceryTitleBar(
@@ -221,32 +208,65 @@ fun GroceryScreenWithoutViews(
                 onShowCategories = { showCategoriesDialog = true },
                 onOpenSettings = {
                     onOpenSettings()
-//                    showSettingsDialog = true
-                                 },
+                },
             )
-            GroceryGrid(
-                groceryItems = selectedCategory.items,
-                onClickItem = { index ->
-                    val item = selectedCategory.items[index]
-                    groceryViewModel.removeFromGroceries(index, currentCategoryIndex)
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ConnectedButtonGroup(
+                    options = categories.map { it.name },
+                    selectedOptionIndex = currentCategoryIndex,
+                    onSelectedOptionChange = { newIndex ->
+                        groceryViewModel.changeSelectedCategoryIndex(newIndex)
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp)
+                        .fillMaxWidth()
+                )
+                Spacer(Modifier.width(10.dp))
+                IconButton(onClick = { showCategoriesDialog = true }) {
+                    Icon(painter = painterResource(id = R.drawable.edit), contentDescription = "Edit Categories")
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            if (selectedCategory.items.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .fillMaxSize()
+                ) {
+                    Text(
+                        "No items yet ₍^. .^₎⟆",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.displaySmallEmphasized
+                    )
+                }
+            } else {
+                GroceryGrid(
+                    groceryItems = selectedCategory.items,
+                    onClickItem = { index ->
+                        val item = selectedCategory.items[index]
+                        groceryViewModel.removeFromGroceries(index, currentCategoryIndex)
 
-                    scope.launch {
-                        val result = snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_item, item.name), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
+                        scope.launch {
+                            val result = snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_item, item.name), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
 //
-                        if (result == SnackbarResult.ActionPerformed) {
-                            groceryViewModel.addToGroceries(item, currentCategoryIndex)
+                            if (result == SnackbarResult.ActionPerformed) {
+                                groceryViewModel.addToGroceries(item, currentCategoryIndex)
+                            }
                         }
-                    }
-                },
-                onLongClickItem = {
-                    showEditGroceryDialog = true
-                    editingItemIndex = it
-                },
+                    },
+                    onLongClickItem = {
+                        showEditGroceryDialog = true
+                        editingItemIndex = it
+                    },
 //                editedItemIndex = editingItemIndex,
-                modifier = Modifier
-                    .padding(horizontal = 10.dp)
-                    .weight(1f)
-            )
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp)
+                        .weight(1f)
+                )
+            }
         }
         Box(modifier = Modifier.fillMaxSize()) {
             ExtendedFloatingActionButton(

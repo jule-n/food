@@ -4,24 +4,36 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +60,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -69,6 +82,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -98,14 +112,17 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,11 +134,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -138,7 +158,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.aghajari.compose.lazyflowlayout.LazyFlowRow
 import com.jule.food.ui.theme.FoodTheme
 import com.squareup.picasso.Picasso
 import com.stfalcon.imageviewer.StfalconImageViewer
@@ -163,8 +186,8 @@ val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { nu
 fun RecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipeViewModel: RecipeViewModel,
-    addToGroceries: (List<GroceryItem>, Int) -> Unit,
-    groceryCategories: List<GroceryItemCategory>,
+    onOpenSettings: () -> Unit,
+    onClickRecipe: (UUID) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -173,11 +196,6 @@ fun RecipeScreen(
     val tags = recipeViewModel.tags
     val favoriteTagIds = recipeViewModel.favoriteTags
 
-    val showRecipeId = recipeViewModel.selectedRecipeIndex
-    val showRecipeEnabled = recipeViewModel.showRecipeEnabled
-
-    var isRemovingRecipe by remember { mutableStateOf(false)}
-
 
     fun onChangeTagRecipes(tagId: UUID, newRecipes: List<Recipe>) {
         recipeViewModel.changeTagRecipes(tagId, newRecipes)
@@ -185,105 +203,64 @@ fun RecipeScreen(
 
     val recipeGridState = rememberLazyGridState()
 
-    BackHandler(
-        enabled = showRecipeEnabled,
-        onBack = { recipeViewModel.changeShowRecipe(false) }
+//    fun onCloseSelectedRecipe() {
+//        val viewportStartOffset = recipeGridState.layoutInfo.viewportStartOffset
+//        val viewportEndOffset = recipeGridState.layoutInfo.viewportEndOffset
+//        val isVisible = recipeGridState.layoutInfo.visibleItemsInfo.any {
+//            if (it.key == showRecipeId) {
+//                return@any it.offset.y >= viewportStartOffset && it.offset.y + it.size.height <= viewportEndOffset
+//            } else {
+//                return@any false
+//            }
+//        }
+//        Log.d("RecipeScreen", "isVisible: $isVisible")
+//        if (!isVisible) {
+//            coroutineScope.launch {
+//                recipeGridState.animateScrollToItem(recipeViewModel.recipes.indexOfFirst { it.id == showRecipeId })
+//            }
+//        }
+//        recipeViewModel.changeShowRecipe(false)
+//    }
+
+    RecipeGridScreen(
+        modifier = modifier,
+        bottomBar = bottomBar,
+        recipes = recipes,
+        recentRecipeIds = recipeViewModel.recentRecipeIds,
+        tags = tags,
+        onDeleteTagId = { tagId -> recipeViewModel.deleteTagId(tagId) },
+        onChangeTagName = { tagId, newName ->
+            recipeViewModel.changeTagName(
+                tagId,
+                newName
+            )
+        },
+        onChangeTagIconIndex = { tagId, newIndex ->
+            recipeViewModel.changeTagIconIndex(
+                tagId,
+                newIndex
+            )
+        },
+        favoriteTagIds = favoriteTagIds,
+        onAddNewRecipe = { name ->
+            val id = recipeViewModel.addRecipe(name = name.trim())
+//            recipeViewModel.changeShowRecipe(true)
+            onClickRecipe(id)
+        },
+        onChangeSelectedRecipe = { id ->
+            onClickRecipe(id)
+//            recipeViewModel.changeShowRecipe(true)
+//            recipeViewModel.changeSelectedRecipe(id)
+        },
+        onChangeTagRecipes = { id, newRecipes ->
+            onChangeTagRecipes(
+                id,
+                newRecipes
+            )
+        },
+        recipeGridState = recipeGridState,
+        onOpenSettings = onOpenSettings
     )
-
-    SharedTransitionLayout() {
-        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-            AnimatedVisibility(
-                visible = !showRecipeEnabled,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
-                    RecipeGridScreen(
-                        modifier = modifier,
-                        bottomBar = bottomBar,
-                        recipes = recipes,
-                        tags = tags,
-                        onDeleteTagId = { tagId -> recipeViewModel.deleteTagId(tagId) },
-                        onChangeTagName = { tagId, newName ->
-                            recipeViewModel.changeTagName(
-                                tagId,
-                                newName
-                            )
-                        },
-                        onChangeTagIconIndex = { tagId, newIndex ->
-                            recipeViewModel.changeTagIconIndex(
-                                tagId,
-                                newIndex
-                            )
-                        },
-                        favoriteTagIds = favoriteTagIds,
-                        onAddNewRecipe = { name ->
-                            val id = recipeViewModel.addRecipe(name = name.trim())
-                            recipeViewModel.changeShowRecipe(true)
-                            recipeViewModel.changeSelectedRecipe(id)
-                        },
-                        onChangeSelectedRecipe = { id ->
-                            recipeViewModel.changeShowRecipe(true)
-                            recipeViewModel.changeSelectedRecipe(id)
-                        },
-                        onChangeTagRecipes = { id, newRecipes ->
-                            onChangeTagRecipes(
-                                id,
-                                newRecipes
-                            )
-                        },
-                        recipeGridState = recipeGridState
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showRecipeEnabled,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
-                    if (!isRemovingRecipe) {
-                        SpecificRecipeScreen(
-                            modifier = modifier,
-                            bottomBar = bottomBar,
-                            recipe = getRecipeFromId(showRecipeId, recipes),
-                            recipes = recipes,
-                            onChangeRecipeName = { newName -> recipeViewModel.changeRecipeName(showRecipeId, newName) },
-                            allTags = recipeViewModel.tags,
-                            onDeleteTagId = { tagId -> recipeViewModel.deleteTagId(tagId) },
-                            onChangeTagName = { tagId, newName -> recipeViewModel.changeTagName(tagId, newName) },
-                            onChangeTagIconIndex = { tagId, newIndex -> recipeViewModel.changeTagIconIndex(tagId, newIndex) },
-                            onChangeRecipeTags = { tags ->
-                                recipeViewModel.changeRecipeTags(showRecipeId, tags)
-                            },
-                            onBack = { recipeViewModel.changeShowRecipe(false) },
-                            onAddImages = { paths ->
-                                recipeViewModel.addImagesToRecipe(showRecipeId, paths)
-                            },
-                            onDelete = {
-                                recipeViewModel.changeShowRecipe(false)
-                                isRemovingRecipe = true
-                                recipeViewModel.removeRecipe(showRecipeId)
-
-                                coroutineScope.launch {
-                                    delay(500)
-                                    isRemovingRecipe = false
-                                }
-                            },
-                            onAddNewTag = { recipeViewModel.addTag(it) },
-                            onChangeRecipeImages = { newPaths -> recipeViewModel.changeRecipeImages(showRecipeId, newPaths) },
-                            onDeleteRecipeImages = { paths -> recipeViewModel.deleteRecipeImages(paths) },
-                            onChangeGroceries = { newItems -> recipeViewModel.changeRecipeGroceries(showRecipeId, newItems) },
-                            addToGroceries = addToGroceries,
-                            groceryCategories = groceryCategories,
-                            onChangeTagRecipes = { id, newRecipes -> onChangeTagRecipes(id, newRecipes) }
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class,
@@ -293,6 +270,7 @@ fun RecipeScreen(
 fun RecipeGridScreen(
     bottomBar: @Composable () -> Unit,
     recipes: List<Recipe>,
+    recentRecipeIds: List<UUID>,
     tags: List<Tag>,
     favoriteTagIds: List<UUID>,
     onChangeTagName: (UUID, String) -> Unit,
@@ -302,6 +280,7 @@ fun RecipeGridScreen(
     onAddNewRecipe: (name: String) -> Unit,
     onChangeSelectedRecipe: (UUID) -> Unit,
     recipeGridState: LazyGridState,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val selectedTagIds = remember { mutableStateListOf<UUID>() }
@@ -309,201 +288,33 @@ fun RecipeGridScreen(
 
 //    var isSearching by remember { mutableStateOf(false) }
 
-    var searchValue by remember { mutableStateOf("") }
 
     var showNewRecipeDialog by remember { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
 
-    val focusRequesterSearch = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
     var editTag: Tag? by remember { mutableStateOf(tags[0]) }
     var showEditTagDialog by remember { mutableStateOf(false) }
     var showEditTagSheet by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-
 
     val editTagSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    val recipesSelected = recipes.filter {recipe ->
-        if (selectedTagIds.isEmpty() || recipe.tags.containsAll(selectedTagIds)) {
-            if (searchValue != "") {
-                return@filter recipe.name.contains(other = searchValue, ignoreCase = true)
-            }
-            return@filter true
+    val recipesSelected = recipes.filter { recipe -> selectedTagIds.isEmpty() || recipe.tags.containsAll(selectedTagIds) }
+
+    val possibleTagsToSelect = tags.filter { tag ->
+            recipesSelected.any { recipe -> recipe.tags.containsAll(selectedTagIds.toList() + tag.id) }
         }
 
-        return@filter false
-    }
-    var possibleTagsToSelect by remember { mutableStateOf(tags.toList()) }
-//    LaunchedEffect(recipesSelected) {
-//        if (recipesSelected.size == recipes.size) {
-//            possibleTagsToSelect = tags.toList()
-//            return@LaunchedEffect
-//        }
-//        possibleTagsToSelect = (tags.filter { tag ->
-//            if (selectedTagIds.contains(tag.id))
-//                return@filter true
-//            recipesSelected.forEach { recipe ->
-//                if (recipe.tags.contains(tag.id)) {
-//                    return@filter true
-//                }
-//            }
-//            return@filter false
-//        })
-//        Log.d("Selected Tags", getTagsFromIds(selectedTagIds, tags).joinToString(separator = ", "){it.name})
-//        Log.d("Possible Tags", possibleTagsToSelect.joinToString(separator = ", "){it.name})
-////        Toast.makeText(context, "Updated", Toast.LENGTH_SHORT).show()
-//    }
 
-    BackHandler(
-        enabled = searchValue != "",
-        onBack = {
-            searchValue = ""
-            focusManager.clearFocus(true)
-        }
-    )
-    val searchBarState = rememberSearchBarState()
-    val textFieldState = rememberTextFieldState()
-//    val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
-    val inputField = @Composable {
-        SearchBarDefaults.InputField(
-            searchBarState = searchBarState,
-            textFieldState = textFieldState,
-            onSearch = { },
-//            onSearch = { scope.launch { searchBarState.animateToCollapsed() } },
-            leadingIcon = {
-                if (searchBarState.currentValue == SearchBarValue.Expanded) {
-                    IconButton(
-                        onClick = { scope.launch { searchBarState.animateToCollapsed() } }
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                } else {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                }
-            },
-            trailingIcon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
-            placeholder = {
-                Text(stringResource(R.string.search_recipes), textAlign = TextAlign.Center)
-            }
-        )
-    }
+
+    var expanded by remember { mutableStateOf(false) }
+
     Scaffold(
-//        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
-        topBar = {
-            TopSearchBar(
-//                scrollBehavior = scrollBehavior,
-                state = searchBarState,
-                inputField = inputField
-            )
-            ExpandedFullScreenSearchBar(
-                state = searchBarState,
-                inputField = inputField,
-//                tonalElevation = 0.dp,
-                colors = SearchBarDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
-            ) {
-                val gridState = rememberLazyGridState()
-//                Surface(
-//                    modifier = Modifier.fillMaxSize(),
-//                    color = MaterialTheme.colorScheme.background
-//                ) {
-                    if (textFieldState.text == "") {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .padding(all = 10.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 2.dp,
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text("SUGGESTIONS")
-                        }
-                    } else {
-                        val searchResults = recipes.filter { recipe -> recipe.name.contains(other = textFieldState.text, ignoreCase = true) }
-
-                        if (searchResults.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .fillMaxSize()
-                            ) {
-                                Text("No results found :|", modifier = Modifier.align(Alignment.Center), style = MaterialTheme.typography.displaySmallEmphasized)
-                            }
-                        } else {
-                            LazyVerticalGrid (
-                                columns = GridCells.Fixed(3)
-                            ) {
-                                items(searchResults) { item ->
-                                    Surface(
-                                        onClick = {  },
-                                        shape = RoundedCornerShape(10),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        tonalElevation = 4.dp,
-                                        modifier = modifier
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .aspectRatio(1f)
-                                            ) {
-                                                if (item.images.isNotEmpty()) {
-                                                    with(LocalSharedTransitionScope.current!!) {
-                                                        AsyncImage(
-                                                            model = item.images[0],
-                                                            contentDescription = null,
-                                                            modifier = Modifier
-//                                                                .sharedElement(
-//                                                                    rememberSharedContentState(key = item.id),
-//                                                                    animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-//                                                                )
-                                                                .clip(RoundedCornerShape(10))
-                                                                .fillMaxSize(),
-                                                            contentScale = ContentScale.Crop
-                                                        )
-                                                    }
-                                                } else {
-                                                    Box(modifier = Modifier.fillMaxSize().background(color = Color.Red, shape = RoundedCornerShape(10)))
-                                                }
-                                            }
-                                            Box(modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(40.dp)
-                                                .padding(horizontal = 5.dp)
-                                            ) {
-                                                Text(
-                                                    text = item.name,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 2,
-                                                    modifier = Modifier.align(Alignment.Center),
-                                                    textAlign = TextAlign.Center,
-                                                    style = MaterialTheme.typography.bodyMedium.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Simple),
-                                                    autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-//                            RecipeGrid(
-//                                contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 100.dp),
-//                                recipes = searchResults,
-//                                onClickRecipe = { listIndex -> onChangeSelectedRecipe(searchResults[listIndex].id) },
-//                                recipeGridState = gridState,
-//                            )
-                        }
-                    }
-//                }
-            }
-        },
+        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         bottomBar = bottomBar,
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -518,7 +329,7 @@ fun RecipeGridScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .clickable(
-                    enabled = searchValue != "",
+                    enabled = expanded,
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = {
@@ -526,67 +337,200 @@ fun RecipeGridScreen(
                     }
                 )
         ) {
-            Spacer(Modifier.height(10.dp))
-
-            var maxLines by remember { mutableIntStateOf(2) }
-
-            if (favoriteTagIds.isNotEmpty()) {
-                ContextualTagSelectionFlowRow(
-                    tags = possibleTagsToSelect.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 },
-                    itemCount = possibleTagsToSelect.size,
-                    selectedTags = selectedTagIds,
-                    removeFromSelectedTags = { selectedTagIds.remove(it) },
-                    addToSelectedTags = { selectedTagIds.add(it) },
-                    maxLines = maxLines,
-                    overflow = ContextualFlowRowOverflow.expandOrCollapseIndicator(
-                        minRowsToShowCollapse = 3,
-                        expandIndicator = {
-                            val more = possibleTagsToSelect.size - shownItemCount
-                            FilterChip(
-                                selected = false,
-                                onClick = { maxLines = Int.MAX_VALUE },
-                                label = { Text(stringResource(R.string.more_items, more)) },
-                                modifier = Modifier.height(FilterChipDefaults.Height)
-                            )
-                        },
-                        collapseIndicator = {
-                            FilterChip(
-                                selected = false,
-                                onClick = { maxLines = 2 },
-                                label = { Text(stringResource(R.string.show_less)) },
-                                modifier = Modifier.height(FilterChipDefaults.Height)
-                            )
-                        }),
-                    modifier = Modifier
-                        .padding(horizontal = 10.dp)
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    onLongClick = { id ->
-                        editTag = getTagFromId(id, tags)
-                        showEditTagSheet = true
-//                    scope.launch {
-//                        editTagSheetState.show()
-//                    }
-//                    showEditTagDialog = true
+            val textFieldState = rememberTextFieldState()
+            val recipeGridStateSearch = rememberLazyGridState()
+            val inputField = @Composable {
+                SearchBarDefaults.InputField(
+                    state = textFieldState,
+                    onSearch = { focusManager.clearFocus(true) },
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it },
+                    leadingIcon = {
+                        if (expanded) {
+                            IconButton(
+                                onClick = { expanded = false }
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = null)
+                        }
+                    },
+                    trailingIcon = { IconButton(onClick = onOpenSettings) { Icon(Icons.Outlined.Settings, contentDescription = "Settings") } },
+                    placeholder = {
+                        Text(stringResource(R.string.search_recipes), textAlign = TextAlign.Center)
                     }
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            Surface(
-                color = MaterialTheme.colorScheme.background,
-                shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5, bottomStartPercent = 0, bottomEndPercent = 0),
-//                shape = RoundedCornerShape(5),
-                modifier = Modifier.weight(1f)
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                RecipeGrid(
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 100.dp, start = 10.dp, end = 10.dp),
-                    recipes = recipesSelected,
-                    onClickRecipe = { listIndex -> onChangeSelectedRecipe(recipesSelected[listIndex].id) },
-                    recipeGridState = recipeGridState,
-                )
+                SearchBar(
+                    inputField = inputField,
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it },
+                    windowInsets = WindowInsets(
+                        left = 0.dp,
+                        right = 0.dp,
+                        top = 0.dp,
+                        bottom = 0.dp
+                    )
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (textFieldState.text == "") {
+                            Column(
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                Row() {
+                                    Icon(painterResource(R.drawable.clock), contentDescription = null)
+                                    Spacer(Modifier.width(5.dp))
+                                    Text("Recent")
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                RecipeGrid(
+                                    recipes = recentRecipeIds.map { getRecipeFromId(it, recipes) },
+                                    onClickRecipe = { listIndex ->
+                                        onChangeSelectedRecipe(recentRecipeIds[listIndex])
+                                    },
+                                    showImages = expanded,
+                                    recipeGridState = rememberLazyGridState()
+                                )
+                            }
+                        } else {
+                            val searchResults = recipes.filter { recipe ->
+                                recipe.name.contains(
+                                    other = textFieldState.text,
+                                    ignoreCase = true
+                                )
+                            }
+
+                            if (searchResults.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .fillMaxSize()
+                                ) {
+                                    Text(
+                                        "No results found :|",
+                                        modifier = Modifier.align(Alignment.Center),
+                                        style = MaterialTheme.typography.displaySmallEmphasized
+                                    )
+                                }
+                            } else {
+                                RecipeGrid(
+                                    contentPadding = PaddingValues(
+                                        start = 10.dp,
+                                        end = 10.dp,
+                                        top = 10.dp,
+                                        bottom = 100.dp
+                                    ),
+                                    recipes = searchResults,
+                                    onClickRecipe = { listIndex ->
+                                        onChangeSelectedRecipe(searchResults[listIndex].id)
+                                    },
+                                    recipeGridState = recipeGridStateSearch
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            if (!expanded) {
+                Spacer(Modifier.height(10.dp))
+                var maxLines by remember { mutableIntStateOf(2) }
+                Column(
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        maxLines = maxLines,
+                        modifier = Modifier.padding(horizontal = 10.dp).fillMaxWidth().animateContentSize()
+                    ) {
+                        for (tag in tags.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 }) {
+                            key(tag.id) {
+                                val tagVisible = possibleTagsToSelect.contains(tag)
+                                val alpha by animateFloatAsState(targetValue = if (tagVisible) 1f else 0f, label = "alpha")
+                                val scale by animateFloatAsState(targetValue = if (tagVisible) 1f else 0.8f, label = "scale") // Optional scale
+
+                                if (alpha > 0) {
+                                    val selected = selectedTagIds.contains(tag.id)
+                                    FilterChipLongClick(
+                                        selected = selected,
+                                        key1 = tag.id,
+                                        onClick = { if (selectedTagIds.contains(tag.id)) selectedTagIds.remove(tag.id) else selectedTagIds.add(tag.id) },
+                                        onLongClick = {
+                                            editTag = tag
+                                            showEditTagSheet = true
+                                        },
+                                        label = { Text(tag.name) },
+                                        leadingIcon = {
+                                            val painter = if (selected) R.drawable.done else tagIcons[tag.iconIndex]
+                                            Icon(
+                                                painter = painterResource(painter),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        },
+                                        modifier = Modifier
+                                            .padding(0.dp)
+                                            .height(FilterChipDefaults.Height)
+                                            .graphicsLayer {
+                                                this.alpha = alpha
+                                                this.scaleX = scale
+                                                this.scaleY = scale
+                                            },
+                                        colors = FilterChipDefaults.filterChipColors().copy(containerColor = MaterialTheme.colorScheme.background)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    AssistChip(
+                        onClick = {
+                            maxLines = if (maxLines == 2) Int.MAX_VALUE else 2
+                        },
+                        label = { Text(if (maxLines == 2) "Show more" else "Show less") },
+                        modifier = Modifier.padding(horizontal = 10.dp)
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.background,
+                    shape = RoundedCornerShape(
+                        topStartPercent = 5,
+                        topEndPercent = 5,
+                        bottomStartPercent = 0,
+                        bottomEndPercent = 0
+                    ),
+//                shape = RoundedCornerShape(5),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    RecipeGrid(
+                        contentPadding = PaddingValues(
+                            top = 10.dp,
+                            bottom = 100.dp,
+                            start = 10.dp,
+                            end = 10.dp
+                        ),
+                        recipes = recipesSelected,
+                        onClickRecipe = { listIndex ->
+                            onChangeSelectedRecipe(recipesSelected[listIndex].id)
+                        },
+                        recipeGridState = recipeGridState,
+                    )
+                }
             }
         }
     }
+
 
     if (showEditTagSheet) {
         EditTagSheet(
@@ -1006,91 +950,6 @@ fun AddTagDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class,
-    ExperimentalAnimationGraphicsApi::class
-)
-@Composable
-fun RecipeTopBar(
-    focusRequesterSearch: FocusRequester,
-    searchValue: String,
-    onSearchValueChange: (String) -> Unit,
-    isSearching: Boolean,
-    onStartSearching: () -> Unit,
-    onStopSearching: () -> Unit,
-    onOpenFilterDialogue: () -> Unit,
-    modifier: Modifier = Modifier,
-    badgeNumber: Int? = null
-) {
-//    val searchWidth by animateDpAsState(targetValue = if (isSearching) 200.dp else 0.dp)
-    var expanded by remember { mutableStateOf(false) }
-    LaunchedEffect(isSearching) {
-        if (isSearching) {
-            focusRequesterSearch.requestFocus()
-        }
-    }
-
-    CenterAlignedTopAppBar(
-        title = {
-            Text(text = stringResource(R.string.recipes), modifier = Modifier.width(200.dp), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Box(modifier = Modifier
-                .width(200.dp)
-                .height(30.dp)) {
-                AnimatedVisibility(visible = isSearching, enter = fadeIn() + slideInVertically(), exit = fadeOut() + slideOutVertically()) {
-                    BasicTextFieldCustom(
-                        value = searchValue,
-                        onValueChange = { onSearchValueChange(it) },
-                        textStyle = MaterialTheme.typography.titleSmall.copy(textAlign = TextAlign.Center),
-                        placeholder = { Text(stringResource(R.string.search_recipes), modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), style = MaterialTheme.typography.titleSmall.copy(textAlign = TextAlign.Center)) },
-                        modifier = Modifier
-                            .width(200.dp)
-                            .height(30.dp)
-                            .focusRequester(focusRequesterSearch),
-//                    trailingIcon = {
-//                        IconButton(onClick = { onStopSearching() }) {
-//                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear")
-//                        }
-//                    },
-                        colors = TextFieldDefaults.colors().copy(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        shape = RoundedCornerShape(20)
-                    )
-                }
-            }
-//            BasicOutlinedTextField(
-//                value = searchValue,
-//                onValueChange = { onSearchValueChange(it) },
-//                textStyle = MaterialTheme.typography.titleSmall,
-//                modifier = Modifier
-//                    .width(searchWidth)
-//                    .height(30.dp)
-//                    .focusRequester(focusRequesterSearch),
-//                trailingIcon = {
-//                    IconButton(onClick = { onStopSearching() }) {
-//                        Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear")
-//                    }
-//                }
-//            )
-        },
-        actions = {
-            val image = AnimatedImageVector.animatedVectorResource(R.drawable.search_to_clear)
-//            if (isSearching) {
-                IconButton(onClick = if (isSearching) onStopSearching else onStartSearching) {
-                    Icon(rememberAnimatedVectorPainter(image, isSearching), contentDescription = "Start/Stop Search")
-                }
-//            } else {
-//                IconButton(onClick = onStartSearching) {
-//                    Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search")
-//                }
-//            }
-        },
-        modifier = modifier,
-//        colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = MaterialTheme.colorScheme.background),
-        windowInsets = WindowInsets(0, 0, 0, 0)
-    )
-}
-
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecipeGrid(
@@ -1098,12 +957,13 @@ fun RecipeGrid(
     onClickRecipe: (listIndex: Int) -> Unit,
     recipeGridState: LazyGridState,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(bottom = 100.dp)
+    contentPadding: PaddingValues = PaddingValues(bottom = 100.dp),
+    showImages: Boolean = true,
 ) {
     LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Fixed(3), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = contentPadding) {
         itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
             RecipeSmallDisplay(
-                recipe = recipe, onClick = { onClickRecipe(index) }, modifier = Modifier.animateItem(placementSpec = null)
+                recipe = recipe, onClick = { onClickRecipe(index) }, showImage = showImages, modifier = Modifier.animateItem()
             )
         }
     }
@@ -1141,22 +1001,30 @@ fun RecipeSmallDisplay(
                     val sharedTransitionScope = LocalSharedTransitionScope.current
                     with(sharedTransitionScope!!) {
                         AsyncImage(
-                            model = recipe.images[0],
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(recipe.images[0]))
+                                .crossfade(true)
+                                .placeholderMemoryCacheKey(recipe.id.toString())
+                                .memoryCacheKey(recipe.id.toString())
+                                .size(400, 400)
+                                .scale(coil3.size.Scale.FIT)
+                                .build(),
                             contentDescription = null,
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .sharedElement(
                                     rememberSharedContentState(key = recipe.id),
                                     animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
                                 )
                                 .clip(RoundedCornerShape(10))
-                                .fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                                .fillMaxSize()
                         )
                     }
                 } else {
                     Box(modifier = Modifier
                         .fillMaxSize()
-                        .background(fallbackBrush, shape = RoundedCornerShape(10)))
+                        .background(fallbackBrush, shape = RoundedCornerShape(10))
+                    )
                 }
             }
             val style = if (shadow) MaterialTheme.typography.bodyMedium.copy(shadow = Shadow(offset = Offset(3f, 3f))) else MaterialTheme.typography.bodyMedium
@@ -1322,12 +1190,12 @@ fun SpecificRecipeSection(
     @DrawableRes icon: Int,
     title: String,
     actionButtons: @Composable () -> Unit,
-    content: @Composable () -> Unit,
+    containerColor: Color = Color.Unspecified,
+    content: @Composable () -> Unit
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
         shape = RoundedCornerShape(10),
+        color = containerColor,
         modifier = modifier
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -1373,103 +1241,6 @@ fun DisplayTagsRow(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-fun RecipeImageGallery(
-    recipeId: UUID,
-    images: List<String>,
-    modifier: Modifier = Modifier
-) {
-    if (images.isEmpty())
-        return
-
-    val context = LocalContext.current
-
-    val uris = images.map { filePath -> Uri.fromFile(File(filePath)) }
-    var currentImageIndex by remember { mutableIntStateOf(0) }
-
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        modifier = modifier.height(200.dp)
-    ) {
-        itemsIndexed(images) { index, path ->
-            with (LocalSharedTransitionScope.current!!) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(File(path)).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .conditional(index == 0) {
-                            Modifier.sharedElement(
-                                rememberSharedContentState(key = recipeId),
-                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                            )
-                        }
-                        .clip(RoundedCornerShape(10))
-                        .width(150.dp)
-                        .clickable(onClick = {
-                            currentImageIndex = index
-
-                            val builder =
-                                StfalconImageViewer.Builder<Uri>(context, uris) { view, uri ->
-                                    Picasso.get().load(uri).into(view)
-                                }
-                            builder
-                                .withStartPosition(index)
-                                .show()
-                        })
-                )
-            }
-        }
-    }
-//    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SpecificRecipeHeader(
-    recipeNameValue: TextFieldValue,
-    onRecipeNameChanged: (TextFieldValue) -> Unit,
-    onSubmit: () -> Unit,
-    editingText: Boolean,
-    onStartEditing: () -> Unit,
-    focusRequester: FocusRequester,
-    onBack: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
-    CenterAlignedTopAppBar(
-        modifier = modifier,
-        title = {
-            EditableText(editable = editingText, textState = recipeNameValue, onTextChange = onRecipeNameChanged, focusRequester = focusRequester, onSubmit = onSubmit, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
-//            Text(text = , style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack, modifier = Modifier.size(50.dp)) {
-                Icon(painter = painterResource(id = R.drawable.arrow_left), contentDescription = "Back")
-            }
-        },
-        actions = {
-            IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(50.dp)) {
-                Icon(painter = painterResource(id = R.drawable.more_vert), contentDescription = "More")
-            }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, leadingIcon = { Icon(painterResource(R.drawable.edit), null)}, onClick = {
-                    onStartEditing()
-                    menuExpanded = false
-                })
-                DropdownMenuItem(text = { Text(stringResource(id = R.string.delete)) }, leadingIcon = { Icon(painterResource(R.drawable.delete), null, tint = MaterialTheme.colorScheme.error)}, onClick = {
-                    onDelete()
-                    menuExpanded = false
-                })
-            }
-        }
-    )
-}
 
 
 @Preview(showBackground = true)
@@ -1494,7 +1265,7 @@ fun RecipeScreenPreview() {
     recipeViewModel.changeFavoriteTags(listOf(fishTag.id,appleTag.id,kaeseTag2.id))
 
     FoodTheme {
-        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController) }, recipeViewModel = recipeViewModel, addToGroceries = { _, _ -> }, groceryCategories = listOf())
+        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController) }, recipeViewModel = recipeViewModel, onOpenSettings = {}, onClickRecipe = {})
     }
 }
 

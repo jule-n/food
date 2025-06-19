@@ -1,16 +1,20 @@
 package com.jule.food
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,35 +34,52 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -71,19 +92,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -91,10 +117,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.jule.food.ui.theme.FoodTheme
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
+import java.io.File
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,49 +132,42 @@ import java.util.UUID
 fun SpecificRecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipe: Recipe,
-    recipes: List<Recipe>,
-    onChangeRecipeName: (String) -> Unit,
-    allTags: List<Tag>,
-    onAddNewTag: (Tag) -> Unit,
-    onDeleteTagId: (UUID) -> Unit,
-    onChangeTagName: (UUID, String) -> Unit,
-    onChangeTagIconIndex: (UUID, Int) -> Unit,
-    onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
-    onChangeRecipeTags: (List<UUID>) -> Unit,
-    onChangeRecipeImages: (List<String>) -> Unit,
-    onDeleteRecipeImages: (List<String>) -> Unit,
-    onChangeGroceries: (List<GroceryItem>) -> Unit,
+    recipeViewModel: RecipeViewModel,
     addToGroceries: (List<GroceryItem>, Int) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onBack: () -> Unit,
-    onDelete: () -> Unit,
-    onAddImages: (List<String>) -> Unit,
+    onSelectImage: (imageIndex: Int) -> Unit,
+    isPop: Boolean,
     modifier: Modifier = Modifier
 ) {
 //    var expanded by remember { mutableStateOf(false) }
     var showGroceryScreen by remember { mutableStateOf(false) }
+    val recipes = recipeViewModel.recipes
+    val tags = recipeViewModel.tags
 
     AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(false), exit = completeSlideOut(true)) {
         SpecificRecipeScreenMain(
             recipe = recipe,
             recipes = recipes,
-            onChangeRecipeName = onChangeRecipeName,
-            allTags = allTags,
-            onAddNewTag = onAddNewTag,
-            onDeleteTagId = onDeleteTagId,
-            onChangeTagName = onChangeTagName,
-            onChangeTagIconIndex = onChangeTagIconIndex,
-            onChangeTagRecipes = onChangeTagRecipes,
-            onChangeRecipeTags = onChangeRecipeTags,
-            onChangeRecipeImages = onChangeRecipeImages,
-            onDeleteRecipeImages = onDeleteRecipeImages,
+            onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it) },
+            allTags = tags,
+            onAddNewTag = { recipeViewModel.addTag(it) },
+            onDeleteTagId = { recipeViewModel.deleteTagId(it) },
+            onChangeTagName = { id, newName -> recipeViewModel.changeTagName(id, newName) },
+            onChangeTagIconIndex = { id, newIndex -> recipeViewModel.changeTagIconIndex(id, newIndex) },
+            onChangeTagRecipes = { id, newRecipes -> recipeViewModel.changeTagRecipes(id, newRecipes) },
+            onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it) },
+            onChangeRecipeImages = { recipeViewModel.changeRecipeImages(recipe.id, it) },
+            onDeleteRecipeImage = { recipeViewModel.deleteRecipeImage(recipe.id, it) },
             addToGroceries = addToGroceries,
             groceryCategories = groceryCategories,
             onBack = onBack,
-            onDelete = onDelete,
-            onAddImages = onAddImages,
+            onDelete = { recipeViewModel.removeRecipe(recipe.id) },
+            onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it) },
             bottomBar = bottomBar,
-            onOpenGroceryScreen = { showGroceryScreen = true }
+            onOpenGroceryScreen = { showGroceryScreen = true },
+            onSelectImage = { onSelectImage(it) },
+            isPop = isPop
         )
     }
     AnimatedVisibility(
@@ -157,7 +180,7 @@ fun SpecificRecipeScreen(
             recipe = recipe,
             onConfirm = { newGroceries ->
                 showGroceryScreen = false
-                onChangeGroceries(newGroceries)
+                recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries)
             },
             modifier = modifier
         )
@@ -171,6 +194,7 @@ fun SpecificRecipeScreenMain(
     bottomBar: @Composable () -> Unit,
     recipe: Recipe,
     recipes: List<Recipe>,
+    onSelectImage: (imageIndex: Int) -> Unit,
     onChangeRecipeName: (String) -> Unit,
     allTags: List<Tag>,
     onAddNewTag: (Tag) -> Unit,
@@ -180,74 +204,123 @@ fun SpecificRecipeScreenMain(
     onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
     onChangeRecipeTags: (List<UUID>) -> Unit,
     onChangeRecipeImages: (List<String>) -> Unit,
-    onDeleteRecipeImages: (List<String>) -> Unit,
+    onDeleteRecipeImage: (String) -> Unit,
     addToGroceries: (List<GroceryItem>, Int) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onAddImages: (List<String>) -> Unit,
     onOpenGroceryScreen: () -> Unit,
+    isPop: Boolean,
     modifier: Modifier = Modifier
 ) {
     var titleValue by remember { mutableStateOf(TextFieldValue(recipe.name)) }
     val titleFocusRequester = remember { FocusRequester() }
-    var isEditing by remember { mutableStateOf(false) }
-    var lastValueWithoutError by remember { mutableStateOf(recipe.name) }
+    val isEditing by remember { mutableStateOf(false) }
     LaunchedEffect(isEditing) {
         if (isEditing) {
             titleFocusRequester.requestFocus()
             titleValue = titleValue.copy(selection = TextRange(0, titleValue.text.length))
         }
     }
-    val focusManager = LocalFocusManager.current
+    var focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
+    val scrollBehaviour = TopAppBarDefaults.pinnedScrollBehavior()
+
+
     with (LocalNavAnimatedVisibilityScope.current!!) {
         Scaffold(
             bottomBar = bottomBar,
+            modifier = modifier.nestedScroll(scrollBehaviour.nestedScrollConnection),
             topBar = {
                 MediumFlexibleTopAppBar(
                     title = {
-                        Text(recipe.name, maxLines = 2, style = MaterialTheme.typography.displaySmallEmphasized, autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp))
-                    },
-                    navigationIcon = { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") },
-                    actions = {
-                        IconButton(onClick = onDelete) {
-                            Icon(painterResource(R.drawable.delete), contentDescription = "Delete")
+                        val editNameFocusRequester = remember { FocusRequester() }
+                        var showEditNameDialog by remember { mutableStateOf(false)}
+                        Text(
+                            recipe.name,
+                            maxLines = 2,
+                            style = MaterialTheme.typography.displaySmallEmphasized,
+                            autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp),
+                            modifier = Modifier.combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onLongClick = {
+                                    showEditNameDialog = true
+                                },
+                                onClick = {}
+                            )
+                        )
+                        LaunchedEffect(showEditNameDialog) {
+                            if (showEditNameDialog) {
+                                editNameFocusRequester.requestFocus()
+                            }
+                        }
+                        if (showEditNameDialog) {
+                            val textFieldState by remember { mutableStateOf(TextFieldState(recipe.name)) }
+                            DefaultDialog(
+                                title = stringResource(R.string.change_recipe_name),
+                                buttons = true,
+                                onDismissRequest = {
+                                    if (textFieldState.text.toString() != recipe.name)
+                                        showEditNameDialog = false
+                                    else
+                                        focusManager.clearFocus(true)
+                               },
+                                onConfirm = {
+                                    onChangeRecipeName(textFieldState.text.toString())
+                                    showEditNameDialog = false
+                                },
+                                confirmEnabled = !isRecipeError(textFieldState.text.toString()),
+                                onCancel = { showEditNameDialog = false },
+                                onClickDialogEnabled = true,
+                                onClickDialog = { focusManager.clearFocus(true) }
+                            ) {
+                                focusManager = LocalFocusManager.current
+                                OutlinedTextField(
+                                    state = textFieldState,
+                                    textStyle = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier
+                                        .width(250.dp)
+                                        .focusRequester(editNameFocusRequester),
+                                    shape = RoundedCornerShape(20),
+                                    placeholder = { Text(stringResource(id = R.string.name)) },
+                                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                                    onKeyboardAction = { onDone ->
+                                        focusManager.clearFocus(true)
+                                    }
+                                )
+                            }
                         }
                     },
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") } },
+                    actions = {
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(painterResource(R.drawable.delete), contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
+                        if (showDeleteDialog) {
+                            DefaultDialog(
+                                title = stringResource(R.string.delete_recipe),
+                                buttons = true,
+                                onDismissRequest = { showDeleteDialog = false },
+                                onConfirm = onDelete
+                            ) {
+                                Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, recipe.name), textAlign = TextAlign.Center)
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehaviour,
+//                    modifier = Modifier.animateEnterExit(enter = if (isPop) slideInVertically() else fadeIn(), exit = if (isPop) slideOutVertically() else fadeOut())
                 )
-//                SpecificRecipeHeader(
-//                    recipeNameValue = titleValue,
-//                    onRecipeNameChanged = {
-//                        if (!isRecipeError(it.text))
-//                            lastValueWithoutError = it.text
-//                        titleValue = it
-//                    },
-//                    onBack = onBack,
-//                    onStartEditing = {
-//                        isEditing = true
-//                    },
-//                    editingText = isEditing,
-//                    onDelete = onDelete,
-//                    onSubmit = {
-//                        isEditing = false
-//                        onChangeRecipeName(lastValueWithoutError)
-//                        titleValue = titleValue.copy(text = lastValueWithoutError)
-//                    },
-//                    focusRequester = titleFocusRequester,
-//                    modifier = Modifier.animateEnterExit(
-//                        enter = slideInVertically() + fadeIn(),
-//                        exit = slideOutVertically() + fadeOut()
-//                    )
-//                )
-            },
-            modifier = modifier
+            }
         ) { innerPadding ->
             val scrollState = rememberScrollState()
             Column(
-                modifier = modifier
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
                     .padding(innerPadding)
+                    .padding(top = 10.dp)
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .clickable(
@@ -256,22 +329,45 @@ fun SpecificRecipeScreenMain(
                         enabled = isEditing,
                         onClick = {
                             focusManager.clearFocus(true)
-                        }), verticalArrangement = Arrangement.spacedBy(20.dp)
+                        }
+                    )
+//                    .animateEnterExit(
+//                        enter = if (isPop) slideInHorizontally(initialOffsetX = { it / 2 }) else fadeIn(),
+//                        exit = if (isPop) slideOutHorizontally(targetOffsetX = { it / 2 }) else fadeOut()
+//                    )
             ) {
-                SpecificRecipeImages(
-                    recipe = recipe,
-                    onAddImages = onAddImages,
-                    onChangeRecipeImages = onChangeRecipeImages,
-                    onDeleteRecipeImages = onDeleteRecipeImages,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
-                )
-                SpecificRecipeGroceries(
-                    recipe = recipe,
-                    addToGroceries = addToGroceries,
-                    groceryCategories = groceryCategories,
-                    onOpenGroceryScreen = onOpenGroceryScreen,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
-                )
+                    SpecificRecipeImages(
+                        recipe = recipe,
+                        onAddImages = onAddImages,
+                        onChangeRecipeImages = onChangeRecipeImages,
+                        onDeleteRecipeImage = onDeleteRecipeImage,
+                        onSelectImage = onSelectImage
+                    )
+                    SpecificRecipeGroceries(
+                        recipe = recipe,
+                        addToGroceries = addToGroceries,
+                        groceryCategories = groceryCategories,
+                        onOpenGroceryScreen = onOpenGroceryScreen
+                    )
+                    SpecificRecipeSection(
+                        icon = R.drawable.list,
+                        title = stringResource(R.string.notes),
+                        actionButtons = {
+                            FilledIconButton(shapes = IconButtonDefaults.shapes(), onClick = { }) {
+                                Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
+                            }
+                        },
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            Text("Here are some notes")
+                        }
+                    }
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+//                }
                 SpecificRecipeTags(
                     recipe = recipe,
                     recipes = recipes,
@@ -281,8 +377,7 @@ fun SpecificRecipeScreenMain(
                     onChangeTagName = onChangeTagName,
                     onChangeTagIconIndex = onChangeTagIconIndex,
                     onChangeRecipeTags = onChangeRecipeTags,
-                    onChangeTagRecipes = onChangeTagRecipes,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
+                    onChangeTagRecipes = onChangeTagRecipes
                 )
             }
         }
@@ -351,7 +446,9 @@ fun SpecificRecipeEditGroceriesScreen(
                     HorizontalPager(
                         state = pagerState,
                     ) { index ->
-                        ZoomableImage(recipe.images[index], modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f), contentScale = ContentScale.Fit)
+                        ZoomableImage(recipe.images[index], modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.3f), contentScale = ContentScale.Fit)
                         //                Image(painter = painterResource(R.drawable.cauliflower_wings), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f), contentDescription = null)
                     }
                     if (recipe.images.size > 1) {
@@ -359,7 +456,11 @@ fun SpecificRecipeEditGroceriesScreen(
                             for(i in 0..<recipe.images.size) {
                                 Box(modifier = Modifier
                                     .size(5.dp)
-                                    .background(color = if (i == pagerState.currentPage) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), shape = CircleShape))
+                                    .background(
+                                        color = if (i == pagerState.currentPage) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(
+                                            alpha = 0.6f
+                                        ), shape = CircleShape
+                                    ))
                             }
                         }
                     }
@@ -371,7 +472,8 @@ fun SpecificRecipeEditGroceriesScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
 //        contentPadding = PaddingValues(5.dp),
                 modifier = modifier
-                    .fillMaxWidth().padding(horizontal = 20.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
             ) {
                 val br = Brush.linearGradient(listOf(Color.LightGray, Color.White))
                 items(items = temporaryGroceries.sortedBy { it.name }, key = { item -> item.id } ) { groceryItem ->
@@ -392,7 +494,10 @@ fun SpecificRecipeEditGroceriesScreen(
                 if (deletedGroceries.isNotEmpty()) {
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {}
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {
-                        Box(modifier = Modifier.fillMaxWidth().height(50.dp).animateItem()) {
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .animateItem()) {
                             Text(
                                 stringResource(R.string.deleted), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.align(
                                     Alignment.BottomStart))
@@ -480,6 +585,7 @@ fun SpecificRecipeTags(
                 Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
             }
         },
+//        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         modifier = modifier
     ) {
         if (tagSelectionDialogActive) {
@@ -550,44 +656,72 @@ fun SpecificRecipeTags(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun SpecificRecipeImages(
     recipe: Recipe,
+    onSelectImage: (imageIndex: Int) -> Unit,
     onAddImages: (List<String>) -> Unit,
     onChangeRecipeImages: (List<String>) -> Unit,
-    onDeleteRecipeImages: (List<String>) -> Unit,
+    onDeleteRecipeImage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var imageEditDialogActive by remember { mutableStateOf(false) }
+    var imageBottomSheetIndex by remember { mutableIntStateOf(0) }
+    var imageBottomSheetActive by remember { mutableStateOf(false) }
 
     SpecificRecipeSection(
         modifier = modifier,
         icon = R.drawable.outline_image_24,
         title = stringResource(R.string.images),
         actionButtons = {
-            IconButton(onClick = { imageEditDialogActive = true }, enabled = recipe.images.isNotEmpty()) {
-                Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
-            }
             SelectImagesIconButton(maxImages = 10, onSelectImages = onAddImages)
         }
     ) {
-        RecipeImageGallery(recipeId = recipe.id, images = recipe.images)
+        RecipeImageGallery(recipeId = recipe.id, images = recipe.images, onLongClickImage = { imageIndex ->
+            imageBottomSheetActive = true
+            imageBottomSheetIndex = imageIndex
+        }, onSelectImage = onSelectImage)
+
+        if (imageBottomSheetActive) {
+            ModalBottomSheet(
+                onDismissRequest = { imageBottomSheetActive = false }
+            ) {
+
+                BottomSheetButton(
+                    text = stringResource(R.string.reorder_images),
+                    onClick = { imageEditDialogActive = true },
+                    icon = R.drawable.drag_handle,
+                    enabled = recipe.images.size > 1
+                )
+                BottomSheetButton(
+                    text = stringResource(R.string.delete),
+                    onClick = { onDeleteRecipeImage(recipe.images[imageBottomSheetIndex]) },
+                    icon = R.drawable.delete,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
 
         if (imageEditDialogActive) {
 
             val images = remember { recipe.images.toMutableStateList() }
-            val deletedImages = remember { mutableStateListOf<String>() }
+
             DefaultDialog(
-                title = stringResource(R.string.edit_images),
+                title = stringResource(R.string.reorder_images),
                 onDismissRequest = {
-                    imageEditDialogActive = false
+                    if (images.toList() == recipe.images.toList()) {
+                        imageEditDialogActive = false
+                        imageBottomSheetActive = false
+                    }
                 },
                 buttons = true,
                 onConfirm = {
                     imageEditDialogActive = false
+                    imageBottomSheetActive = false
                     onChangeRecipeImages(images)
-                    onDeleteRecipeImages(deletedImages)
                 },
                 confirmEnabled = images.toList() != recipe.images.toList(),
                 confirmText = R.string.save
@@ -616,6 +750,7 @@ fun SpecificRecipeImages(
 
                             Surface(shadowElevation = elevation, shape = RoundedCornerShape(10), modifier = Modifier
                                 .fillMaxWidth()
+                                .draggableHandle()
                                 .aspectRatio(0.75f),
                                 onClick = {
                                     imageViewDialogActive = true
@@ -625,57 +760,11 @@ fun SpecificRecipeImages(
                                 AsyncImage(
                                     model = image,
                                     contentDescription = null,
-                                    placeholder = painterResource(R.drawable.hamburger),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .fillMaxSize()
                                 )
                                 Box(modifier = Modifier.fillMaxSize()) {
-                                    IconButton(
-                                        modifier = Modifier
-                                            .draggableHandle()
-                                            .size(30.dp)
-                                            .align(Alignment.TopStart),
-                                        onClick = {},
-                                    ) {
-                                        Icon(
-                                            painterResource(R.drawable.drag_handle),
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier
-                                                .offset(1.dp, 1.dp)
-                                                .zIndex(0f)
-                                        )
-                                        Icon(
-                                            painterResource(R.drawable.drag_handle),
-                                            contentDescription = "Reorder",
-                                            tint = Color.Black,
-                                            modifier = Modifier.zIndex(1f)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            images.remove(image)
-                                            deletedImages.add(image)
-                                        }, modifier = Modifier
-                                            .size(30.dp)
-                                            .align(Alignment.TopEnd)
-                                    ) {
-                                        Icon(
-                                            painterResource(R.drawable.delete),
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier
-                                                .offset(1.dp, 1.dp)
-                                                .zIndex(0f)
-                                        )
-                                        Icon(
-                                            painterResource(R.drawable.delete),
-                                            contentDescription = "Delete",
-                                            tint = Color.Black,
-                                            modifier = Modifier.zIndex(1f)
-                                        )
-                                    }
                                     Box(modifier = Modifier.align(Alignment.BottomStart)) {
                                         Text((index+1).toString(), color = Color.Black, style = MaterialTheme.typography.labelSmall.copy(shadow = Shadow(color = Color.White, offset = Offset(1f, 1f))))
                                     }
@@ -706,6 +795,82 @@ fun SpecificRecipeImages(
     }
 }
 
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun RecipeImageGallery(
+    recipeId: UUID,
+    images: List<String>,
+    onSelectImage: (imageIndex: Int) -> Unit,
+    onLongClickImage: (imageIndex: Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (images.isEmpty())
+        return
+
+    val context = LocalContext.current
+
+//    val uris = images.map { filePath -> Uri.fromFile(File(filePath)) }
+//    var currentImageIndex by remember { mutableIntStateOf(0) }
+
+    var imageViewerStartIndex by remember { mutableIntStateOf(0) }
+    var imageViewerActive by remember { mutableStateOf(false) }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        modifier = modifier.height(200.dp)
+    ) {
+        itemsIndexed(images) { index, path ->
+            val model = if (index == 0) {
+                ImageRequest.Builder(context)
+                    .data(File(path))
+                    .crossfade(true)
+                    .placeholderMemoryCacheKey(recipeId.toString())
+                    .memoryCacheKey(recipeId.toString())
+                    .build()
+            } else {
+                ImageRequest.Builder(context)
+                    .data(File(path))
+                    .crossfade(true)
+                    .build()
+            }
+
+            val imageKey = if (index == 0) recipeId else "${recipeId}_${index}"
+
+            with(LocalSharedTransitionScope.current!!) {
+                AsyncImage(
+                    model = model,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .sharedElement(
+                            rememberSharedContentState(key = imageKey),
+                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                        )
+                        .clip(RoundedCornerShape(10))
+                        .width(150.dp)
+                        .combinedClickable(onClick = {
+                            onSelectImage(index)
+//                            imageViewerStartIndex = index
+//                            imageViewerActive = true
+//                            currentImageIndex = index
+//
+//                            val builder =
+//                                StfalconImageViewer.Builder<Uri>(context, uris) { view, uri ->
+//                                    Picasso.get().load(uri).into(view)
+//                                }
+//                            builder
+//                                .withStartPosition(index)
+//                                .show()
+                        }, onLongClick = { onLongClickImage(index) })
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun SpecificRecipeScreenPreview() {
@@ -724,25 +889,12 @@ fun SpecificRecipeScreenPreview() {
                     bottomBar = {},
                     recipe = recipe,
                     onBack = { },
-                    onAddImages = {},
-                    onDelete = {},
-                    allTags = listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag),
-                    onChangeRecipeTags = {
-                        recipe.tags.clear()
-                        recipe.tags.addAll(it)
-                    },
-                    onAddNewTag = {},
-                    onChangeRecipeImages = {},
-                    onDeleteRecipeImages = {},
-                    onChangeRecipeName = {},
-                    onChangeTagName = { _, _ -> },
-                    onChangeTagIconIndex = { _, _ -> },
-                    onDeleteTagId = {},
-                    onChangeGroceries = {},
+                    recipeViewModel = viewModel(),
                     addToGroceries = { _, _ -> },
                     groceryCategories = listOf(),
-                    recipes = listOf(),
-                    onChangeTagRecipes = { _, _ -> })
+                    onSelectImage = { },
+                    isPop = false
+                )
             }
         }
     }
