@@ -6,11 +6,14 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,6 +33,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -42,23 +47,36 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -73,6 +91,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -83,6 +102,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -199,55 +219,87 @@ fun SpecificRecipeScreenMain(
             titleValue = titleValue.copy(selection = TextRange(0, titleValue.text.length))
         }
     }
-    val focusManager = LocalFocusManager.current
+    var focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
+    val scrollBehaviour = TopAppBarDefaults.pinnedScrollBehavior()
     with (LocalNavAnimatedVisibilityScope.current!!) {
         Scaffold(
             bottomBar = bottomBar,
+            modifier = modifier.nestedScroll(scrollBehaviour.nestedScrollConnection),
             topBar = {
                 MediumFlexibleTopAppBar(
                     title = {
-                        Text(recipe.name, maxLines = 2, style = MaterialTheme.typography.displaySmallEmphasized, autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp))
+                        val editNameFocusRequester = remember { FocusRequester() }
+                        var showEditNameDialog by remember { mutableStateOf(false)}
+                        Text(
+                            recipe.name,
+                            maxLines = 2,
+                            style = MaterialTheme.typography.displaySmallEmphasized,
+                            autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp),
+                            modifier = Modifier.combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onLongClick = {
+                                    showEditNameDialog = true
+                                },
+                                onClick = {}
+                            )
+                        )
+                        LaunchedEffect(showEditNameDialog) {
+                            if (showEditNameDialog) {
+                                editNameFocusRequester.requestFocus()
+                            }
+                        }
+                        if (showEditNameDialog) {
+                            val textFieldState by remember { mutableStateOf(TextFieldState(recipe.name)) }
+                            DefaultDialog(
+                                title = stringResource(R.string.change_recipe_name),
+                                buttons = true,
+                                onDismissRequest = {
+                                    focusManager.clearFocus(true)
+                               },
+                                onConfirm = {
+                                    onChangeRecipeName(textFieldState.text.toString())
+                                    showEditNameDialog = false
+                                },
+                                confirmEnabled = !isRecipeError(textFieldState.text.toString()),
+                                onCancel = { showEditNameDialog = false },
+                                onClickDialogEnabled = true,
+                                onClickDialog = { focusManager.clearFocus(true) }
+                            ) {
+                                focusManager = LocalFocusManager.current
+                                OutlinedTextField(
+                                    state = textFieldState,
+                                    textStyle = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier
+                                    .width(250.dp)
+                                    .focusRequester(editNameFocusRequester),
+                                    shape = RoundedCornerShape(20),
+                                    placeholder = { Text(stringResource(id = R.string.name)) },
+                                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                                    onKeyboardAction = { onDone ->
+                                        focusManager.clearFocus(true)
+                                    }
+                                )
+                            }
+                        }
                     },
-                    navigationIcon = { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") } },
                     actions = {
                         IconButton(onClick = onDelete) {
                             Icon(painterResource(R.drawable.delete), contentDescription = "Delete")
                         }
                     },
+                    scrollBehavior = scrollBehaviour,
                     modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
                 )
-//                SpecificRecipeHeader(
-//                    recipeNameValue = titleValue,
-//                    onRecipeNameChanged = {
-//                        if (!isRecipeError(it.text))
-//                            lastValueWithoutError = it.text
-//                        titleValue = it
-//                    },
-//                    onBack = onBack,
-//                    onStartEditing = {
-//                        isEditing = true
-//                    },
-//                    editingText = isEditing,
-//                    onDelete = onDelete,
-//                    onSubmit = {
-//                        isEditing = false
-//                        onChangeRecipeName(lastValueWithoutError)
-//                        titleValue = titleValue.copy(text = lastValueWithoutError)
-//                    },
-//                    focusRequester = titleFocusRequester,
-//                    modifier = Modifier.animateEnterExit(
-//                        enter = slideInVertically() + fadeIn(),
-//                        exit = slideOutVertically() + fadeOut()
-//                    )
-//                )
-            },
-            modifier = modifier
+            }
         ) { innerPadding ->
             val scrollState = rememberScrollState()
             Column(
-                modifier = modifier
-                    .padding(innerPadding)
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .padding(innerPadding).padding(top = 10.dp)
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .clickable(
@@ -256,22 +308,41 @@ fun SpecificRecipeScreenMain(
                         enabled = isEditing,
                         onClick = {
                             focusManager.clearFocus(true)
-                        }), verticalArrangement = Arrangement.spacedBy(20.dp)
+                        }
+                    )
+                    .animateEnterExit(enter = slideInHorizontally(initialOffsetX = { it / 2 }), exit = slideOutHorizontally(targetOffsetX = { it / 2 }))
             ) {
-                SpecificRecipeImages(
-                    recipe = recipe,
-                    onAddImages = onAddImages,
-                    onChangeRecipeImages = onChangeRecipeImages,
-                    onDeleteRecipeImages = onDeleteRecipeImages,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
-                )
-                SpecificRecipeGroceries(
-                    recipe = recipe,
-                    addToGroceries = addToGroceries,
-                    groceryCategories = groceryCategories,
-                    onOpenGroceryScreen = onOpenGroceryScreen,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
-                )
+                    SpecificRecipeImages(
+                        recipe = recipe,
+                        onAddImages = onAddImages,
+                        onChangeRecipeImages = onChangeRecipeImages,
+                        onDeleteRecipeImages = onDeleteRecipeImages
+                    )
+                    SpecificRecipeGroceries(
+                        recipe = recipe,
+                        addToGroceries = addToGroceries,
+                        groceryCategories = groceryCategories,
+                        onOpenGroceryScreen = onOpenGroceryScreen
+                    )
+                    SpecificRecipeSection(
+                        icon = R.drawable.list,
+                        title = stringResource(R.string.notes),
+                        actionButtons = {
+                            FilledIconButton(shapes = IconButtonDefaults.shapes(), onClick = { }) {
+                                Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
+                            }
+                        },
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            Text("Here are some notes")
+                        }
+                    }
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+//                }
                 SpecificRecipeTags(
                     recipe = recipe,
                     recipes = recipes,
@@ -281,8 +352,7 @@ fun SpecificRecipeScreenMain(
                     onChangeTagName = onChangeTagName,
                     onChangeTagIconIndex = onChangeTagIconIndex,
                     onChangeRecipeTags = onChangeRecipeTags,
-                    onChangeTagRecipes = onChangeTagRecipes,
-                    modifier = Modifier.animateEnterExit(enter = slideInVertically(), exit = slideOutVertically())
+                    onChangeTagRecipes = onChangeTagRecipes
                 )
             }
         }
@@ -480,6 +550,7 @@ fun SpecificRecipeTags(
                 Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
             }
         },
+//        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         modifier = modifier
     ) {
         if (tagSelectionDialogActive) {
@@ -550,7 +621,9 @@ fun SpecificRecipeTags(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun SpecificRecipeImages(
     recipe: Recipe,
@@ -560,19 +633,38 @@ fun SpecificRecipeImages(
     modifier: Modifier = Modifier
 ) {
     var imageEditDialogActive by remember { mutableStateOf(false) }
+    var imageBottomSheetIndex by remember { mutableStateOf(0) }
+    var imageBottomSheetActive by remember { mutableStateOf(false) }
 
     SpecificRecipeSection(
         modifier = modifier,
         icon = R.drawable.outline_image_24,
         title = stringResource(R.string.images),
         actionButtons = {
-            IconButton(onClick = { imageEditDialogActive = true }, enabled = recipe.images.isNotEmpty()) {
-                Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
-            }
             SelectImagesIconButton(maxImages = 10, onSelectImages = onAddImages)
         }
     ) {
-        RecipeImageGallery(recipeId = recipe.id, images = recipe.images)
+        RecipeImageGallery(recipeId = recipe.id, images = recipe.images, onLongClickImage = { imageIndex ->
+            imageBottomSheetActive = true
+            imageBottomSheetIndex = imageIndex
+        })
+
+        if (imageBottomSheetActive) {
+            ModalBottomSheet(
+                onDismissRequest = { imageBottomSheetActive = false }
+            ) {
+                ButtonWithIcon(
+                    text = { Text(stringResource(R.string.reorder_images)) },
+                    onClick = { imageEditDialogActive = true },
+                    icon = R.drawable.drag_handle
+                )
+                ButtonWithIcon(
+                    text = { Text(stringResource(R.string.delete)) },
+                    onClick = { imageEditDialogActive = true },
+                    icon = R.drawable.delete
+                )
+            }
+        }
 
         if (imageEditDialogActive) {
 

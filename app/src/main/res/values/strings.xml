@@ -76,4 +76,7 @@
     <string name="more_items">+ %d more</string>
     <string name="deleted">Deleted</string>
     <string name="edit_grocery">Edit Grocery</string>
+    <string name="notes">Notes</string>
+    <string name="change_recipe_name">Change Recipe Name</string>
+    <string name="reorder_images">Reorder</string>
 </resources>

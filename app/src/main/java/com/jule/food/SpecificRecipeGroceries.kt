@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,8 +26,11 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,6 +72,7 @@ import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 import java.io.File
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SpecificRecipeGroceries(
     recipe: Recipe,
@@ -79,15 +84,15 @@ fun SpecificRecipeGroceries(
     var showGroceryAddDialog by remember { mutableStateOf(false) }
 
     SpecificRecipeSection(
-        modifier = modifier.height(180.dp),
+        modifier = modifier.heightIn(max = 180.dp),
         icon = R.drawable.grocery,
         title = stringResource(id = R.string.groceries),
         actionButtons = {
-            IconButton(onClick = { showGroceryAddDialog = true }, enabled = recipe.groceries.isNotEmpty()) {
-                Icon(painterResource(R.drawable.add_shopping_cart), contentDescription = "Add to shopping cart")
-            }
             IconButton(onClick = { onOpenGroceryScreen() }) {
                 Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
+            }
+            FilledIconButton(onClick = { showGroceryAddDialog = true }, shapes = IconButtonDefaults.shapes(), enabled = recipe.groceries.isNotEmpty()) {
+                Icon(painterResource(R.drawable.grocery), contentDescription = "Add to shopping cart")
             }
         }
     ) {
