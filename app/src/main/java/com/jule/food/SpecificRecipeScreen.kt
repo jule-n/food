@@ -167,7 +167,8 @@ fun SpecificRecipeScreen(
             bottomBar = bottomBar,
             onOpenGroceryScreen = { showGroceryScreen = true },
             onSelectImage = { onSelectImage(it) },
-            isPop = isPop
+            isPop = isPop,
+            modifier = modifier
         )
     }
     AnimatedVisibility(
@@ -853,17 +854,6 @@ fun RecipeImageGallery(
                         .width(150.dp)
                         .combinedClickable(onClick = {
                             onSelectImage(index)
-//                            imageViewerStartIndex = index
-//                            imageViewerActive = true
-//                            currentImageIndex = index
-//
-//                            val builder =
-//                                StfalconImageViewer.Builder<Uri>(context, uris) { view, uri ->
-//                                    Picasso.get().load(uri).into(view)
-//                                }
-//                            builder
-//                                .withStartPosition(index)
-//                                .show()
                         }, onLongClick = { onLongClickImage(index) })
                 )
             }

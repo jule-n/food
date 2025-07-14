@@ -1,5 +1,7 @@
 package com.jule.food
 
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -8,6 +10,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -68,15 +71,18 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -96,7 +102,10 @@ import androidx.navigation.navArgument
 import com.jule.food.BottomNavItem.Groceries
 import com.jule.food.BottomNavItem.Recipes
 import com.jule.food.ui.theme.FoodTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withTimeout
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed class BottomNavItem(val route: String, @DrawableRes val icon: Int = 0, @StringRes val label: Int = 0) {
     object Groceries : BottomNavItem("groceries", R.drawable.grocery, R.string.groceries)
@@ -220,15 +229,10 @@ fun NavigationHost(
                 composable(
                     "${BottomNavItem.SpecificRecipe.route}/{id}",
                     arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                    enterTransition = { fadeIn() + slideInHorizontally(initialOffsetX = { it/2 })},
-                    popExitTransition = { fadeOut() + slideOutHorizontally(targetOffsetX = { it/2 })},
-                    popEnterTransition = { fadeIn() }
-//                    popExitTransition = { fadeOut() }
-//                    enterTransition = { scaleIn(spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessVeryLow), initialScale = 0.9f) },
-//                    popEnterTransition = defaultEnterTransition
                 ) { backStackEntry ->
                     val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
+
 
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         SpecificRecipeScreen(
@@ -239,7 +243,10 @@ fun NavigationHost(
                             groceryCategories = groceryCategories,
                             onBack = { navController.popBackStack() },
                             isPop = false,
-                            onSelectImage = { imageIndex -> navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}") }
+//                            modifier = Modifier.scale(1f),
+                            onSelectImage = { imageIndex ->
+                                navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}")
+                            }
                         )
                     }
                 }
@@ -264,19 +271,7 @@ fun NavigationHost(
                 }
                 composable(
                     BottomNavItem.Settings.route,
-                    popExitTransition = {
-                        scaleOut(spring(stiffness = Spring.StiffnessLow), targetScale = 0.9f) + fadeOut()
-                    }
-//                    enterTransition = {
-//                        slideInHorizontally(
-//                            spring(stiffness = Spring.StiffnessLow),
-//                            initialOffsetX = { it / 3 })
-//                    },
-//                    exitTransition = {
-//                        slideOutHorizontally(
-//                            spring(stiffness = Spring.StiffnessLow),
-//                            targetOffsetX = { it / 3 })
-//                    },
+                    popExitTransition = { scaleOut(spring(stiffness = Spring.StiffnessLow), targetScale = 0.9f) + fadeOut()}
                 ) {
                     SettingsScreen(
                         bottomBar = bottomBar,

@@ -92,5 +92,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 //    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
     implementation("me.saket.telephoto:zoomable:0.14.0")
+    implementation("me.saket.telephoto:zoomable-image-coil3:0.16.0")
     implementation("io.github.aghajari:LazyFlowLayout:1.1.0")
 }
