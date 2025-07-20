@@ -1,6 +1,7 @@
 package com.jule.food
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf

@@ -165,6 +165,7 @@ import com.aghajari.compose.lazyflowlayout.LazyFlowRow
 import com.jule.food.ui.theme.FoodTheme
 import com.squareup.picasso.Picasso
 import com.stfalcon.imageviewer.StfalconImageViewer
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -181,16 +182,42 @@ val LocalNavAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 
+
+//fun handleRecipeGridScrollOnBack(
+//    recipeGridState: LazyGridState,
+//    coroutineScope: CoroutineScope,
+//    selectedRecipeId: UUID,
+//    selectedRecipeIndex: Int
+//) {
+//    val viewportStartOffset = recipeGridState.layoutInfo.viewportStartOffset
+//    val viewportEndOffset = recipeGridState.layoutInfo.viewportEndOffset
+//    val isVisible = recipeGridState.layoutInfo.visibleItemsInfo.any {
+//        if (it.key == selectedRecipeId) {
+//            return@any it.offset.y >= viewportStartOffset && it.offset.y + it.size.height <= viewportEndOffset
+//        } else {
+//            return@any false
+//        }
+//    }
+//    if (!isVisible) {
+//        Log.d("RecipeGrid", "Not visible, scrolling")
+//        coroutineScope.launch {
+//            recipeGridState.animateScrollToItem(selectedRecipeIndex)
+//        }
+//    } else {
+//        Log.d("RecipeGrid", "Already visible, not scrolling")
+//    }
+//}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipeViewModel: RecipeViewModel,
+    recipeGridState: LazyGridState,
     onOpenSettings: () -> Unit,
     onClickRecipe: (UUID) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
 
     val recipes = recipeViewModel.recipes
     val tags = recipeViewModel.tags
@@ -201,26 +228,6 @@ fun RecipeScreen(
         recipeViewModel.changeTagRecipes(tagId, newRecipes)
     }
 
-    val recipeGridState = rememberLazyGridState()
-
-//    fun onCloseSelectedRecipe() {
-//        val viewportStartOffset = recipeGridState.layoutInfo.viewportStartOffset
-//        val viewportEndOffset = recipeGridState.layoutInfo.viewportEndOffset
-//        val isVisible = recipeGridState.layoutInfo.visibleItemsInfo.any {
-//            if (it.key == showRecipeId) {
-//                return@any it.offset.y >= viewportStartOffset && it.offset.y + it.size.height <= viewportEndOffset
-//            } else {
-//                return@any false
-//            }
-//        }
-//        Log.d("RecipeScreen", "isVisible: $isVisible")
-//        if (!isVisible) {
-//            coroutineScope.launch {
-//                recipeGridState.animateScrollToItem(recipeViewModel.recipes.indexOfFirst { it.id == showRecipeId })
-//            }
-//        }
-//        recipeViewModel.changeShowRecipe(false)
-//    }
 
     RecipeGridScreen(
         modifier = modifier,
@@ -999,13 +1006,14 @@ fun RecipeSmallDisplay(
             ) {
                 if (image) {
                     val sharedTransitionScope = LocalSharedTransitionScope.current
+                    val path = recipe.images[0]
                     with(sharedTransitionScope!!) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(File(recipe.images[0]))
+                                .data(File(path))
                                 .crossfade(true)
-                                .placeholderMemoryCacheKey(recipe.id.toString())
-                                .memoryCacheKey(recipe.id.toString())
+                                .placeholderMemoryCacheKey(path)
+                                .memoryCacheKey(path)
                                 .size(400, 400)
                                 .scale(coil3.size.Scale.FIT)
                                 .build(),
@@ -1194,7 +1202,6 @@ fun SpecificRecipeSection(
     content: @Composable () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(10),
         color = containerColor,
         modifier = modifier
     ) {
@@ -1265,7 +1272,7 @@ fun RecipeScreenPreview() {
     recipeViewModel.changeFavoriteTags(listOf(fishTag.id,appleTag.id,kaeseTag2.id))
 
     FoodTheme {
-        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController) }, recipeViewModel = recipeViewModel, onOpenSettings = {}, onClickRecipe = {})
+        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController) }, recipeViewModel = recipeViewModel, onOpenSettings = {}, onClickRecipe = {}, recipeGridState = rememberLazyGridState())
     }
 }
 

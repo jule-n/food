@@ -81,4 +81,6 @@
     <string name="reorder_images">Reorder Images</string>
     <string name="delete_recipe">Delete Recipe</string>
     <string name="are_you_sure_you_want_to_delete_this_item">Are you sure you want to delete \"%s\"?</string>
+    <string name="n_selected_images">%d selected</string>
+    <string name="deleted_n_images">Deleted %d images</string>
 </resources>

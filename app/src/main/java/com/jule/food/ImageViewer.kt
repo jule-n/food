@@ -93,12 +93,12 @@ fun ImageViewer(
                 indication = null
             ),
         ) {
-            with (LocalSharedTransitionScope.current!!) {
+//            with (LocalSharedTransitionScope.current!!) {
                 HorizontalPager(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                     state = pagerState,
                 ) { page ->
-                    val imageKey = if (page == 0) recipeId else "${recipeId}_${page}"
+//                    val imageKey = if (page == 0) recipeId.toString() else "${recipeId}_${page}"
                     var targetVal by remember { mutableStateOf(0f) }
                     val offsetY by animateFloatAsState(targetVal)
 
@@ -112,20 +112,21 @@ fun ImageViewer(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(File(images[page]))
                             .crossfade(true)
+//                            .placeholderMemoryCacheKey(imageKey)
+//                            .memoryCacheKey(imageKey)
                             .build(),
                         contentDescription = null,
                         state = zoomableImageState,
-                        clipToBounds = true,
                         onClick = { showAppBar = !showAppBar },
                         modifier = Modifier
-                            .sharedElement(
-                                rememberSharedContentState(key = imageKey),
-                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                            )
+//                            .sharedElement(
+//                                rememberSharedContentState(key = imageKey),
+//                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+//                            )
                             .fillMaxSize()
                             .offset { IntOffset(0, offsetY.roundToInt()) }
                             .draggable(
-                                enabled = zoomableImageState.zoomableState.zoomFraction == 0f,
+                                enabled = (zoomableImageState.zoomableState.zoomFraction ?: 0f) < 0.1f,
                                 state = rememberDraggableState { delta ->
                                     targetVal += delta
                                 },
@@ -139,29 +140,7 @@ fun ImageViewer(
                                 orientation = Orientation.Vertical
                             )
                     )
-//                with (LocalSharedTransitionScope.current!!) {
-//                    ZoomableAsyncImage(
-//                        model = ImageRequest.Builder(LocalContext.current)
-//                            .data(File(images[page]))
-////                            .scale(Scale.FILL)
-//                            .build(),
-//                        contentDescription = null,
-//                        clipToBounds = false,
-//                        contentScale = ContentScale.Fit,
-//                        modifier = Modifier,
-////                            .sharedElement(
-////                                rememberSharedContentState(key = imageKey),
-////                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-////                            ),
-//                        onClick = { showAppBar = !showAppBar },
-//                        state = rememberZoomableImageState(
-//                            rememberZoomableState(
-//                                zoomSpec = ZoomSpec(maxZoomFactor = 5f)
-//                            )
-//                        )
-//                    )
 //                }
-                }
             }
 
             AnimatedVisibility(
@@ -172,14 +151,14 @@ fun ImageViewer(
                 TopAppBar(
                     title = { },
                     navigationIcon = { IconButton(onClick = onClose) {
-                        Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = null)
+                        Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = null, tint = Color.White)
                     }},
                     actions = {
                         IconButton(onClick = { }) {
-                            Icon(painter = painterResource(R.drawable.delete), contentDescription = null)
+                            Icon(painter = painterResource(R.drawable.delete), contentDescription = null, tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.8f), titleContentColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.8f))
                 )
             }
         }

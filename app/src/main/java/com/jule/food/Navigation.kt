@@ -1,6 +1,8 @@
 package com.jule.food
 
+import android.util.Log
 import androidx.activity.BackEventCompat
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -40,6 +42,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -75,6 +79,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +108,7 @@ import com.jule.food.BottomNavItem.Groceries
 import com.jule.food.BottomNavItem.Recipes
 import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
@@ -170,28 +176,16 @@ fun NavigationHost(
     groceryViewModel: GroceryViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel()
 ) {
-    val groceriesRecipesEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?) = {
-        fadeIn(spring(stiffness = Spring.StiffnessLow)) + scaleIn(
-            spring(
-                stiffness = Spring.StiffnessLow
-            ), initialScale = 0.9f
-        )
-    }
-    val groceriesRecipesExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?) = {
-        ExitTransition.None
-//        fadeOut(spring(stiffness = Spring.StiffnessLow))
-    }
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-            val defaultEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?) = { fadeIn() }
+            val recipeGridState = rememberLazyGridState()
+
             NavHost(
                 navController,
                 startDestination = Groceries.route
             ) {
                 composable(
-                    Groceries.route,
-//                    enterTransition = groceriesRecipesEnterTransition,
-//                    exitTransition = groceriesRecipesExitTransition,
+                    Groceries.route
                 ) {
                     GroceryScreen(
                         darkTheme = darkTheme,
@@ -209,14 +203,13 @@ fun NavigationHost(
                     )
                 }
                 composable(
-                    Recipes.route,
-//                    enterTransition = groceriesRecipesEnterTransition,
-//                    exitTransition = groceriesRecipesExitTransition,
+                    Recipes.route
                 ) {
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         RecipeScreen(
                             bottomBar = bottomBar,
                             recipeViewModel = recipeViewModel,
+                            recipeGridState = recipeGridState,
                             onOpenSettings = {
                                 navController.navigate(BottomNavItem.Settings.route) {
                                     launchSingleTop = true
@@ -241,10 +234,12 @@ fun NavigationHost(
                             recipeViewModel = recipeViewModel,
                             addToGroceries = addToGroceries,
                             groceryCategories = groceryCategories,
-                            onBack = { navController.popBackStack() },
+                            onBack = {
+                                navController.popBackStack()
+                            },
                             isPop = false,
 //                            modifier = Modifier.scale(1f),
-                            onSelectImage = { imageIndex ->
+                            onDisplayImage = { imageIndex ->
                                 navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}")
                             }
                         )
