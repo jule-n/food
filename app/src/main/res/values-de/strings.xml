@@ -80,4 +80,12 @@
     <string name="reorder_images">Bilder sortieren</string>
     <string name="delete_recipe">Rezept löschen</string>
     <string name="are_you_sure_you_want_to_delete_this_item">Möchtest du wirklich \"%s\" löschen?</string>
+    <string name="n_selected_images">%d ausgewählt</string>
+    <string name="deleted_n_images">%d Bilder gelöscht</string>
+    <string name="group_groceries">Einkäufe gruppieren</string>
+    <string name="show_deleted_items">Gelöschte Einkäufe anzeigen</string>
+    <string name="recipe">Rezept</string>
+    <string name="store_location">Ort im Laden</string>
+    <string name="group_by">Gruppieren nach</string>
+    <string name="no_recipe">Kein Rezept</string>
 </resources>

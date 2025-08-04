@@ -79,7 +79,7 @@ import java.io.File
 @Composable
 fun SpecificRecipeGroceries(
     recipe: Recipe,
-    addToGroceries: (List<GroceryItem>, Int) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryIndex: Int) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onOpenGroceryScreen: () -> Unit,
     modifier: Modifier = Modifier
@@ -99,29 +99,23 @@ fun SpecificRecipeGroceries(
             }
         }
     ) {
-        LazyHorizontalGrid (
-            rows = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-        ) {
-            items(recipe.groceries.sortedBy { it.name }) { grocery ->
-                GroceryItemDisplay(
-                    grocery,
-                    onClick = { },
-                    onLongClick = { },
-                    center = true
-                )
+        if (recipe.groceries.size > 0) {
+            LazyHorizontalGrid(
+                rows = GridCells.FixedSize(60.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+            ) {
+                items(recipe.groceries.sortedBy { it.name }) { grocery ->
+                    GroceryItemDisplay(
+                        grocery,
+                        onClick = { },
+                        onLongClick = { },
+                        center = true
+                    )
+                }
             }
         }
-//        GroceryGrid(
-//            groceryItems = recipe.groceries.sortedBy { it.name },
-//            onClickItem = {},
-//            onLongClickItem = {},
-//            center = true,
-//            modifier = Modifier.padding(horizontal = 20.dp),
-//            minSize = 70.dp
-//        )
     }
     if (showGroceryAddDialog) {
         val selectedItems = remember { recipe.groceries.toMutableStateList() }
@@ -177,9 +171,6 @@ fun SpecificRecipeGroceries(
                 name = stringResource(R.string.groceries)
             ) {
 
-                val prim1 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.1f)
-                val prim2 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
-
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(70.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -188,12 +179,9 @@ fun SpecificRecipeGroceries(
                 ) {
                     itemsIndexed(items = recipe.groceries.sortedBy { it.name }, key = { _, item -> item.id }) {index, groceryItem ->
                         val isSelected = selectedItems.contains(groceryItem)
-                        val itemColor = if (isSelected) null else MaterialTheme.colorScheme.onSurfaceVariant
-                        val textColor by animateColorAsState(targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.Black)
+                        val textColor by animateColorAsState(targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground)
 
-                        val color1 by animateColorAsState(targetValue = if (isSelected) prim1 else Color.LightGray)
-                        val color2 by animateColorAsState(targetValue = if (isSelected) prim2 else Color.White)
-                        val br = Brush.linearGradient(listOf(color1, color2))
+                        val itemColor by animateColorAsState(targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
                         val detailTextColor = textColor.copy(alpha = 0.6f)
 
                         Box(modifier = Modifier.fillMaxSize()) {
@@ -207,7 +195,7 @@ fun SpecificRecipeGroceries(
                                     }
                                 },
                                 onLongClick = { },
-                                itemBrush = br,
+                                itemColor = itemColor,
 //                                itemColor = itemColor,
                                 textColor = textColor,
                                 detailTextColor = detailTextColor,
@@ -246,17 +234,15 @@ fun ZoomableImage(
     )
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun SpecificRecipeGroceriesPreview() {
     val groceries = remember { mutableStateListOf(GroceryItem("Mehl", "500g"), GroceryItem("Spaghetti", "")) }
-    val recipe = Recipe(name = "Recipe", images = remember { mutableStateListOf() }, groceries = groceries, tags = mutableListOf())
+    val recipe = Recipe(name = "Recipe", images = remember { mutableStateListOf() }, groceries = groceries, tags = remember { mutableStateListOf() }, note = "")
 //    val recipeViewModel: RecipeViewModel = viewModel()
 //    recipeViewModel.addRecipe(recipe)
     FoodTheme() {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            SpecificRecipeGroceries(recipe = recipe, addToGroceries = { _, _ ->}, onOpenGroceryScreen = {}, groceryCategories = listOf(GroceryItemCategory("Default"), GroceryItemCategory("Vegan")))
-        }
+        SpecificRecipeGroceries(recipe = recipe, addToGroceries = { _, _ ->}, onOpenGroceryScreen = {}, groceryCategories = listOf(GroceryItemCategory("Default"), GroceryItemCategory("Vegan")))
     }
 
 }

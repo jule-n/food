@@ -1,5 +1,7 @@
 package com.jule.food.ui.theme
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.jule.food.ColorSetting
 
@@ -12,6 +14,14 @@ val Yellow = Color(0xFFffeaa7)
 val Red1 = Color(0xFFfab1a0)
 val Red2 = Color(0xFFff7675)
 val Pink = Color(0xFFfd79a8)
+
+val DisabledGradient1 = Color.LightGray
+val DisabledGradient2 = Color.White
+
+@Composable
+fun getPrimaryGradientColors(): List<Color> {
+    return (listOf(MaterialTheme.colorScheme.primary))
+}
 
 
 //region Green

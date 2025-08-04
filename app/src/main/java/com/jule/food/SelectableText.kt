@@ -92,11 +92,11 @@ fun SelectableText(
 fun EditableText(
     modifier: Modifier = Modifier,
     editable: Boolean,
-    textAlign: TextAlign,
     textState: TextFieldValue,
     onTextChange: (TextFieldValue) -> Unit,
-    style: TextStyle = TextStyle.Default,
     onSubmit: () -> Unit,
+    textAlign: TextAlign = TextAlign.Unspecified,
+    style: TextStyle = TextStyle.Default,
     submitOnFocusLoss: Boolean = true,
     focusRequester: FocusRequester? = null,
     color: Color = MaterialTheme.colorScheme.onBackground
@@ -114,11 +114,11 @@ fun EditableText(
             onSubmit()
             submitted = true
         }),
+//        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Default)
         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
         singleLine = true,
         modifier = startModifier.onFocusChanged {
             if (!it.isFocused && submitOnFocusLoss && !submitted) {
-//                Log.d("EditableText", "Focus Loss")
                 onSubmit()
                 submitted = true
             }
@@ -127,5 +127,46 @@ fun EditableText(
             }
         }
     )
+}
 
+
+@Composable
+fun EditableTextArea(
+    modifier: Modifier = Modifier,
+    editable: Boolean,
+    textState: TextFieldValue,
+    onTextChange: (TextFieldValue) -> Unit,
+    onSubmit: () -> Unit,
+    textAlign: TextAlign = TextAlign.Unspecified,
+    style: TextStyle = TextStyle.Default,
+    submitOnFocusLoss: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    color: Color = MaterialTheme.colorScheme.onBackground
+) {
+    val startModifier = if (focusRequester != null) modifier.focusRequester(focusRequester) else modifier
+    var submitted by remember { mutableStateOf(false) }
+    BasicTextField(
+        value = textState,
+        onValueChange = {
+            onTextChange(it)
+        },
+        textStyle = style.copy(textAlign = textAlign, color = color),
+        enabled = editable,
+//        keyboardActions = KeyboardActions(onDone = {
+//            onSubmit()
+//            submitted = true
+//        }),
+//        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Default)
+        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Default),
+        maxLines = 10,
+        modifier = startModifier.onFocusChanged {
+            if (!it.isFocused && submitOnFocusLoss && !submitted) {
+                onSubmit()
+                submitted = true
+            }
+            else if (it.isFocused) {
+                submitted = false
+            }
+        }
+    )
 }

@@ -83,4 +83,10 @@
     <string name="are_you_sure_you_want_to_delete_this_item">Are you sure you want to delete \"%s\"?</string>
     <string name="n_selected_images">%d selected</string>
     <string name="deleted_n_images">Deleted %d images</string>
+    <string name="group_groceries">Group Groceries</string>
+    <string name="show_deleted_items">Show deleted items</string>
+    <string name="recipe">Recipe</string>
+    <string name="store_location">Store Location</string>
+    <string name="group_by">Group by</string>
+    <string name="no_recipe">No recipe</string>
 </resources>

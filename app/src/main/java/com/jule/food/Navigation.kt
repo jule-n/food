@@ -74,6 +74,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,6 +99,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavOptions
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -110,6 +112,7 @@ import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -121,9 +124,11 @@ sealed class BottomNavItem(val route: String, @DrawableRes val icon: Int = 0, @S
     object SpecificRecipeImage : BottomNavItem("specific_recipe_image")
 }
 
+// The global navigation bar
 @Composable
 fun BottomNavigationBar(
     navController: NavController,
+    recipeViewModel: RecipeViewModel,
     modifier: Modifier = Modifier
 ) {
     val items = listOf(Groceries, Recipes)
@@ -134,22 +139,43 @@ fun BottomNavigationBar(
         modifier,
 //        containerColor = MaterialTheme.colorScheme.background
     ) {
-        items.forEach { item ->
-            NavigationBarItem(
-                selected = item.route == currentRoute,
-                onClick = {
-                    if (item.route != currentRoute) {
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
-                        }
-                    }
-                },
-                icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                label = { Text(stringResource(item.label)) },
-                modifier = Modifier.height(80.dp),
-//                colors = NavigationBarItemDefaults.colors().copy(selectedIconColor = MaterialTheme.colorScheme.primary, selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer)
+        val groceriesSelected = currentRoute == Groceries.route
+        val recipesSelected = currentRoute == Recipes.route || (
+                currentRoute != null && (currentRoute.startsWith(BottomNavItem.SpecificRecipe.route) || currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route))
             )
-        }
+        NavigationBarItem(
+            selected = groceriesSelected,
+            onClick = {
+                if (!groceriesSelected) {
+                    navController.navigate(Groceries.route) {
+                        launchSingleTop = true
+                        popUpTo(Groceries.route)
+                    }
+                }
+            },
+            icon = { Icon(painterResource(Groceries.icon), contentDescription = null) },
+            label = { Text(stringResource(Groceries.label)) },
+            modifier = Modifier.height(80.dp),
+        )
+        NavigationBarItem(
+            selected = recipesSelected,
+            onClick = {
+                if (!recipesSelected) {
+                    navController.navigate(Recipes.route) {
+                        popUpTo(Groceries.route)
+                    }
+//                    if (recipeViewModel.selectedRecipeId != null) {
+//                        navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeViewModel.selectedRecipeId}")
+//                        if (recipeViewModel.selectedRecipeImageIndex != null) {
+//                            navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.selectedRecipeImageIndex}")
+//                        }
+//                    }
+                }
+            },
+            icon = { Icon(painterResource(Recipes.icon), contentDescription = null) },
+            label = { Text(stringResource(Recipes.label)) },
+            modifier = Modifier.height(80.dp),
+        )
     }
 }
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -170,41 +196,43 @@ fun NavigationHost(
     importingFile: String?,
     onCancelImport: () -> Unit,
     onStartImport: (ImportSetting) -> Unit,
-    addToGroceries: (List<GroceryItem>, Int) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryIndex: Int, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onDeleteRecipeImage: (UUID, String) -> Unit,
     groceryViewModel: GroceryViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel()
 ) {
+    // Contained in SharedTransitionLayout to enable shared element transitions between destinations
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
             val recipeGridState = rememberLazyGridState()
 
+            LaunchedEffect(recipeViewModel.selectedRecipeId) {
+                Log.d("NavigationHost", "selectedRecipeId: ${recipeViewModel.selectedRecipeId}")
+            }
+
+            // Start at grocery screen
             NavHost(
                 navController,
                 startDestination = Groceries.route
             ) {
-                composable(
-                    Groceries.route
-                ) {
+                composable(Groceries.route) {
                     GroceryScreen(
-                        darkTheme = darkTheme,
                         groceryViewModel = groceryViewModel,
                         onOpenSettings = {
                             navController.navigate(BottomNavItem.Settings.route) {
                                 launchSingleTop = true
                             }
                         },
-                        bottomBar = bottomBar,
-                        currentTheme = currentTheme,
-                        onChangeTheme = onChangeTheme,
-                        language = language,
-                        onChangeLanguage = onChangeLanguage
+                        getRecipeNameFromId = { id -> recipeViewModel.getRecipeNameFromId(id) },
+                        bottomBar = bottomBar
                     )
                 }
-                composable(
-                    Recipes.route
-                ) {
+                composable(Recipes.route) {
+                    // When the recipe screen is launched, reset the selected recipe
+                    LaunchedEffect(Unit) {
+                        recipeViewModel.setSelectedRecipeId(null)
+                    }
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         RecipeScreen(
                             bottomBar = bottomBar,
@@ -215,10 +243,16 @@ fun NavigationHost(
                                     launchSingleTop = true
                                 }
                             },
-                            onClickRecipe = { navController.navigate("${BottomNavItem.SpecificRecipe.route}/${it}")}
+                            onClickRecipe = { recipeId ->
+                                // When a recipe is clicked, navigate to the specific recipe screen and update the selectedRecipe variable
+                                navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeId}")
+                                recipeViewModel.addToRecentRecipes(recipeId)
+                                recipeViewModel.setSelectedRecipeId(recipeId)
+                            }
                         )
                     }
                 }
+                // Specific recipe screen
                 composable(
                     "${BottomNavItem.SpecificRecipe.route}/{id}",
                     arguments = listOf(navArgument("id") { type = NavType.StringType }),
@@ -226,6 +260,10 @@ fun NavigationHost(
                     val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
 
+                    // When the specific recipe screen is launched, reset the selected recipe image
+                    LaunchedEffect(Unit) {
+                        recipeViewModel.setSelectedRecipeImageIndex(null)
+                    }
 
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         SpecificRecipeScreen(
@@ -240,11 +278,14 @@ fun NavigationHost(
                             isPop = false,
 //                            modifier = Modifier.scale(1f),
                             onDisplayImage = { imageIndex ->
+                                // When an image is clicked, navigate to full screen image and update the selectedRecipeImage variable
                                 navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}")
+                                recipeViewModel.setSelectedRecipeImageIndex(imageIndex)
                             }
                         )
                     }
                 }
+                // Full screen image viewer
                 composable(
                     "${BottomNavItem.SpecificRecipeImage.route}/{id}/{imageIndex}",
                     arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("imageIndex") { type = NavType.IntType})
@@ -255,6 +296,7 @@ fun NavigationHost(
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         ImageViewer(
                             recipeId = id,
+                            bottomBar = bottomBar,
                             images = recipe.images,
                             startIndex = imageIndex,
                             onDeleteRecipeImage = { path -> onDeleteRecipeImage(id, path) },
@@ -264,6 +306,7 @@ fun NavigationHost(
                         )
                     }
                 }
+                // Settings
                 composable(
                     BottomNavItem.Settings.route,
                     popExitTransition = { scaleOut(spring(stiffness = Spring.StiffnessLow), targetScale = 0.9f) + fadeOut()}

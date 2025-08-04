@@ -71,10 +71,12 @@ import java.io.File
 import java.util.UUID
 import kotlin.math.roundToInt
 
+// Composable for viewing an image in full screen
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewer(
     recipeId: UUID,
+    bottomBar: @Composable () -> Unit,
     images: List<String>,
     startIndex: Int,
     onDeleteRecipeImage: (String) -> Unit,
@@ -83,16 +85,21 @@ fun ImageViewer(
     val pagerState = rememberPagerState(startIndex, pageCount = { images.size })
     var showAppBar by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
-    Scaffold(
-        modifier = Modifier.background(color = Color.Black),
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black).clickable(
-                onClick = { showAppBar = !showAppBar },
-                interactionSource = interactionSource,
-                indication = null
-            ),
-        ) {
+    FoodTheme(
+        darkTheme = true
+    ) {
+
+        Scaffold(
+            modifier = Modifier.background(color = Color.Black),
+            bottomBar = bottomBar
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black).clickable(
+                    onClick = { showAppBar = !showAppBar },
+                    interactionSource = interactionSource,
+                    indication = null
+                ),
+            ) {
 //            with (LocalSharedTransitionScope.current!!) {
                 HorizontalPager(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -141,25 +148,26 @@ fun ImageViewer(
                             )
                     )
 //                }
-            }
+                }
 
-            AnimatedVisibility(
-                visible = showAppBar,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = { IconButton(onClick = onClose) {
-                        Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = null, tint = Color.White)
-                    }},
-                    actions = {
-                        IconButton(onClick = { }) {
-                            Icon(painter = painterResource(R.drawable.delete), contentDescription = null, tint = Color.White)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.8f))
-                )
+                AnimatedVisibility(
+                    visible = showAppBar,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    TopAppBar(
+                        title = { },
+                        navigationIcon = { IconButton(onClick = onClose) {
+                            Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = null, tint = Color.White)
+                        }},
+                        actions = {
+                            IconButton(onClick = { }) {
+                                Icon(painter = painterResource(R.drawable.delete), contentDescription = null, tint = Color.White)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.8f))
+                    )
+                }
             }
         }
     }

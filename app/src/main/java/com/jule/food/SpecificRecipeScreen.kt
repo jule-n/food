@@ -3,12 +3,16 @@ package com.jule.food
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -58,11 +62,14 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -116,6 +123,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -143,6 +151,7 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.jule.food.ui.theme.FoodTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import sh.calvin.reorderable.ReorderableItem
@@ -158,7 +167,7 @@ fun SpecificRecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipe: Recipe,
     recipeViewModel: RecipeViewModel,
-    addToGroceries: (List<GroceryItem>, Int) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryIndex: Int, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onBack: () -> Unit,
     onDisplayImage: (imageIndex: Int) -> Unit,
@@ -182,7 +191,8 @@ fun SpecificRecipeScreen(
             onChangeTagIconIndex = { id, newIndex -> recipeViewModel.changeTagIconIndex(id, newIndex) },
             onChangeTagRecipes = { id, newRecipes -> recipeViewModel.changeTagRecipes(id, newRecipes) },
             onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it) },
-            addToGroceries = addToGroceries,
+            onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it) },
+            addToGroceries = { groceries, categoryIndex -> addToGroceries(groceries, categoryIndex, recipe.id) },
             groceryCategories = groceryCategories,
             onBack = onBack,
             onDelete = { recipeViewModel.removeRecipe(recipe.id) },
@@ -239,6 +249,7 @@ fun SpecificRecipeScreenMain(
     onChangeTagIconIndex: (UUID, Int) -> Unit,
     onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
     onChangeRecipeTags: (List<UUID>) -> Unit,
+    onChangeRecipeNote: (String) -> Unit,
     onChangeImageOrder: (fromIndex: Int, toIndex: Int) -> Unit,
     onDeleteImages: (List<Int>) -> Unit,
     addToGroceries: (List<GroceryItem>, Int) -> Unit,
@@ -290,9 +301,7 @@ fun SpecificRecipeScreenMain(
                 ) { imagesSelected ->
                     if (!imagesSelected) {
                         SpecificRecipeTopBar(
-                            recipe = recipe,
                             onBack = onBack,
-                            onDelete = onDelete,
                             scrollBehaviour = scrollBehaviour
                         )
                     } else {
@@ -330,17 +339,34 @@ fun SpecificRecipeScreenMain(
             }
         ) { innerPadding ->
             val scrollState = rememberScrollState()
-            Column(
+
+            Box(
                 modifier = Modifier
                     .padding(innerPadding)
-                    .padding(top = 10.dp, start = 10.dp, end = 10.dp, bottom = 12.dp)
+//                    .padding(top = 10.dp, start = 10.dp, end = 10.dp, bottom = 12.dp)
                     .fillMaxSize()
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        enabled = true,
+                        onClick = {
+                            if (anyImageSelected) {
+                                selectedImagesIndizes.clear()
+                                anyImageSelected = false
+                            } else {
+                                focusManager.clearFocus(true)
+                            }
+                        }
+                    )
             ) {
-
                 val editNameFocusRequester = remember { FocusRequester() }
                 var showEditNameDialog by remember { mutableStateOf(false)}
+                val backgroundColor by animateColorAsState(
+                    targetValue = if (scrollState.value == 0) MaterialTheme.colorScheme.background else TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+                )
+
                 Box(
-                    modifier = Modifier.height(TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp)
+                    modifier = Modifier.height(TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp).background(Color.Transparent).zIndex(1f)
                 ) {
 
                     Text(
@@ -354,8 +380,13 @@ fun SpecificRecipeScreenMain(
                             onLongClick = {
                                 showEditNameDialog = true
                             },
-                            onClick = {}
-                        )
+                            onClick = {
+                                if (anyImageSelected) {
+                                    selectedImagesIndizes.clear()
+                                    anyImageSelected = false
+                                }
+                            }
+                        ).fillMaxWidth().background(color = backgroundColor).padding(start = 10.dp)
                     )
                 }
                 LaunchedEffect(showEditNameDialog) {
@@ -403,20 +434,8 @@ fun SpecificRecipeScreenMain(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier
                     .verticalScroll(scrollState)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        enabled = isEditing || anyImageSelected,
-                        onClick = {
-                            if (isEditing) {
-                                focusManager.clearFocus(true)
-                            }
-                            if (anyImageSelected) {
-                                selectedImagesIndizes.clear()
-                                anyImageSelected = false
-                            }
-                        }
-                    )
+                    .fillMaxSize()
+                    .padding(top = TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp)
             ) {
                 SpecificRecipeImages(
                     recipe = recipe,
@@ -439,25 +458,50 @@ fun SpecificRecipeScreenMain(
                     groceryCategories = groceryCategories,
                     onOpenGroceryScreen = onOpenGroceryScreen
                 )
+//                var currentText by remember { mutableStateOf(TextFieldValue(recipe.note)) }
+                val textFieldState = rememberTextFieldState(recipe.note)
+                var noNote by remember { mutableStateOf(recipe.note == "") }
+                val noteTextFocusRequester by remember { mutableStateOf(FocusRequester()) }
                 SpecificRecipeSection(
-                    icon = R.drawable.list,
+                    icon = R.drawable.text,
                     title = stringResource(R.string.notes),
                     actionButtons = {
-                        FilledIconButton(shapes = IconButtonDefaults.shapes(), onClick = { }) {
-                            Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
+                        AnimatedVisibility (noNote, enter = fadeIn() + expandVertically(expandFrom = Alignment.Top), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)) {
+                            FilledIconButton(shapes = IconButtonDefaults.shapes(), onClick = {
+                                noNote = false
+                                coroutineScope.launch {
+                                    delay(100)
+                                    noteTextFocusRequester.requestFocus()
+                                }
+                            }) {
+                                Icon(painterResource(R.drawable.add), contentDescription = "Add Note")
+                            }
                         }
                     },
                 ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 10.dp)
-                    ) {
-                        Text("Here are some notes")
+                    AnimatedVisibility (!noNote) {
+                        var wasFocused by remember { mutableStateOf(false) }
+                        Box(modifier = Modifier.padding(horizontal = 10.dp).background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(10))) {
+                            BasicTextField(
+                                state = textFieldState,
+                                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 10),
+                                modifier = Modifier.onFocusChanged { focusState ->
+                                    if (!focusState.isFocused && wasFocused) {
+                                        val newNote = textFieldState.text.toString()
+                                        onChangeRecipeNote(newNote)
+                                        if (newNote == "")
+                                            noNote = true
+                                    }
+                                    if (focusState.isFocused) {
+                                        wasFocused = true
+                                    }
+
+                                }.fillMaxWidth().padding(5.dp).focusRequester(noteTextFocusRequester)
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(10.dp))
-//                }
                 SpecificRecipeTags(
                     recipe = recipe,
                     recipes = recipes,
@@ -470,13 +514,28 @@ fun SpecificRecipeScreenMain(
                     onChangeTagRecipes = onChangeTagRecipes
                 )
                 Spacer(Modifier.height(10.dp))
-//                FilledTonalButton()
+                var showDeleteDialog by remember { mutableStateOf(false) }
                 Button(
-                    onClick = onDelete,
-                    colors = ButtonDefaults.buttonColors()
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    colors = ButtonDefaults.buttonColors().copy(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Icon(painterResource(R.drawable.delete), contentDescription = "Delete")
                     Text(stringResource(R.string.delete_recipe))
+                }
+                Spacer(Modifier.height(10.dp))
+
+                if (showDeleteDialog) {
+                    DefaultDialog(
+                        title = stringResource(R.string.delete_recipe),
+                        buttons = true,
+                        onDismissRequest = { showDeleteDialog = false },
+                        onConfirm = onDelete
+                    ) {
+                        Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, recipe.name), textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
@@ -484,38 +543,55 @@ fun SpecificRecipeScreenMain(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SpecificRecipeTopBar(
     modifier: Modifier = Modifier,
-    recipe: Recipe,
     onBack: () -> Unit,
-    onDelete: () -> Unit,
     scrollBehaviour: TopAppBarScrollBehavior
 ) {
     TopAppBar(
         modifier = modifier,
         title = { },
         navigationIcon = { IconButton(onClick = onBack) { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") } },
-        actions = {
-            var showDeleteDialog by remember { mutableStateOf(false) }
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(painterResource(R.drawable.delete), contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-            }
-            if (showDeleteDialog) {
-                DefaultDialog(
-                    title = stringResource(R.string.delete_recipe),
-                    buttons = true,
-                    onDismissRequest = { showDeleteDialog = false },
-                    onConfirm = onDelete
-                ) {
-                    Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, recipe.name), textAlign = TextAlign.Center)
-                }
-            }
-        },
-        scrollBehavior = scrollBehaviour,
+        scrollBehavior = scrollBehaviour
     )
 }
+
+@Composable
+fun SpecificRecipeSection(
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int,
+    title: String,
+    actionButtons: @Composable () -> Unit,
+    containerColor: Color = Color.Unspecified,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        color = containerColor,
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Top) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(painterResource(icon), null)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(text = title, modifier = Modifier.weight(1f))
+                actionButtons()
+            }
+            content()
+        }
+
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -608,7 +684,6 @@ fun SpecificRecipeEditGroceriesScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             ) {
-                val br = Brush.linearGradient(listOf(Color.LightGray, Color.White))
                 items(items = temporaryGroceries.sortedBy { it.name }, key = { item -> item.id } ) { groceryItem ->
                     GroceryItemDisplay(
                         item = groceryItem,
@@ -643,10 +718,10 @@ fun SpecificRecipeEditGroceriesScreen(
                                 deletedGroceries.remove(groceryItem)
                                 temporaryGroceries.add(groceryItem)
                             },
-                            itemBrush = br,
+                            itemColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
                             onLongClick = { },
-                            textColor = Color.Red,
-                            detailTextColor = Color.Black.copy(alpha = 0.6f),
+                            textColor = MaterialTheme.colorScheme.onBackground,
+                            detailTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             center = true,
                             modifier = Modifier.animateItem()
                         )
@@ -691,7 +766,7 @@ fun SpecificRecipeEditGroceriesScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SpecificRecipeTags(
     recipe: Recipe,
@@ -714,13 +789,15 @@ fun SpecificRecipeTags(
         icon = R.drawable.tag,
         title = stringResource(R.string.tags),
         actionButtons = {
-            IconButton(onClick = { tagSelectionDialogActive = true }) {
+            FilledIconButton(onClick = { tagSelectionDialogActive = true }, shapes = IconButtonDefaults.shapes(),) {
                 Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
             }
         },
 //        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         modifier = modifier
     ) {
+        TagDisplayFlowRow(allTags = allTags, recipe = recipe)
+
         if (tagSelectionDialogActive) {
             val selectedTagIds = remember { recipe.tags.toMutableStateList() }
             var dialogFocusManager = LocalFocusManager.current
@@ -738,10 +815,10 @@ fun SpecificRecipeTags(
 
                 TagSelectionFlowRow(
                     tags = allTags.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 },
-                    selectedTags = selectedTagIds,
-                    removeFromSelectedTags = { selectedTagIds.remove(it) },
-                    addToSelectedTags = { selectedTagIds.add(it) },
-                    onLongClick = { id ->
+                    selectedTagIds = selectedTagIds,
+                    onRemoveFromSelectedTagIds = { selectedTagIds.remove(it) },
+                    onAddToSelectedTagIds = { selectedTagIds.add(it) },
+                    onLongClickTag = { id ->
                         editTag = getTagFromId(id, allTags)
                         showEditTagDialog = true
                     }
@@ -785,7 +862,7 @@ fun SpecificRecipeTags(
                 focusRequester = addTagFocusRequester
             )
         }
-        DisplayTagsRow(getTagsFromIds(recipe.tags, allTags))
+//        DisplayTagsRow(getTagsFromIds(recipe.tags, allTags))
     }
 }
 
@@ -850,7 +927,7 @@ fun RecipeImageGallery(
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        contentPadding = PaddingValues(horizontal = 20.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp),
         state = rowState,
         modifier = modifier.height(200.dp)
     ) {
@@ -880,16 +957,16 @@ fun RecipeImageGallery(
                 val onlySelected = selected && selectedImagesIndizes.size == 1
 
                 val mod = if (!anyImageSelected) {
-                    Modifier.longPressDraggableHandle(interactionSource = interactionSource, onDragStarted = {
-                        onAddSelectedImageIndex(index)
-                    }, onDragStopped = {
-                        onChangeAnyImageSelected(true)
-                    })
-                } else if (onlySelected) {
-                    Modifier.draggableHandle(interactionSource = interactionSource)
-                } else {
-                    Modifier
-                }
+                        Modifier.longPressDraggableHandle(interactionSource = interactionSource, onDragStarted = {
+                            onAddSelectedImageIndex(index)
+                        }, onDragStopped = {
+                            onChangeAnyImageSelected(true)
+                        })
+                    } else if (images.size != 1 && onlySelected) {
+                        Modifier.draggableHandle(interactionSource = interactionSource)
+                    } else {
+                        Modifier
+                    }
 
                 key (anyImageSelected) {
                     Surface(
@@ -908,6 +985,7 @@ fun RecipeImageGallery(
                             }
                         },
                         color = Color.Transparent,
+                        shape = RoundedCornerShape(10),
                         modifier = mod
                     ) {
                         with(LocalSharedTransitionScope.current!!) {
@@ -927,7 +1005,7 @@ fun RecipeImageGallery(
                                     .conditional(selected) {
                                         Modifier.border(
                                             width = 3.dp,
-                                            color = if (onlySelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                            color = MaterialTheme.colorScheme.primary,
                                             shape = RoundedCornerShape(10)
                                         )
                                     }
@@ -949,8 +1027,13 @@ fun SpecificRecipeScreenPreview() {
     val saladTag = Tag("Salat", 2)
     val appleTag = Tag("Apfel", 3)
     val kaeseTag = Tag("Käse", 4)
+
     val groceries = listOf(GroceryItem("Apfel", ""), GroceryItem("Salat", ""), GroceryItem("Käse", ""))
-    val recipe = Recipe(name = "Dorade in Salzkruste", tags = mutableListOf(fishTag.id, salzigTag.id, appleTag.id), groceries = remember {groceries.toMutableStateList() })
+    val tags = listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag)
+    val recipe = Recipe(name = "Dorade in Salzkruste", tags = remember { mutableStateListOf(fishTag.id, salzigTag.id, appleTag.id) }, groceries = remember {groceries.toMutableStateList() }, note = "NOTES")
+
+    val recipeViewModel: RecipeViewModel = viewModel()
+    recipeViewModel.addTags(tags)
 
     FoodTheme {
         AnimatedVisibility(true) {
@@ -959,8 +1042,8 @@ fun SpecificRecipeScreenPreview() {
                     bottomBar = {},
                     recipe = recipe,
                     onBack = { },
-                    recipeViewModel = viewModel(),
-                    addToGroceries = { _, _ -> },
+                    recipeViewModel = recipeViewModel,
+                    addToGroceries = { _, _, _ -> },
                     groceryCategories = listOf(),
                     onDisplayImage = { },
                     isPop = false

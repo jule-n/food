@@ -55,63 +55,13 @@ fun TextButtonWithIcon(
     }
 }
 
-@Composable
-fun ButtonWithIcon(
-    text: @Composable () -> Unit,
-    onClick: () -> Unit,
-    @DrawableRes icon: Int,
-    iconTint: Color? = null,
-) {
-    Button(onClick = onClick) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = iconTint ?: LocalContentColor.current
-        )
-        Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-        text()
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun BottomSheetButton(
-    text: String,
-    onClick: () -> Unit,
-    @DrawableRes icon: Int,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    color: Color? = null
-) {
-    val contentColor = if (enabled) color else ButtonDefaults.buttonColors().disabledContentColor
-
-    Surface(
-        onClick = onClick,
-        color = Color.Transparent,
-        shape = RoundedCornerShape(10),
-        enabled = enabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(ButtonDefaults.MediumContainerHeight)
-    ) {
-        Row (
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 10.dp, horizontal = 15.dp)
-        ) {
-            Icon(painter = painterResource(icon), contentDescription = null, tint = contentColor ?: LocalContentColor.current)
-            Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-            Text(text, color = contentColor ?: LocalContentColor.current)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ConnectedButtonGroup(
     options: List<String>,
     selectedOptionIndex: Int,
     onSelectedOptionChange: (Int) -> Unit,
+    checkedContainerColor: Color,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -121,12 +71,13 @@ fun ConnectedButtonGroup(
             ToggleButton(
                 checked = index == selectedOptionIndex,
                 onCheckedChange = { if (it) onSelectedOptionChange(index) },
-                shapes = when (index) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                colors = ToggleButtonDefaults.toggleButtonColors().copy(checkedContainerColor = MaterialTheme.colorScheme.tertiary),
+                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+//                shapes = when (index) {
+//                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+//                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+//                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+//                },
+                colors = ToggleButtonDefaults.toggleButtonColors().copy(checkedContainerColor = checkedContainerColor),
             ) {
                 Text(label)
             }

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
+// Custom Filter Chip composable with support for a long click
 @Composable
 fun FilterChipLongClick(
     selected: Boolean,

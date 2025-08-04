@@ -11,6 +11,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 
+// Class for saving images from uris (e.g. when the user picked images from their phone)
 class ImageSaver(private val context: Context) {
 
     fun saveImageFromUri(imageUri: Uri): String? {

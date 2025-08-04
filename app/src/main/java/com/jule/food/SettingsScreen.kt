@@ -31,10 +31,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -65,7 +68,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
 import com.jule.food.ui.theme.primaryColorsDark
@@ -74,6 +79,7 @@ import com.jule.food.ui.theme.primaryColorsLight
 enum class ImportSetting { Recipe, Groceries, Both }
 class ImportResult (val groceries: Int?, val recipes: Int?)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -110,12 +116,8 @@ fun SettingsScreen(
         }
 
         Column(modifier = Modifier.padding(innerPadding), verticalArrangement = Arrangement.spacedBy(15.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            DefaultTopAppBar(
-                titleState = TextFieldValue(stringResource(id = R.string.settings)),
-                editingTitle = false,
-                onSubmitTitleChange = { },
-                onTitleChange = { },
-                titleFocusRequester = FocusRequester(),
+            CenterAlignedTopAppBar(
+                title = { Text(stringResource(R.string.settings), textAlign = TextAlign.Center) },
                 navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.size(50.dp)) { Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = "Back") } }
             )
             SettingsScreenCategory(name = stringResource(R.string.appearance)) {
@@ -149,8 +151,8 @@ fun SettingsScreen(
                     }
                 }
                 Column() {
-                    ImportCheckbox(checked = groceriesChecked, onCheckedChange = { groceriesChecked = it }, label = stringResource(R.string.groceries))
-                    ImportCheckbox(checked = recipeChecked, onCheckedChange = { recipeChecked = it }, label = stringResource(R.string.recipes))
+                    DialogCheckbox(checked = groceriesChecked, onCheckedChange = { groceriesChecked = it }, label = stringResource(R.string.groceries), modifier = Modifier.width(200.dp))
+                    DialogCheckbox(checked = recipeChecked, onCheckedChange = { recipeChecked = it }, label = stringResource(R.string.recipes), modifier = Modifier.width(200.dp))
                 }
             }
         }
@@ -170,13 +172,13 @@ fun SettingsScreenCategory (
 }
 
 @Composable
-fun ImportCheckbox(
+fun DialogCheckbox(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     label: String,
     modifier: Modifier = Modifier
 ) {
-    Row(modifier = modifier.width(200.dp).clickable { onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(modifier = modifier.clickable { onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Checkbox(
             checked = checked,
             onCheckedChange = { onCheckedChange(it) }
@@ -397,6 +399,6 @@ fun SettingsPreview() {
     var language by remember { mutableStateOf(Languages.English) }
     val navController = rememberNavController()
     FoodTheme(darkTheme = darkTheme, colorSetting = colorSetting) {
-        SettingsScreen(darkTheme = darkTheme, themeSetting = themeSetting, onPickFile = { }, onExport = {}, onChangeTheme = { themeSetting = it }, colorSetting = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = { language = it }, bottomBar = { BottomNavigationBar(navController = navController) }, onBack = {}, importingFile = null, onCancelImport = {}, onStartImport = {})
+        SettingsScreen(darkTheme = darkTheme, themeSetting = themeSetting, onPickFile = { }, onExport = {}, onChangeTheme = { themeSetting = it }, colorSetting = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = { language = it }, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onBack = {}, importingFile = null, onCancelImport = {}, onStartImport = {})
     }
 }

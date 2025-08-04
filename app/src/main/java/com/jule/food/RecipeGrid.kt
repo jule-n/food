@@ -1,0 +1,141 @@
+package com.jule.food
+
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import java.io.File
+
+
+// Display a grid of recipes
+@Composable
+fun RecipeGrid(
+    recipes: List<Recipe>,
+    onClickRecipe: (listIndex: Int) -> Unit,
+    recipeGridState: LazyGridState,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(bottom = 100.dp),
+    showImages: Boolean = true,
+) {
+    LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Fixed(3), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = contentPadding) {
+        itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
+            RecipeSmallDisplay(
+                recipe = recipe, onClick = { onClickRecipe(index) }, showImage = showImages, modifier = Modifier.animateItem()
+            )
+        }
+    }
+}
+
+// Display a single recipe
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun RecipeSmallDisplay(
+    recipe: Recipe,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showImage: Boolean = true,
+    shadow: Boolean = true,
+    minTextSize: TextUnit = 10.sp,
+    maxTextSize: TextUnit = 16.sp,
+    fallbackBrush: Brush = Brush.linearGradient( listOf(Color.LightGray, Color.White) )
+) {
+    val image = recipe.images.isNotEmpty() && showImage
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        modifier = modifier
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+            ) {
+                if (image) {
+                    val sharedTransitionScope = LocalSharedTransitionScope.current
+                    val path = recipe.images[0]
+                    with(sharedTransitionScope!!) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(path))
+                                .crossfade(true)
+                                .placeholderMemoryCacheKey(path)
+                                .memoryCacheKey(path)
+                                .size(400, 400)
+                                .scale(coil3.size.Scale.FIT)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .sharedElement(
+                                    rememberSharedContentState(key = recipe.id),
+                                    animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                                )
+                                .clip(RoundedCornerShape(10))
+                                .fillMaxSize()
+                        )
+                    }
+                } else {
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .background(fallbackBrush, shape = RoundedCornerShape(10))
+                    )
+                }
+            }
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 5.dp)
+            ) {
+                Text(
+                    text = recipe.name,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    modifier = Modifier.align(Alignment.Center),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Simple),
+                    autoSize = TextAutoSize.StepBased(minFontSize = minTextSize, maxFontSize = maxTextSize)
+                )
+            }
+        }
+    }
+}

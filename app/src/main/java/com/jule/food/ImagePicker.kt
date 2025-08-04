@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
+// Icon button for selecting images from users phone
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SelectImagesIconButton(
@@ -46,6 +47,7 @@ fun SelectImagesIconButton(
     val multipleImagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxImages),
         onResult = { uris ->
+            // Save all uris to the phone as image files
             val imageSaver = ImageSaver(context)
             val paths = uris.mapNotNull { uri ->
                 imageSaver.saveImageFromUri(uri)
@@ -54,6 +56,7 @@ fun SelectImagesIconButton(
         }
     )
 
+    // On clicking the button, launch the correct activity (depending on if max images is 1)
     FilledIconButton(
         shapes = IconButtonDefaults.shapes(),
         onClick = {

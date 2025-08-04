@@ -18,6 +18,7 @@ fun HandleLifeCycle(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
+    // When the app is stopped, save all data to preferences and files
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) {

@@ -46,11 +46,11 @@ import java.util.zip.ZipInputStream
 import kotlin.concurrent.read
 
 class MainActivity : AppCompatActivity() {
-//IMPORT
+// Import
     private var importingFileName = "Test"
     private var importingFileUri: Uri = Uri.EMPTY
     private var isImportingFile by mutableStateOf(false)
-
+    // Activity for importing a file
     private val requestFileLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -65,14 +65,14 @@ class MainActivity : AppCompatActivity() {
     private fun openSpecificFolder() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/zip"  // Set the MIME type to filter files
+            type = "application/zip"  // Set the type to specifically check for .zip files
             val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary")
             putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
         }
 
         requestFileLauncher.launch(intent)
     }
-
+// Get the file name of the imported file to display to user
     private fun getFileNameFromUri(uri: Uri): String {
         val cursor = contentResolver.query(uri, null, null, null, null)
         cursor?.use {
@@ -87,11 +87,12 @@ class MainActivity : AppCompatActivity() {
         return ""
     }
 
-//EXPORT
+//  Export
     private lateinit var exportUri: Uri
     private lateinit var groceryViewModel: GroceryViewModel
     private lateinit var recipeViewModel: RecipeViewModel
 
+    // Activity for exporting all of the data to a .zip file
     private val createFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri: Uri? ->
         if (uri != null) {
             // The user has selected a directory
@@ -100,11 +101,13 @@ class MainActivity : AppCompatActivity() {
 
             val groceries = File(filesDir, "groceries.json").apply { writeText(groceryViewModel.getJson())}
             val recipes = File(filesDir, "recipes.json").apply { writeText(recipeViewModel.getJson())}
-            val images = createImageFilesFromPaths(this, recipeViewModel.getImagePaths())
+            val images = createImageFilesFromPaths(recipeViewModel.getImagePaths())
             val zipFile = createZipExportFile(this, listOf(groceries, recipes), images, "test.zip")
             exportFileToLocation(this, zipFile, exportUri)
+
+            Toast.makeText(this, "Exported successfully as \"${exportUri.path}\"", Toast.LENGTH_SHORT).show()
         } else {
-            // The user canceled the directory selection
+            Toast.makeText(this, "Canceled Export", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -114,7 +117,7 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
 
-// Languages.German -> { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(localeOptions[Languages.English])) }
+        // Get the current locale for the system
         val currentLocaleStr = AppCompatDelegate.getApplicationLocales().toLanguageTags()
         val currentLocaleEnum = if (currentLocaleStr.startsWith("de")) Languages.German else Languages.English
 
@@ -126,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             val settingsViewModel: SettingsViewModel = viewModel()
             val navController = rememberNavController()
 
+            // Get all of the data from the app files and preferences
             LaunchedEffect(true) {
                 settingsViewModel.getSettingsFromPreferences(context)
                 groceryViewModel.getFromFile(context)
@@ -138,11 +142,10 @@ class MainActivity : AppCompatActivity() {
                 ThemeSetting.Dark -> true
             }
 
+            // Composable for handling when the app stops so the data can be saved
             HandleLifeCycle(settingsViewModel = settingsViewModel, groceryViewModel = groceryViewModel, recipeViewModel = recipeViewModel)
-//            var importResult: ImportResult? by remember { mutableStateOf(null) }
 
             FoodTheme(darkTheme = darkTheme, colorSetting = settingsViewModel.colorSetting) {
-//                ImageAreaPreview()
                     NavigationHost(
                         navController = navController,
                         darkTheme = darkTheme,
@@ -156,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                         recipeViewModel = recipeViewModel,
                         onPickFile = { openSpecificFolder() },
                         onExport = { createFileLauncher.launch("export_food.zip") },
-                        bottomBar = { BottomNavigationBar(navController = navController) },
+                        bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = recipeViewModel) },
                         importingFile = if (isImportingFile) importingFileName else null,
                         onCancelImport = { isImportingFile = false },
                         onStartImport = { importSetting ->
@@ -165,8 +168,8 @@ class MainActivity : AppCompatActivity() {
                             showImportResult(context, importResult)
                         },
                         groceryCategories = groceryViewModel.groceryItemCategories,
-                        addToGroceries = { groceries, categoryIndex ->
-                            groceryViewModel.addToGroceries(groceries, categoryIndex)
+                        addToGroceries = { groceries, categoryIndex, recipeId ->
+                            groceryViewModel.addToGroceries(groceries, categoryIndex, recipeId)
                         },
                         onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }
                     )
@@ -175,6 +178,7 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
+// Function for importing both groceries and recipes from a zip file into the view models
 private fun importFromZipFile(context: Context, uri: Uri, groceryViewModel: GroceryViewModel, recipeViewModel: RecipeViewModel, setting: ImportSetting): ImportResult {
     val importGroceries = setting == ImportSetting.Groceries || setting == ImportSetting.Both
     val importRecipes = setting == ImportSetting.Recipe || setting == ImportSetting.Both
@@ -199,6 +203,7 @@ private fun importFromZipFile(context: Context, uri: Uri, groceryViewModel: Groc
     return ImportResult(groceries, recipes)
 }
 
+// Shows the result of the import as a toast
 fun showImportResult(context: Context, importResult: ImportResult) {
     val groceries = importResult.groceries != null
     val recipes = importResult.recipes != null
@@ -231,8 +236,11 @@ fun AppPreview() {
     var colorSetting by remember { mutableStateOf(ColorSetting.Dynamic) }
     var language by remember { mutableStateOf(Languages.English) }
 
+    val groceryViewModel: GroceryViewModel = viewModel()
+    groceryViewModel.initializeEmpty()
+
     FoodTheme(darkTheme = darkTheme) {
-        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _ ->}, groceryCategories = listOf(), onDeleteRecipeImage = { _, _ ->})
+        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), onDeleteRecipeImage = { _, _ ->}, groceryViewModel = groceryViewModel)
     }
 }
 

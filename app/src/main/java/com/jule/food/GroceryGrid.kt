@@ -1,6 +1,8 @@
 package com.jule.food
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.copy
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,15 +21,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -46,12 +59,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
@@ -59,48 +74,48 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jule.food.ui.theme.FoodTheme
+import java.util.UUID
 
 
-
-
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GroceryGrid(
     groceryItems: List<GroceryItem>,
     onClickItem: (index: Int) -> Unit,
     onLongClickItem: (index: Int) -> Unit,
+    getRecipeNameFromId: (UUID) -> String,
     modifier: Modifier = Modifier,
     center: Boolean = false,
     minSize: Dp = 100.dp,
-    itemColor: Color? = null,
+    contentPadding: PaddingValues = PaddingValues(),
+    showRecipeName: Boolean,
+    itemColor: Color = MaterialTheme.colorScheme.primary,
     textColor: Color = MaterialTheme.colorScheme.onPrimary,
-    detailTextColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+    detailTextColor: Color = textColor.copy(alpha = 0.6f)
 ) {
-//    val mainColor = getMainColors(darkTheme)[colorIndex]
-//    val accentColor = getAccentColors(darkTheme)[colorIndex]
-
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 100.dp),
+        contentPadding = contentPadding,
         modifier = modifier
             .fillMaxWidth()
     ) {
         itemsIndexed(items = groceryItems, key = { _, item -> item.id }) {index, groceryItem ->
-//            Box() {
-
             GroceryItemDisplay(
                 item = groceryItem,
                 onClick = { onClickItem(index) },
                 onLongClick = { onLongClickItem(index) },
+                getRecipeNameFromId = getRecipeNameFromId,
                 itemColor = itemColor,
                 textColor = textColor,
                 detailTextColor = detailTextColor,
                 center = center,
+                showRecipeName = showRecipeName,
                 modifier = Modifier.animateItem()
             )
-//            }
         }
     }
 }
@@ -113,16 +128,18 @@ fun GroceryItemDisplay(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     center: Boolean = false,
-    itemColor: Color? = null,
-    itemBrush: Brush ? = null,
+    itemColor: Color = MaterialTheme.colorScheme.primary,
+//    itemBrush: Brush ? = null,
     textColor: Color = MaterialTheme.colorScheme.onPrimary,
-    detailTextColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+    detailTextColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+    showRecipeName: Boolean = true,
+    getRecipeNameFromId: ((UUID) -> String)? = null
 ) {
 //    val mainColor = getMainColors(darkTheme)[colorIndex]
 //    val accentColor = getAccentColors(darkTheme)[colorIndex]
 
-    val prim1 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.1f)
-    val prim2 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
+    val prim1 = lerp(itemColor, Color.White, 0.1f)
+    val prim2 = lerp(itemColor, Color.White, 0.3f)
     val brush = Brush.linearGradient(listOf(prim1, prim2))
     Box(
 //        shape = RoundedCornerShape(10),
@@ -136,16 +153,7 @@ fun GroceryItemDisplay(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-//            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), RoundedCornerShape(10))
-//            .advancedShadow(offsetX = 0.dp, offsetY = 0.dp, blurRadius = 3.dp, roundedCornerRadius = 10.dp)
-            .conditional(itemColor == null,
-                ifTrue = {
-                    Modifier.background(itemBrush ?: brush, RoundedCornerShape(10))
-                }, ifFalse = {
-                    Modifier.background(itemColor!!, RoundedCornerShape(10))
-                })
-//            .shadow(1.dp, RoundedCornerShape(10))
-//            .padding(1.dp)
+            .background(brush, RoundedCornerShape(10))
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -155,90 +163,52 @@ fun GroceryItemDisplay(
             if (item.details != "" && !center) {
                 Spacer(Modifier.height(20.dp))
             }
-            VariableText(
+            Text(
                 text = item.name,
                 modifier = Modifier.padding(horizontal = 5.dp),
-                minTextSize = 10.sp,
-                maxTextSize = 15.sp,
                 style = MaterialTheme.typography.bodyMedium,
+                autoSize = TextAutoSize.StepBased(10.sp, 15.sp),
                 color = textColor,
                 maxLines = 1
             )
             if (item.details != "") {
-                VariableText(
+                Text(
                     text = item.details,
                     modifier = Modifier.padding(horizontal = 5.dp),
-                    minTextSize = 8.sp,
-                    maxTextSize = 13.sp,
                     style = MaterialTheme.typography.bodySmall,
+                    autoSize = TextAutoSize.StepBased(8.sp, 13.sp),
                     color = detailTextColor,
                     maxLines = 1
                 )
             }
         }
-    }
-}
-
-@Composable
-fun VariableText(
-    text: String,
-    modifier: Modifier = Modifier,
-    minTextSize: TextUnit = 8.sp,
-    maxTextSize: TextUnit = 24.sp,
-    maxLines: Int = 1,
-    style: TextStyle = LocalTextStyle.current,
-    textAlign: TextAlign = TextAlign.Unspecified,
-    color: Color = Color.Unspecified,
-    fontWeight: FontWeight? = null,
-    fontStyle: FontStyle? = null,
-    fontFamily: FontFamily? = null
-) {
-    var textSize by remember { mutableStateOf(maxTextSize) }
-    var readyToDraw by remember { mutableStateOf(false) }
-    val textMeasurer = rememberTextMeasurer()
-
-    BoxWithConstraints(modifier = modifier) {
-        if (readyToDraw) {
-            Text(
-                text = text,
-                color = color,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis,
-                style = style.copy(
-                    fontSize = textSize,
-                    fontWeight = fontWeight,
-                    fontStyle = fontStyle,
-                    fontFamily = fontFamily
-                ),
-                textAlign = textAlign,
-            )
-        }
-        while (!readyToDraw) {
-            val textStyle = style.copy(
-                fontSize = textSize,
-                fontWeight = fontWeight,
-                fontStyle = fontStyle,
-                fontFamily = fontFamily
-            )
-            val measuredText = textMeasurer.measure(
-                text = text,
-                style = textStyle,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis,
-                constraints = Constraints(maxWidth = constraints.maxWidth)
-            )
-            if (measuredText.hasVisualOverflow) {
-                if (textSize > minTextSize) {
-                    textSize = (textSize.value - 1).sp
-                } else {
-                    readyToDraw = true
+        if (showRecipeName) {
+            Surface(
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(0.8f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(50)
+            ) {
+                if (item.recipeId != null && getRecipeNameFromId != null) {
+                    Text(
+                        text = getRecipeNameFromId(item.recipeId!!),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = detailTextColor,
+                        textAlign = TextAlign.Center
+                    )
                 }
-            } else {
-                readyToDraw = true
             }
         }
     }
 }
+
+val items = listOf(
+    GroceryItem("Tomatenpfeffersauce","500g"),
+    GroceryItem("Zucker","500g mit Käse und so weiter", UUID.randomUUID()),
+    GroceryItem("Mehl","3kg"),
+    GroceryItem("Pizza","")
+)
 
 @Preview(showBackground = true)
 @Composable
@@ -250,16 +220,24 @@ fun GroceryItemPreview() {
                     .size(140.dp)
                     .padding(10.dp)
             ) {
-                GroceryItemDisplay(item = GroceryItem("Zucker","500g mit Käse und so weiter"), onClick = { }, onLongClick = {})
+                GroceryItemDisplay(item = items[0], onClick = { }, onLongClick = {}, getRecipeNameFromId = { it.toString() })
             }
             Box(
                 modifier = Modifier
                     .size(140.dp)
                     .padding(10.dp)
             ) {
-                GroceryItemDisplay(item = GroceryItem("Tomatenpfeffersauce","500g"), onClick = { }, onLongClick = {})
+                GroceryItemDisplay(item = items[1], onClick = { }, onLongClick = {}, getRecipeNameFromId = { it.toString() })
             }
         }
 
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GroceryGridPreview() {
+    FoodTheme {
+        GroceryGrid(groceryItems = listOf(items[0], items[1]), onClickItem = {}, onLongClickItem = {}, getRecipeNameFromId = { it.toString() }, showRecipeName = true)
     }
 }

@@ -2,7 +2,9 @@ package com.jule.food
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.DrawableRes
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -10,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.util.fastFirst
 import androidx.lifecycle.ViewModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -21,10 +24,12 @@ class Recipe(
     name: String,
     val images: SnapshotStateList<String> = mutableStateListOf(),
     val groceries: SnapshotStateList<GroceryItem> = mutableStateListOf(),
-    val tags: MutableList<UUID> = mutableListOf()
+    val tags: SnapshotStateList<UUID> = mutableStateListOf(),
+    note: String = "",
+    val id: UUID = UUID.randomUUID()
 ) {
     var name by mutableStateOf(name)
-    val id: UUID = UUID.randomUUID()
+    var note by mutableStateOf(note)
 }
 @Serializable
 data class Tag(
@@ -34,30 +39,42 @@ data class Tag(
     val id: UUID = UUID.randomUUID()
 )
 
+// Serializable data class for storing a recipe
 @Serializable
 class SaveableRecipe(
     val name: String,
     val images: List<String>,
     val groceries: List<SaveableGroceryItem>,
     val tags: List<@Serializable(with = UUIDSerializer::class)UUID>,
+    val note: String = "",
     @Serializable(with = UUIDSerializer::class)
     val id: UUID = UUID.randomUUID()
 )
+// Serializable data class for storing recipes and tags
 @Serializable
 class SaveableRecipes(
     val recipes: List<SaveableRecipe>,
-    val tags: List<Tag>,
-    val favoriteTags: List<@Serializable(with = UUIDSerializer::class)UUID>
+    val tags: List<Tag>
 )
 
+// Function for getting tags from UUIDs
 fun getTagsFromIds(ids: List<UUID>, tags: List<Tag>): List<Tag> {
     return tags.filter { ids.contains(it.id) }
 }
 fun getTagFromId(id: UUID, tags: List<Tag>): Tag {
     return tags[tags.indexOfFirst { it.id == id } ]
 }
+// Function for getting a recipe from its UUID
 fun getRecipeFromId(id: UUID, recipes: List<Recipe>): Recipe {
     return recipes[recipes.indexOfFirst { it.id == id} ]
+}
+// Function that checks whether a given recipe name is valid
+fun isRecipeError(name: String): Boolean {
+    return name.isEmpty() || name.length > 30
+}
+// Function that checks whether a given tag name is valid
+fun isTagError(name: String): Boolean {
+    return name.isEmpty() || name.length > 15
 }
 
 @DrawableRes val tagIcons: List<Int> = listOf(
@@ -132,138 +149,157 @@ fun getRecipeFromId(id: UUID, recipes: List<Recipe>): Recipe {
 )
 
 class RecipeViewModel : ViewModel() {
+    private var _dataLoaded by mutableStateOf(false)
+    val dataLoaded: Boolean
+        get() = _dataLoaded
+
     private var _recipes = mutableStateListOf<Recipe>()
     val recipes get() = _recipes
 
     private var _tags = mutableStateListOf<Tag>()
     val tags get() = _tags
 
-    private var _favoriteTags = mutableStateListOf<UUID>()
-    val favoriteTags get() = _favoriteTags
+    private var _selectedRecipeId by mutableStateOf<UUID?>(null)
+    val selectedRecipeId get() = _selectedRecipeId
+    fun setSelectedRecipeId(id: UUID?) {
+        _selectedRecipeId = id
+    }
 
-    private var _selectedRecipeId: UUID by mutableStateOf(UUID.randomUUID())
-    val selectedRecipeIndex get() = _selectedRecipeId
-    private var _showRecipeEnabled by mutableStateOf(false)
-    val showRecipeEnabled get() = _showRecipeEnabled
+    private var _selectedRecipeImageIndex by mutableStateOf<Int?>(null)
+    val selectedRecipeImageIndex get() = _selectedRecipeImageIndex
+    fun setSelectedRecipeImageIndex(index: Int?) {
+        _selectedRecipeImageIndex = index
+    }
 
     private var _recentRecipeIds = mutableStateListOf<UUID>()
     val recentRecipeIds get() = _recentRecipeIds
 
-    fun changeSelectedRecipe(newId: UUID) {
-        _selectedRecipeId = newId
-
-
+    // Add a recipe to the list of recent recipes
+    fun addToRecentRecipes(newId: UUID) {
         if (!_recentRecipeIds.contains(newId)) {
             _recentRecipeIds.add(0, newId)
-            if (_recentRecipeIds.size > 3)
+            if (_recentRecipeIds.size > 3) // Limit length to 3
                 _recentRecipeIds.removeAt(_recentRecipeIds.lastIndex)
-        } else {
+        } else { // If it is already there, remove it and add it to the front
             _recentRecipeIds.remove(newId)
             _recentRecipeIds.add(0, newId)
         }
     }
-    fun changeSelectedRecipe(recipe: Recipe) {
-        _selectedRecipeId = recipe.id
-    }
-    fun changeShowRecipe(newValue: Boolean) {
-        _showRecipeEnabled = newValue
-    }
 
-    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf()) : UUID {
-        val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableList())
+    // Add a new recipe with a name, and optionally, images, groceries, tags and notes. Returns the ID
+    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "") : UUID {
+        val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableStateList(), note = note)
 
         _recipes.add(newRecipe)
-//        _tags.addAllWithoutDuplicates(tags)
         _recipes.sortBy { it.name }
         return newRecipe.id
     }
+    // Add a new recipe with a name and id, and optionally, images, groceries, tags and notes
+    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "", id: UUID) {
+        val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableStateList(), note = note, id = id)
 
+        _recipes.add(newRecipe)
+        _recipes.sortBy { it.name }
+    }
+
+    // Add image paths to a recipe
     fun addImagesToRecipe(id: UUID, images: List<String>) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].images.addAll(images)
     }
+    // Change a recipe name
     fun changeRecipeName(id: UUID, newName: String) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].name = newName
         _recipes.sortBy { it.name }
     }
+    // Change the tags of a recipe
     fun changeRecipeTags(id: UUID, newTags: List<UUID>) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].tags.clear()
         _recipes[index].tags.addAll(newTags)
     }
+    // Change the images of a recipe
     fun changeRecipeImages(id: UUID, newImages: List<String>) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].images.clear()
         _recipes[index].images.addAll(newImages)
     }
+    // Change the groceries of a recipe
     fun changeRecipeGroceries(id: UUID, newGroceries: List<GroceryItem>) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].groceries.clear()
         _recipes[index].groceries.addAll(newGroceries)
     }
+    // Delete an image from a recipe
     fun deleteRecipeImage(id: UUID, imagePath: String) {
         val index = _recipes.indexOfFirst { it.id == id }
         _recipes[index].images.remove(imagePath)
+        // Delete the image file
         deleteFile(imagePath)
     }
+    // Change the note of a recipe
+    fun changeRecipeNote(id: UUID, newNote: String) {
+        val recipe = _recipes.firstOrNull { it.id == id } ?: return
+        recipe.note = newNote
+    }
 
+    // Delete a recipe
     fun removeRecipe(id: UUID) {
         val index = _recipes.indexOfFirst { it.id == id }
+        // Delete all image files from this recipe
         deleteFiles(_recipes[index].images)
         _recipes.removeAt(index)
     }
+    // Add a new tag
     fun addTag(tag: Tag) {
         _tags.add(tag)
         _tags.sortBy { it.name }
     }
+    // Add multiple tags
     fun addTags(tags: List<Tag>) {
         _tags.addAll(tags)
         _tags.sortBy { it.name }
     }
-    fun changeFavoriteTags(ids: List<UUID>) {
-        _favoriteTags.clear()
-        _favoriteTags.addAll(ids)
-    }
-
-    fun changeTags(newTags: List<Tag>) {
-        tags.clear()
-        tags.addAll(newTags)
-        _tags.sortBy { it.name }
-    }
-    fun deleteTagIds(ids: List<UUID>) {
-        recipes.forEach { recipe ->
-            recipe.tags.removeIf { tagId -> ids.contains(tagId) }
-        }
-        tags.removeIf { tag -> ids.contains(tag.id) }
-        _favoriteTags.removeIf { tagId -> ids.contains(tagId) }
-    }
+    // Change the name of a tag
     fun changeTagName(id: UUID, newName: String) {
         val index = tags.indexOfFirst { it.id == id }
         _tags[index].name = newName
         _tags.sortBy { it.name }
     }
+    // Change the icon of a tag
     fun changeTagIconIndex(id: UUID, newIndex: Int) {
         val index = tags.indexOfFirst { it.id == id }
         _tags[index].iconIndex = newIndex
     }
+    // Change the recipes that have this tag
     fun changeTagRecipes(id: UUID, newRecipes: List<Recipe>) {
         recipes.forEach { recipe ->
+            // Loop through all recipes, remove the tag from it if it is there
             recipe.tags.removeIf { tagId -> tagId == id }
+            // If the new list of recipes contains the tag, add it
             if (newRecipes.contains(recipe))
                 recipe.tags.add(id)
         }
     }
+    // Delete a tag
     fun deleteTagId(id: UUID) {
         recipes.forEach { recipe ->
             recipe.tags.removeIf { tagId -> tagId == id }
         }
-        _favoriteTags.removeIf { tagId -> tagId == id }
 
         val index = tags.indexOfFirst { it.id == id }
         _tags.removeAt(index)
     }
+    // Get a recipe name from its UUID
+    fun getRecipeNameFromId(id: UUID): String {
+        val index = recipes.indexOfFirst { it.id == id }
+        if (index == -1)
+            return "NO RECIPE"
+        return recipes[index].name
+    }
 
+    // Get all image paths from all recipes
     fun getImagePaths(): List<String> {
         val output = mutableListOf<String>()
         recipes.forEach { recipe ->
@@ -272,43 +308,57 @@ class RecipeViewModel : ViewModel() {
         return output
     }
 
+    // Get the saveable data type
     private fun getSaveable(): SaveableRecipes {
         val output = mutableListOf<SaveableRecipe>()
         recipes.forEach { recipe ->
+            // Go through all recipes and convert them to the saveable type
             val groceries = recipe.groceries.map { SaveableGroceryItem(it.name, it.details) }
-            output.add(SaveableRecipe(recipe.name, recipe.images, groceries, recipe.tags))
+            output.add(SaveableRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id))
         }
-        return SaveableRecipes(output, tags, favoriteTags)
+        return SaveableRecipes(output, tags)
     }
 
+    // Get the Json string for exporting the data 
     fun getJson(): String {
         return Json.encodeToString(getSaveable())
     }
-
 
     fun saveToFile(context: Context) {
         writeJsonToFile(context, "recipes.json", getSaveable())
     }
 
     fun getFromFile(context: Context) {
-        val recipes: SaveableRecipes = getJsonFromFile(context, "recipes.json") ?: return
+        Log.d("getFromFile","Loading recipe data...")
+        val recipes: SaveableRecipes? = getJsonFromFile(context, "recipes.json", ignoreKeys = true)
+        if (recipes == null) {
+            Log.e("getFromFile","Recipe Data Not Found")
+            Toast.makeText(context, "Recipe Data Not Found", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         import(recipes)
+
+        _dataLoaded = true
+        Log.d("getFromFile","Recipe Data Loaded!")
+    }
+
+    fun initializeEmpty() {
+        if (recipes.isEmpty()) {
+            addRecipe("Default")
+        }
+        _dataLoaded = true
     }
 
     fun import(recipes: SaveableRecipes) {
         _recipes.clear()
         _tags.clear()
-        _favoriteTags.clear()
 
         recipes.recipes.forEach { recipe ->
             val groceries = recipe.groceries.map { GroceryItem(it.name, it.details) }
-            addRecipe(recipe.name, recipe.images, groceries, recipe.tags)
+            addRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id)
         }
         addTags(recipes.tags)
-        _favoriteTags.addAll(recipes.favoriteTags)
-
-        _showRecipeEnabled = false
     }
 
     fun deleteImageFiles() {
