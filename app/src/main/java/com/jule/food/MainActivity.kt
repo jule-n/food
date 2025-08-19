@@ -168,8 +168,8 @@ class MainActivity : AppCompatActivity() {
                             showImportResult(context, importResult)
                         },
                         groceryCategories = groceryViewModel.groceryItemCategories,
-                        addToGroceries = { groceries, categoryIndex, recipeId ->
-                            groceryViewModel.addToGroceries(groceries, categoryIndex, recipeId)
+                        addToGroceries = { groceries, categoryId, recipeId ->
+                            groceryViewModel.addToGroceries(groceries, categoryId, recipeId)
                         },
                         onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }
                     )

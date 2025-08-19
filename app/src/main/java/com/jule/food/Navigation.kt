@@ -74,6 +74,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -109,6 +110,7 @@ import androidx.navigation.navArgument
 import com.jule.food.BottomNavItem.Groceries
 import com.jule.food.BottomNavItem.Recipes
 import com.jule.food.ui.theme.FoodTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -196,7 +198,7 @@ fun NavigationHost(
     importingFile: String?,
     onCancelImport: () -> Unit,
     onStartImport: (ImportSetting) -> Unit,
-    addToGroceries: (List<GroceryItem>, categoryIndex: Int, recipeId: UUID) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryId: UUID, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onDeleteRecipeImage: (UUID, String) -> Unit,
     groceryViewModel: GroceryViewModel = viewModel(),
@@ -206,6 +208,8 @@ fun NavigationHost(
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
             val recipeGridState = rememberLazyGridState()
+            val coroutineScope = rememberCoroutineScope()
+            var scheduledDeletionOfCurrentRecipe by remember { mutableStateOf(false) }
 
             LaunchedEffect(recipeViewModel.selectedRecipeId) {
                 Log.d("NavigationHost", "selectedRecipeId: ${recipeViewModel.selectedRecipeId}")
@@ -225,14 +229,11 @@ fun NavigationHost(
                             }
                         },
                         getRecipeNameFromId = { id -> recipeViewModel.getRecipeNameFromId(id) },
+                        allRecipes = recipeViewModel.recipes,
                         bottomBar = bottomBar
                     )
                 }
                 composable(Recipes.route) {
-                    // When the recipe screen is launched, reset the selected recipe
-                    LaunchedEffect(Unit) {
-                        recipeViewModel.setSelectedRecipeId(null)
-                    }
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         RecipeScreen(
                             bottomBar = bottomBar,
@@ -260,9 +261,17 @@ fun NavigationHost(
                     val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
 
-                    // When the specific recipe screen is launched, reset the selected recipe image
-                    LaunchedEffect(Unit) {
-                        recipeViewModel.setSelectedRecipeImageIndex(null)
+
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            // Delete recipe if it is scheduled
+                            if (scheduledDeletionOfCurrentRecipe) {
+                                recipeViewModel.removeRecipe(recipeViewModel.selectedRecipeId!!)
+                            }
+                            // Reset selected recipe
+                            recipeViewModel.setSelectedRecipeId(null)
+                            Log.d("SpecificRecipeScreen","Test")
+                        }
                     }
 
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
@@ -275,8 +284,11 @@ fun NavigationHost(
                             onBack = {
                                 navController.popBackStack()
                             },
+                            onDeleteRecipe = {
+                                scheduledDeletionOfCurrentRecipe = true
+                                navController.popBackStack()
+                            },
                             isPop = false,
-//                            modifier = Modifier.scale(1f),
                             onDisplayImage = { imageIndex ->
                                 // When an image is clicked, navigate to full screen image and update the selectedRecipeImage variable
                                 navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}")
@@ -293,6 +305,7 @@ fun NavigationHost(
                     val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
                     val imageIndex = backStackEntry.arguments?.getInt("imageIndex")!!
+
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
                         ImageViewer(
                             recipeId = id,
@@ -305,6 +318,13 @@ fun NavigationHost(
                             }
                         )
                     }
+
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            recipeViewModel.setSelectedRecipeImageIndex(null)
+                        }
+                    }
+
                 }
                 // Settings
                 composable(

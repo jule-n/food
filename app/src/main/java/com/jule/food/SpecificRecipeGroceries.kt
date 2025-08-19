@@ -74,12 +74,13 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 import java.io.File
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SpecificRecipeGroceries(
     recipe: Recipe,
-    addToGroceries: (List<GroceryItem>, categoryIndex: Int) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onOpenGroceryScreen: () -> Unit,
     modifier: Modifier = Modifier
@@ -127,7 +128,7 @@ fun SpecificRecipeGroceries(
             buttons = true,
             onConfirm = {
                 showGroceryAddDialog = false
-                addToGroceries(selectedItems, chosenCategoryIndex)
+                addToGroceries(selectedItems, groceryCategories[chosenCategoryIndex].id)
 //                addToGroceries(selectedItems)
 //                showGroceryAddDialog = false
             }

@@ -167,9 +167,10 @@ fun SpecificRecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipe: Recipe,
     recipeViewModel: RecipeViewModel,
-    addToGroceries: (List<GroceryItem>, categoryIndex: Int, recipeId: UUID) -> Unit,
+    addToGroceries: (List<GroceryItem>, categoryId: UUID, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onBack: () -> Unit,
+    onDeleteRecipe: () -> Unit,
     onDisplayImage: (imageIndex: Int) -> Unit,
     isPop: Boolean,
     modifier: Modifier = Modifier
@@ -192,10 +193,10 @@ fun SpecificRecipeScreen(
             onChangeTagRecipes = { id, newRecipes -> recipeViewModel.changeTagRecipes(id, newRecipes) },
             onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it) },
             onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it) },
-            addToGroceries = { groceries, categoryIndex -> addToGroceries(groceries, categoryIndex, recipe.id) },
+            addToGroceries = { groceries, categoryId -> addToGroceries(groceries, categoryId, recipe.id) },
             groceryCategories = groceryCategories,
             onBack = onBack,
-            onDelete = { recipeViewModel.removeRecipe(recipe.id) },
+            onDelete = onDeleteRecipe,
             onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it) },
             bottomBar = bottomBar,
             onOpenGroceryScreen = { showGroceryScreen = true },
@@ -212,7 +213,6 @@ fun SpecificRecipeScreen(
                 }
 
             },
-            isPop = isPop,
             modifier = modifier
         )
     }
@@ -252,13 +252,12 @@ fun SpecificRecipeScreenMain(
     onChangeRecipeNote: (String) -> Unit,
     onChangeImageOrder: (fromIndex: Int, toIndex: Int) -> Unit,
     onDeleteImages: (List<Int>) -> Unit,
-    addToGroceries: (List<GroceryItem>, Int) -> Unit,
+    addToGroceries: (List<GroceryItem>, UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onAddImages: (List<String>) -> Unit,
     onOpenGroceryScreen: () -> Unit,
-    isPop: Boolean,
     modifier: Modifier = Modifier
 ) {
     var titleValue by remember { mutableStateOf(TextFieldValue(recipe.name)) }
@@ -1046,6 +1045,7 @@ fun SpecificRecipeScreenPreview() {
                     addToGroceries = { _, _, _ -> },
                     groceryCategories = listOf(),
                     onDisplayImage = { },
+                    onDeleteRecipe = { },
                     isPop = false
                 )
             }

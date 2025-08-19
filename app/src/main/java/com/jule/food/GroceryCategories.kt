@@ -44,25 +44,27 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.util.UUID
 
 
 // Connected buttons for the grocery category selection
 @Composable
 fun CategoriesConnectedButtons(
-    categories: List<GroceryItemCategory>,
-    selectedCategoryIndex: Int,
-    onChangeSelectedCategoryIndex: (Int) -> Unit,
+    allCategories: List<GroceryItemCategory>,
+    selectedCategory: GroceryItemCategory,
+    onChangeSelectedCategoryId: (UUID) -> Unit,
     onEditCategories: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val index = allCategories.indexOf(selectedCategory)
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         ConnectedButtonGroup(
-            options = categories.map { it.name },
-            selectedOptionIndex = selectedCategoryIndex,
-            onSelectedOptionChange = onChangeSelectedCategoryIndex,
+            options = allCategories.map { it.name },
+            selectedOptionIndex = index,
+            onSelectedOptionChange = { newIndex -> onChangeSelectedCategoryId(allCategories[newIndex].id)},
             checkedContainerColor = MaterialTheme.colorScheme.tertiary,
             modifier = Modifier
                 .padding(horizontal = 10.dp)
@@ -79,12 +81,11 @@ fun CategoriesConnectedButtons(
 @OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
 fun CategoriesDialog(
-    categories: List<GroceryItemCategory>,
-    selectedCategoryIndex: Int,
+    allCategories: List<GroceryItemCategory>,
     onAddCategory: (GroceryItemCategory) -> Unit,
-    onDeleteCategory: (Int) -> Unit,
+    onDeleteCategory: (UUID) -> Unit,
     onDismissRequest: () -> Unit,
-    onChangeCategoryName: (Int, String) -> Unit,
+    onChangeCategoryName: (String, id: UUID) -> Unit,
 ) {
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var focusManager = LocalFocusManager.current
@@ -107,15 +108,11 @@ fun CategoriesDialog(
     ) {
         focusManager = LocalFocusManager.current
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            categories.forEachIndexed { index, category ->
-                val isSelected = selectedCategoryIndex == index
+            allCategories.forEachIndexed { index, category ->
                 var textFieldValue by remember { mutableStateOf(TextFieldValue(category.name)) }
                 var lastValueWithoutError by remember { mutableStateOf(category.name) }
-//                if (isEditingIndex != index && textFieldValue.text != category.name)
-//                    textFieldValue = textFieldValue.copy(text = category.name)
 
                 val focusRequester = remember { FocusRequester() }
-//                var submitted by remember { mutableStateOf(false) }
 
                 LaunchedEffect(isEditingIndex) {
                     if (isEditingIndex == index) {
@@ -143,21 +140,14 @@ fun CategoriesDialog(
                                 textFieldValue = newValue
                             },
                             onSubmit = {
-//                                if (!submitted)
-//                                {
                                 isEditingIndex = null
                                 textFieldValue = textFieldValue.copy(text = lastValueWithoutError)
-//                                    Log.d("OnSubmit", "Change category Name $index to $lastValueWithoutError")
-                                onChangeCategoryName(index, lastValueWithoutError.trim())
-//                                    submitted = true
-//                                }
+                                onChangeCategoryName(lastValueWithoutError.trim(), category.id)
                             },
                             focusRequester = focusRequester,
-//                            style = MaterialTheme.typography.titleMedium,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.weight(1f)
                         )
-//                        Text(text = category.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
 
                         val image = AnimatedImageVector.animatedVectorResource(R.drawable.edit_to_done)
                         IconButton(onClick = {
@@ -166,19 +156,19 @@ fun CategoriesDialog(
                             else {
                                 isEditingIndex = null
                                 textFieldValue = textFieldValue.copy(text = lastValueWithoutError)
-                                onChangeCategoryName(index, lastValueWithoutError.trim())
+                                onChangeCategoryName(lastValueWithoutError.trim(), category.id)
                             }
                         }) {
                             Icon(rememberAnimatedVectorPainter(image, isEditingIndex == index), contentDescription = "Edit/Done")
                         }
-                        val deleteEnabled = categories.size > 1 && isEditingIndex != index
-                        IconButton(onClick = { onDeleteCategory(index) }, enabled = deleteEnabled) {
+                        val deleteEnabled = allCategories.size > 1 && isEditingIndex != index
+                        IconButton(onClick = { onDeleteCategory(category.id) }, enabled = deleteEnabled) {
                             Icon(painter = painterResource(id = R.drawable.delete), contentDescription = "Delete", tint = if (deleteEnabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f))
                         }
                     }
                 }
             }
-            val enabled = categories.size < 10
+            val enabled = allCategories.size < 10
 //            val enabled = true
             if (enabled) {
                 FloatingActionButton(

@@ -83,6 +83,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastFirst
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
@@ -91,14 +92,12 @@ import java.util.UUID
 
 
 
-
-// Problem: wenn ich die Katergorie lösche, die über der ist (heißt, ein index kleiner) die ich ausgewählt habe, stürt die app ab.
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun GroceryScreen(
     groceryViewModel: GroceryViewModel,
     getRecipeNameFromId: (UUID) -> String,
+    allRecipes: List<Recipe>,
     bottomBar: @Composable () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -111,13 +110,14 @@ fun GroceryScreen(
 
 
     val categories = groceryViewModel.groceryItemCategories
-    val selectedCategoryIndex = groceryViewModel.selectedCategoryIndex
+    val selectedCategoryId = groceryViewModel.selectedCategoryId
     val selectedGroupingOption = groceryViewModel.selectedGroupingOption
     val showDeletedItems = groceryViewModel.showDeletedItems
 
+    val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId }
+
 
     Scaffold(
-//        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         modifier = modifier,
         bottomBar = bottomBar,
@@ -137,11 +137,13 @@ fun GroceryScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddGroceryDialog = true },
-                text = { Text(stringResource(R.string.add_grocery)) },
-                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
-            )
+            if (groceryViewModel.dataLoaded) {
+                ExtendedFloatingActionButton(
+                    onClick = { showAddGroceryDialog = true },
+                    text = { Text(stringResource(R.string.add_grocery)) },
+                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
+                )
+            }
         }
     ) { innerPadding ->
         AnimatedContent(
@@ -153,25 +155,25 @@ fun GroceryScreen(
         ) { dataLoaded ->
             if (dataLoaded) {
                 GroceryGridScreen(
-                    categories = categories,
-                    selectedCategoryIndex = selectedCategoryIndex,
-                    onChangeSelectedCategoryIndex = { newIndex ->
-                        groceryViewModel.changeSelectedCategoryIndex(newIndex)
+                    allCategories = categories,
+                    category = selectedCategory!!,
+                    onChangeSelectedCategoryId = { newId ->
+                        groceryViewModel.changeSelectedCategoryId(newId)
                     },
                     onRemoveFromGroceries = { index ->
-                        groceryViewModel.removeFromGroceries(index, selectedCategoryIndex)
+                        groceryViewModel.removeFromGroceries(index, selectedCategoryId!!)
                     },
                     onAddToGroceries = { newItem ->
-                        groceryViewModel.addToGroceries(newItem, selectedCategoryIndex)
+                        groceryViewModel.addToGroceries(newItem, selectedCategoryId!!)
                     },
                     onAddCategory = { newCategory ->
                         groceryViewModel.addCategory(newCategory)
                     },
-                    onRemoveCategory = { index ->
-                        groceryViewModel.removeCategory(index)
+                    onRemoveCategory = { id ->
+                        groceryViewModel.removeCategory(id)
                     },
-                    onChangeCategoryName = { index, name ->
-                        groceryViewModel.changeCategoryName(index, name)
+                    onChangeCategoryName = { name, id ->
+                        groceryViewModel.changeCategoryName(name, id)
                     },
                     groupingOption = selectedGroupingOption,
                     showDeletedItems = showDeletedItems,
@@ -195,17 +197,32 @@ fun GroceryScreen(
             addGroceryFocusRequester.requestFocus()
         }
     }
-    if (showAddGroceryDialog) {
-        AddGroceryDialog(
+    if (showAddGroceryDialog && selectedCategoryId != null) {
+        AddGroceryBottomSheet(
             onDismissRequest = { showAddGroceryDialog = false },
+            focusRequester = addGroceryFocusRequester,
             onConfirm = { newItem ->
                 groceryViewModel.addToGroceries(
                     newItem,
-                    selectedCategoryIndex
+                    selectedCategoryId
                 )
             },
-            focusRequester = addGroceryFocusRequester
+            allRecipes = allRecipes,
+            activeRecipes = allRecipes.filter { recipe ->
+                selectedCategory!!.items.indexOfFirst { item -> item.recipeId == recipe.id} != -1
+            },
+            getRecipeNameFromId = getRecipeNameFromId
         )
+//        AddGroceryDialog(
+//            onDismissRequest = { showAddGroceryDialog = false },
+//            onConfirm = { newItem ->
+//                groceryViewModel.addToGroceries(
+//                    newItem,
+//                    selectedCategoryId
+//                )
+//            },
+//            focusRequester = addGroceryFocusRequester
+//        )
     }
 
 //    var tempGroupingOption by remember { mutableStateOf(groceryViewModel.selectedGroupingOption) }
@@ -249,14 +266,14 @@ fun GroceryScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GroceryGridScreen(
-    categories: List<GroceryItemCategory>,
-    selectedCategoryIndex: Int,
-    onChangeSelectedCategoryIndex: (Int) -> Unit,
+    allCategories: List<GroceryItemCategory>,
+    category: GroceryItemCategory,
+    onChangeSelectedCategoryId: (UUID) -> Unit,
     onRemoveFromGroceries: (itemIndex: Int) -> Unit,
     onAddToGroceries: (GroceryItem) -> Unit,
     onAddCategory: (GroceryItemCategory) -> Unit,
-    onRemoveCategory: (index: Int) -> Unit,
-    onChangeCategoryName: (index: Int, String) -> Unit,
+    onRemoveCategory: (id: UUID) -> Unit,
+    onChangeCategoryName: (String, id: UUID) -> Unit,
     showDeletedItems: Boolean,
     groupingOption: GroceryGroupingOption,
     getRecipeNameFromId: (UUID) -> String,
@@ -277,14 +294,14 @@ fun GroceryGridScreen(
             modifier = modifier.fillMaxSize()
         ) {
             CategoriesConnectedButtons(
-                categories = categories,
-                selectedCategoryIndex = selectedCategoryIndex,
-                onChangeSelectedCategoryIndex = onChangeSelectedCategoryIndex,
+                allCategories = allCategories,
+                selectedCategory = category,
+                onChangeSelectedCategoryId = onChangeSelectedCategoryId,
                 onEditCategories = { showCategoriesDialog = true },
                 modifier = Modifier
             )
             Spacer(modifier = Modifier.height(10.dp))
-            if (categories[selectedCategoryIndex].items.isEmpty() && deletedGroceryItems.isEmpty()) {
+            if (category.items.isEmpty() && deletedGroceryItems.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .padding(10.dp)
@@ -304,7 +321,7 @@ fun GroceryGridScreen(
                     contentPadding = PaddingValues(bottom = 100.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                 ) {
-                    val allItems = categories[selectedCategoryIndex].items
+                    val allItems = category.items
 
                     val groupNames: MutableList<String> = mutableListOf()
                     val groups: MutableList<List<GroceryItem>> = mutableListOf()
@@ -381,12 +398,10 @@ fun GroceryGridScreen(
         }
     if (showCategoriesDialog) {
         CategoriesDialog(
-            categories = categories,
-            selectedCategoryIndex = selectedCategoryIndex,
+            allCategories = allCategories,
             onAddCategory = onAddCategory,
-            onDeleteCategory = { index ->
-                val category = categories[index]
-                onRemoveCategory(index)
+            onDeleteCategory = { id ->
+                onRemoveCategory(id)
 
                 scope.launch {
                     val result = snackbarHostState.showSnackbar(
@@ -420,8 +435,8 @@ fun GroceryGridScreen(
             },
             imeActionDone = true,
             focusRequester = editGroceryFocusRequester,
-            startValue = categories[selectedCategoryIndex].items[editingItemIndex!!].name,
-            startDetails = categories[selectedCategoryIndex].items[editingItemIndex!!].details,
+            startValue = category.items[editingItemIndex!!].name,
+            startDetails = category.items[editingItemIndex!!].details,
         )
     }
 }
@@ -521,16 +536,6 @@ fun AddGroceryDialog(
                 shape = RoundedCornerShape(20),
                 placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, style = MaterialTheme.typography.bodyMedium) }
             )
-//            Box(modifier = Modifier
-//                .width(150.dp)
-//                .height(40.dp)
-//                .padding(horizontal = 5.dp, vertical = 5.dp)
-//                .background(
-//                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
-//                    shape = RoundedCornerShape(20)
-//                )) {
-//                innerTextField()
-//            }
         })
     }
 }
@@ -543,16 +548,17 @@ fun GroceryScreenPreview() {
     val groceryViewModel: GroceryViewModel = viewModel()
 
     if (groceryViewModel.groceryItemCategories.isEmpty()) {
-        groceryViewModel.addCategory("Default")
-        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g"), 0)
-        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), 0)
-        groceryViewModel.addCategory("Default 2")
-        groceryViewModel.addToGroceries(GroceryItem("Dosentomaten",""), 1)
-        groceryViewModel.addToGroceries(GroceryItem("Milch",""), 1)
+        val defaultId = groceryViewModel.addCategory("Default")
+        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g"), defaultId)
+        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), defaultId)
+
+        val default2Id = groceryViewModel.addCategory("Default 2")
+        groceryViewModel.addToGroceries(GroceryItem("Dosentomaten",""), default2Id)
+        groceryViewModel.addToGroceries(GroceryItem("Milch",""), default2Id)
     }
     groceryViewModel.initializeEmpty()
 
     FoodTheme {
-        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() })
+        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf())
     }
 }

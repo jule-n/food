@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,21 +26,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.jule.food.ui.theme.FoodTheme
+import com.jule.food.ui.theme.displayLargeFontFamily
 import java.io.File
 
 
@@ -62,17 +70,16 @@ fun RecipeGrid(
 }
 
 // Display a single recipe
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RecipeSmallDisplay(
     recipe: Recipe,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showImage: Boolean = true,
-    shadow: Boolean = true,
     minTextSize: TextUnit = 10.sp,
     maxTextSize: TextUnit = 16.sp,
-    fallbackBrush: Brush = Brush.linearGradient( listOf(Color.LightGray, Color.White) )
+    fallbackBrush: Brush = Brush.linearGradient( listOf(MaterialTheme.colorScheme.secondaryContainer, Color.White) )
 ) {
     val image = recipe.images.isNotEmpty() && showImage
     Surface(
@@ -115,10 +122,21 @@ fun RecipeSmallDisplay(
                         )
                     }
                 } else {
+                    Box(modifier = Modifier.fillMaxSize().background(fallbackBrush, shape = RoundedCornerShape(10)))
                     Box(modifier = Modifier
-                        .fillMaxSize()
-                        .background(fallbackBrush, shape = RoundedCornerShape(10))
-                    )
+                        .fillMaxSize(0.8f).align(alignment = Alignment.Center)
+                    ) {
+                        Text(
+                            text = recipe.name,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+//                            fontFamily = displayLargeFontFamily,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.displaySmallEmphasized.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Heading),
+                            autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
             }
             Box(modifier = Modifier
@@ -136,6 +154,22 @@ fun RecipeSmallDisplay(
                     autoSize = TextAutoSize.StepBased(minFontSize = minTextSize, maxFontSize = maxTextSize)
                 )
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RecipeSmallDisplayPreview() {
+    val recipe = Recipe("Karottenkuchen")
+    FoodTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            RecipeSmallDisplay(
+                recipe,
+                onClick = { }
+            )
         }
     }
 }

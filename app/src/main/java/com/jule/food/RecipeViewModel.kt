@@ -250,6 +250,8 @@ class RecipeViewModel : ViewModel() {
         // Delete all image files from this recipe
         deleteFiles(_recipes[index].images)
         _recipes.removeAt(index)
+
+//        if (selectedRecipeId == id) {}
     }
     // Add a new tag
     fun addTag(tag: Tag) {
