@@ -1,7 +1,9 @@
 package com.jule.food
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,8 +18,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,21 +35,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,6 +70,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -92,171 +107,103 @@ fun AddGroceryBottomSheet(
     var currentDetailText by remember { mutableStateOf(startDetails) }
     var selectedRecipeId: UUID? by remember { mutableStateOf(null) }
     val detailFocusRequester = remember { FocusRequester() }
-    val scope = rememberCoroutineScope()
-    
-    var detailsActive by remember { mutableStateOf(false) }
-//    var recipeActive by remember { mutableStateOf(false) }
+
+    var recipeActive by remember { mutableStateOf(false) }
     var showRecipeDialog by remember { mutableStateOf(false) }
 
     fun confirm(){
-//        val recipeId = if (recipeActive) selectedRecipeId!! else null
-        val newGroceryItem = GroceryItem(currentText, currentDetailText, selectedRecipeId)
+        val recipeId = if (recipeActive) selectedRecipeId!! else null
+        val newGroceryItem = GroceryItem(currentText, currentDetailText, recipeId)
         onConfirm(newGroceryItem)
 
         currentText = ""
         currentDetailText = ""
-        detailsActive = false
-        selectedRecipeId = null
-//        recipeActive = false
+        recipeActive = false
     }
 
     val interactionSource = remember { MutableInteractionSource() }
     val detailColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
     val detailPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
-    ModalBottomSheet(
+    ModalBottomSheet (
         onDismissRequest = onDismissRequest,
+        dragHandle = null,
         modifier = modifier
     ) {
         val focusManager = LocalFocusManager.current
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp).clickable {
-                focusManager.clearFocus(true)
-            },
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .clickable(interactionSource = interactionSource, indication = null) {
+                    focusManager.clearFocus(true)
+                }
         ) {
-            OutlinedTextField(value = currentText, onValueChange = { currentText = it }, modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester), shape = RoundedCornerShape(20), placeholder = { Text(
-                stringResource(id = R.string.name)
-            ) }, keyboardOptions = KeyboardOptions.Default.copy(imeAction = if (imeActionDone) ImeAction.Done else ImeAction.Next),
-                keyboardActions = KeyboardActions(onNext = {
-                    confirm()
-                }, onDone = {
-                    confirm()
-                })
+            BasicTextFieldWithBox(
+                value = currentText,
+                onValueChange = { currentText = it },
+                placeholder = { Text("New Grocery...", maxLines = 1, color = detailPlaceholderColor, style = MaterialTheme.typography.titleMedium) },
+                textStyle = MaterialTheme.typography.titleMedium,
+                contentPadding = PaddingValues(15.dp),
+                maxLines = 1,
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    if (currentText.isNotEmpty()) {
+                        confirm()
+                    }
+                }),
+//                colors = TextFieldDefaults.colors().copy(
+//                    unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
+//                    unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface
+//                ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
             )
-            // MAYBE: Change this color on focus instead of on text change
-            val detailBackgroundColor by animateColorAsState(targetValue = if(currentDetailText != "") MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp) else MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp))
-            Surface(
-                color = detailBackgroundColor,
-                shape = RoundedCornerShape(20),
-                modifier = Modifier.height(40.dp)
+            Spacer(Modifier.height(5.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 10.dp)
-                ) {
-                    Icon(painterResource(R.drawable.text), contentDescription = null)
-                    BasicTextField(
-                        value = currentDetailText,
-                        onValueChange = { currentDetailText = it },
-//                        maxLines = 1,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-//                            .background(Color.Red.copy(alpha = 0.2f))
-                            .focusRequester(detailFocusRequester),
-                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            if (!isError) {
-                                confirm()
-                                scope.launch {
-                                    focusRequester.requestFocus()
-                                }
-                            }
-                        }),
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(color = detailColor),
-                        cursorBrush = SolidColor(detailColor),
-                        decorationBox = { innerTextField ->
-                            TextFieldDefaults.DecorationBox(
-                                value = currentDetailText,
-                                innerTextField = innerTextField,
-                                enabled = true,
-                                singleLine = true,
-                                visualTransformation = VisualTransformation.None,
-                                interactionSource = interactionSource,
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                                colors = TextFieldDefaults.colors().copy(
-                                    unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent,
-//                                    unfocusedContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f), focusedContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                                    unfocusedPlaceholderColor = detailPlaceholderColor, focusedPlaceholderColor = detailPlaceholderColor,
-                                ),
-                                shape = RoundedCornerShape(20),
-                                placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, style = LocalTextStyle.current) }
-                            )
-                        }
-                    )
-                    AnimatedVisibility(currentDetailText != "") {
-                        IconButton(
-                            onClick = {
-                                currentDetailText = ""
-                            }
-                        ) {
-                            Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
-                        }
-                    }
-
-                }
+                Icon(painterResource(R.drawable.text), contentDescription = null, tint = if (currentDetailText.isEmpty()) detailPlaceholderColor else MaterialTheme.colorScheme.onBackground)
+                Spacer(Modifier.width(5.dp))
+                BasicTextFieldWithBox(
+                    value = currentDetailText,
+                    onValueChange = { currentDetailText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                        .focusRequester(detailFocusRequester),
+                    maxLines = 1,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, color = detailPlaceholderColor, style = MaterialTheme.typography.bodyMedium) }
+                )
             }
-            val recipeBackgroundColor by animateColorAsState(targetValue = if(selectedRecipeId != null) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
-            BoxWithConstraints() {
-                val width = maxWidth
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
-//                horizontalArrangement = Arrangement.SpaceEvenly
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                        shape = RoundedCornerShape(20),
-                        onClick = {
-                            showRecipeDialog = true
-                        },
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.widthIn(max = width - 68.dp)
-                        ) {
-                            Icon(painterResource(R.drawable.book), contentDescription = null)
-                            Spacer(Modifier.width(10.dp))
-                            if (selectedRecipeId != null) {
-                                Text(getRecipeNameFromId(selectedRecipeId!!), overflow = TextOverflow.Ellipsis)
-                            } else {
-                                Text("Select Recipe...", color = detailPlaceholderColor, overflow = TextOverflow.Ellipsis, maxLines = 1)
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(selectedRecipeId != null) {
-                        IconButton(
-                            onClick = {
-                                currentDetailText = ""
-                            },
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
-                        }
-                    }
-
-                }
-            }
-
             Spacer(Modifier.height(10.dp))
-
-            Button(
-                onClick = {
-                    // FROM RECipe
-                }
+            Row(
+                modifier = Modifier.padding(start = 10.dp)
             ) {
-                Box(modifier = Modifier.size(32.dp)) {
-                    Icon(painterResource(R.drawable.book), contentDescription = null, modifier = Modifier.size(10.dp))
-                    Icon(painterResource(R.drawable.add), contentDescription = null, modifier = Modifier.align(Alignment.Center))
+                GroceryBottomSheetSelectionField(
+                    text = if (recipeActive) getRecipeNameFromId(selectedRecipeId!!) else "No Recipe",
+                    icon = R.drawable.book,
+                    isActive = recipeActive,
+                    inactiveColor = detailPlaceholderColor,
+                    onClick = { showRecipeDialog = true },
+                    onClear = { recipeActive = false }
+                )
+                Spacer(Modifier.width(10.dp))
+                GroceryBottomSheetSelectionField(
+                    text = "No Location",
+                    icon = R.drawable.location,
+                    isActive = false,
+                    inactiveColor = detailPlaceholderColor,
+                    onClick = { },
+                    onClear = { }
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = { confirm() }
+                ) {
+                    Text(stringResource(R.string.save))
                 }
-                Text("Add from Recipe")
             }
+//            }
 
         }
 
@@ -273,6 +220,43 @@ fun AddGroceryBottomSheet(
         }
     }
 
+}
+
+@Composable
+fun GroceryBottomSheetSelectionField(
+    modifier: Modifier = Modifier,
+    text: String,
+    isActive: Boolean,
+    inactiveColor: Color,
+    onClick: () -> Unit,
+    onClear: () -> Unit,
+    @DrawableRes icon: Int,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
+        shape = RoundedCornerShape(50),
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(40.dp).animateContentSize().padding(start = 10.dp)
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onBackground)
+            Spacer(Modifier.width(5.dp))
+            Text(text = text, maxLines = 1, style = MaterialTheme.typography.bodyMedium, color = inactiveColor)
+            if (isActive) {
+                IconButton(
+                    modifier = Modifier.height(40.dp),
+                    onClick = onClear
+                ) {
+                    Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
+                }
+            } else {
+                Spacer(Modifier.width(10.dp))
+            }
+        }
+    }
 }
 
 

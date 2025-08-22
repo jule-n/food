@@ -107,6 +107,7 @@ import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -130,6 +131,8 @@ fun GroceryScreen(
     var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val coroutineScope = rememberCoroutineScope()
 
 
     val categories = groceryViewModel.groceryItemCategories

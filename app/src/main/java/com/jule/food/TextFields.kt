@@ -20,6 +20,7 @@ import androidx.compose.material3.TextFieldDefaults.ContainerBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
@@ -71,7 +72,7 @@ fun BasicOutlinedTextField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BasicTextFieldCustom(
+fun BasicTextFieldWithBox(
     modifier: Modifier = Modifier,
     value: String,
     onValueChange: (String) -> Unit,
@@ -84,7 +85,11 @@ fun BasicTextFieldCustom(
     minLines: Int = 1,
     placeholder: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
-    colors: TextFieldColors = TextFieldDefaults.colors(),
+    colors: TextFieldColors = TextFieldDefaults.colors().copy(
+        unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent
+    ),
+    contentPadding: PaddingValues = PaddingValues(),
     shape: Shape = TextFieldDefaults.shape
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -110,8 +115,9 @@ fun BasicTextFieldCustom(
             interactionSource = interactionSource,
             trailingIcon = trailingIcon,
             placeholder = placeholder,
-            contentPadding = PaddingValues(5.dp),
-            container = { ContainerBox(enabled, false, interactionSource, colors, shape) }
+            contentPadding = contentPadding,
+            colors = colors,
+            shape = shape
         )
     }
 }
