@@ -17,6 +17,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.util.fastFirst
+import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
@@ -68,14 +69,17 @@ class SaveableGroceryItem(
 )
 
 class GroceryItem(
-    var name: String,
-    var details: String,
-    var recipeId: UUID? = null
+    name: String,
+    details: String,
+    recipeId: UUID? = null,
+    val id: UUID = UUID.randomUUID()
 ) {
-    private var _id: UUID = UUID.randomUUID()
-    val id get() = _id
-    fun generateNewId() {
-        _id = UUID.randomUUID()
+    var name by mutableStateOf(name)
+    var details by mutableStateOf(details)
+    var recipeId by mutableStateOf(recipeId)
+
+    fun copy(): GroceryItem {
+        return GroceryItem(name, details, recipeId)
     }
 }
 
@@ -139,8 +143,6 @@ class GroceryViewModel: ViewModel() {
     }
     fun changeCategoryName(newName: String, id: UUID) {
         _groceryItemCategories.fastFirst { it.id == id }.name = newName
-//        _groceryItemCategories.sortBy { it.name }
-//        Log.d("ChangeCategoryName", "Change category Name $index to $newName")
     }
     fun addToGroceries(item: GroceryItem, categoryId: UUID) {
         val category = _groceryItemCategories.fastFirst { it.id == categoryId }
@@ -149,43 +151,41 @@ class GroceryViewModel: ViewModel() {
     }
     fun addToGroceries(items: List<GroceryItem>, categoryId: UUID, recipeId: UUID) {
         val category = _groceryItemCategories.fastFirst { it.id == categoryId }
-        // IDs cannot match!
-        items.forEach { newItem ->
-            Log.d("AddToGroceries", "Adding ${newItem.name}")
-            val indexSameItem = category.items.indexOfFirst { item -> item.name.lowercase() == newItem.name.lowercase() }
-            if (indexSameItem != -1) {
-                Log.d("AddToGroceries", "Match found")
-                // There is an item of the same name
-                val oldItem = category.items[indexSameItem]
-                val regex = Regex("""\d+\D+""")
-                if (oldItem.details.matches(regex) && newItem.details.matches(regex)) {
-                    Log.d("AddToGroceries", "Match satisfies Regex")
-                    val regexUnit = Regex("""\D+""")
-                    val oldUnit = regexUnit.find(oldItem.details)?.value
-                    val newUnit = regexUnit.find(newItem.details)?.value
-                    Log.d("AddToGroceries", "Old Unit: $oldUnit, New Unit: $newUnit")
-                    if (oldUnit == newUnit) {
-                        Log.d("AddToGroceries", "Units match")
-                        // Same unit, meaning we can add numbers together
-                        val regexNumber = Regex("""\d+""")
-                        val oldNumber = regexNumber.find(oldItem.details)?.value?.toInt()
-                        val newNumber = regexNumber.find(newItem.details)?.value?.toInt()
-                        val number = if (oldNumber != null && newNumber != null) oldNumber + newNumber else 39
-
-                        Log.d("AddToGroceries", "Old Number: $oldNumber, New Number: $newNumber, the sum is $number")
-                        category.items.removeAt(indexSameItem)
-                        category.items.add(GroceryItem(oldItem.name, "$number$oldUnit"))
-                        Log.d("AddToGroceries", "Item Updated: $number$oldUnit")
-                        return@forEach
-                    } else {
-                        Log.d("AddToGroceries", "Units don't match")
-                    }
-                } else {
-                    Log.d("AddToGroceries", "Match doesn't satisfy Regex")
-                }
-            }
-            if (category.items.indexOfFirst { item -> item.id == newItem.id} != -1)
-                newItem.generateNewId()
+        items.forEach { item ->
+//            Log.d("AddToGroceries", "Adding ${newItem.name}")
+//            val indexSameItem = category.items.indexOfFirst { item -> item.name.lowercase() == newItem.name.lowercase() }
+//            if (indexSameItem != -1) {
+//                Log.d("AddToGroceries", "Match found")
+//                // There is an item of the same name
+//                val oldItem = category.items[indexSameItem]
+//                val regex = Regex("""\d+\D+""")
+//                if (oldItem.details.matches(regex) && newItem.details.matches(regex)) {
+//                    Log.d("AddToGroceries", "Match satisfies Regex")
+//                    val regexUnit = Regex("""\D+""")
+//                    val oldUnit = regexUnit.find(oldItem.details)?.value
+//                    val newUnit = regexUnit.find(newItem.details)?.value
+//                    Log.d("AddToGroceries", "Old Unit: $oldUnit, New Unit: $newUnit")
+//                    if (oldUnit == newUnit) {
+//                        Log.d("AddToGroceries", "Units match")
+//                        // Same unit, meaning we can add numbers together
+//                        val regexNumber = Regex("""\d+""")
+//                        val oldNumber = regexNumber.find(oldItem.details)?.value?.toInt()
+//                        val newNumber = regexNumber.find(newItem.details)?.value?.toInt()
+//                        val number = if (oldNumber != null && newNumber != null) oldNumber + newNumber else 39
+//
+//                        Log.d("AddToGroceries", "Old Number: $oldNumber, New Number: $newNumber, the sum is $number")
+//                        category.items.removeAt(indexSameItem)
+//                        category.items.add(GroceryItem(oldItem.name, "$number$oldUnit"))
+//                        Log.d("AddToGroceries", "Item Updated: $number$oldUnit")
+//                        return@forEach
+//                    } else {
+//                        Log.d("AddToGroceries", "Units don't match")
+//                    }
+//                } else {
+//                    Log.d("AddToGroceries", "Match doesn't satisfy Regex")
+//                }
+//            }
+            val newItem = item.copy()
             newItem.recipeId = recipeId
             category.items.add(newItem)
         }
@@ -194,6 +194,16 @@ class GroceryViewModel: ViewModel() {
     }
     fun removeFromGroceries(index: Int, categoryId: UUID) {
         _groceryItemCategories.fastFirst { it.id == categoryId }.items.removeAt(index)
+    }
+    fun moveItemsToCategory(itemIds: List<UUID>, fromCategoryId: UUID, toCategoryId: UUID) {
+        val fromCategory = _groceryItemCategories.fastFirst { it.id == fromCategoryId }
+        val toCategory = _groceryItemCategories.fastFirst { it.id == toCategoryId }
+
+        val items = fromCategory.items.filter { item -> itemIds.contains(item.id) }
+        fromCategory.items.removeAll(items)
+        toCategory.items.addAll(items)
+
+        toCategory.items.sortBy { it.name }
     }
 
     fun getSaveable(): SaveableGroceryItemCategories {

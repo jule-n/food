@@ -35,8 +35,8 @@
     <string name="done">Fertig</string>
     <string name="deleted_item">%s gelöscht</string>
     <string name="undo">Rückgängig</string>
-    <string name="add_recipe">Rezept hinzufügen</string>
-    <string name="add_grocery">Eintrag hinzufügen</string>
+    <string name="add_recipe">Rezept</string>
+    <string name="add_grocery">Eintrag</string>
     <string name="green">Grün</string>
     <string name="pink">Pink</string>
     <string name="dynamic">Dynamisch</string>
@@ -53,9 +53,9 @@
     <string name="import_data">Aus Datei importieren</string>
     <string name="dynamic_color_description">Aus dem Hintergrundbild</string>
     <string name="import_error">Die Datei hat nicht das korrekte Format</string>
-    <string name="import_groceries">%d Lebensmittel importiert</string>
+    <string name="import_groceries">%d Einkäufe importiert</string>
     <string name="import_recipes">%d Rezept(e) importiert</string>
-    <string name="import_groceries_and_recipes">%d Lebensmittel und %d Rezept(e) importiert</string>
+    <string name="import_groceries_and_recipes">%d Einkäufe und %d Rezept(e) importiert</string>
     <string name="filter_recipes">Rezepte filtern</string>
     <string name="favorite_tags">Favorisierte Tags</string>
     <string name="favorites">Favoriten</string>
@@ -88,4 +88,7 @@
     <string name="store_location">Ort im Laden</string>
     <string name="group_by">Gruppieren nach</string>
     <string name="no_recipe">Kein Rezept</string>
+    <string name="active_recipes">Aktive Rezepte</string>
+    <string name="all_recipes">Alle Rezepte</string>
+    <string name="added_n_groceries">%d Einkäufe zu %s hinzugefügt</string>
 </resources>

@@ -36,8 +36,8 @@
     <string name="done">Done</string>
     <string name="deleted_item">Deleted %s</string>
     <string name="undo">Undo</string>
-    <string name="add_recipe">Add Recipe</string>
-    <string name="add_grocery">Add Grocery</string>
+    <string name="add_recipe">Recipe</string>
+    <string name="add_grocery">Grocery</string>
     <string name="green">Green</string>
     <string name="yellow">Yellow</string>
     <string name="pink">Pink</string>
@@ -89,4 +89,7 @@
     <string name="store_location">Store Location</string>
     <string name="group_by">Group by</string>
     <string name="no_recipe">No recipe</string>
+    <string name="active_recipes">Active recipes</string>
+    <string name="all_recipes">All recipes</string>
+    <string name="added_n_groceries">Added %d groceries to %s</string>
 </resources>

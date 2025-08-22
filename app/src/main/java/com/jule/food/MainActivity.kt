@@ -30,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.util.fastFirstOrNull
 import androidx.core.os.LocaleListCompat
 //import androidx.datastore.core.DataStore
 //import androidx.datastore.preferences.core.Preferences
@@ -169,6 +171,9 @@ class MainActivity : AppCompatActivity() {
                         },
                         groceryCategories = groceryViewModel.groceryItemCategories,
                         addToGroceries = { groceries, categoryId, recipeId ->
+                            val category = groceryViewModel.groceryItemCategories.fastFirstOrNull { it.id == categoryId }
+                            val categoryName = category?.name ?: "NOT FOUND"
+                            Toast.makeText(context, context.getString(R.string.added_n_groceries, groceries.size, categoryName), Toast.LENGTH_SHORT).show()
                             groceryViewModel.addToGroceries(groceries, categoryId, recipeId)
                         },
                         onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }

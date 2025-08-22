@@ -1,60 +1,42 @@
 package com.jule.food
 
-import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -63,54 +45,41 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumFlexibleTopAppBar
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,17 +90,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -142,21 +109,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.ReorderableRow
-import sh.calvin.reorderable.rememberReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.File
 import java.util.UUID
@@ -273,7 +234,7 @@ fun SpecificRecipeScreenMain(
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val scrollBehaviour = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val selectedImagesIndizes = remember { mutableStateListOf<Int>() }
     var anyImageSelected by remember { mutableStateOf(false) }
@@ -290,7 +251,7 @@ fun SpecificRecipeScreenMain(
         Scaffold(
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             bottomBar = bottomBar,
-            modifier = modifier.nestedScroll(scrollBehaviour.nestedScrollConnection),
+            modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 AnimatedContent(
                     targetState = selectedImagesIndizes.size > 0,
@@ -301,18 +262,14 @@ fun SpecificRecipeScreenMain(
                     if (!imagesSelected) {
                         SpecificRecipeTopBar(
                             onBack = onBack,
-                            scrollBehaviour = scrollBehaviour
+                            scrollBehaviour = scrollBehavior
                         )
                     } else {
-                        TopAppBar(
-                            title = { Text(stringResource(R.string.n_selected_images, selectedImagesIndizes.size))},
-                            navigationIcon = {
-                                IconButton(onClick = {
-                                    selectedImagesIndizes.clear()
-                                    anyImageSelected = false
-                                }) {
-                                    Icon(painterResource(R.drawable.clear), contentDescription = "Clear Selection")
-                                }
+                        SelectionTopBar(
+                            numberSelected = selectedImagesIndizes.size,
+                            onClearSelection = {
+                                selectedImagesIndizes.clear()
+                                anyImageSelected = false
                             },
                             actions = {
                                 IconButton(onClick = {
@@ -323,15 +280,12 @@ fun SpecificRecipeScreenMain(
 
                                     coroutineScope.launch {
                                         val result = snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_n_images, imageCount), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
-//                                        if (result == SnackbarResult.ActionPerformed) {
-//                                            groceryViewModel.addToGroceries(item, currentCategoryIndex)
-//                                        }
                                     }
                                 }) {
                                     Icon(painterResource(R.drawable.delete), contentDescription = "Delete Images")
                                 }
                             },
-                            scrollBehavior = scrollBehaviour
+                            scrollBehavior = scrollBehavior
                         )
                     }
                 }
@@ -717,10 +671,7 @@ fun SpecificRecipeEditGroceriesScreen(
                                 deletedGroceries.remove(groceryItem)
                                 temporaryGroceries.add(groceryItem)
                             },
-                            itemColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
                             onLongClick = { },
-                            textColor = MaterialTheme.colorScheme.onBackground,
-                            detailTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             center = true,
                             modifier = Modifier.animateItem()
                         )
@@ -735,32 +686,32 @@ fun SpecificRecipeEditGroceriesScreen(
             }
         }
         if (showAddGroceryDialog) {
-            AddGroceryDialog(
-                onDismissRequest = { showAddGroceryDialog = false },
-                onConfirm = { newGrocery ->
-                    temporaryGroceries.add(newGrocery)
-                },
-                focusRequester = groceryDialogFocusRequester,
-                focusDetailsOnNext = true
-            )
+//            AddGroceryDialog(
+//                onDismissRequest = { showAddGroceryDialog = false },
+//                onConfirm = { newGrocery ->
+//                    temporaryGroceries.add(newGrocery)
+//                },
+//                focusRequester = groceryDialogFocusRequester,
+//                focusDetailsOnNext = true
+//            )
         }
         if (showEditGroceryDialog) {
             val editGroceryIndex = temporaryGroceries.indexOfFirst { it.id == editGroceryId!! }
-            AddGroceryDialog(
-                title = stringResource(R.string.edit_grocery),
-                onDismissRequest = { showEditGroceryDialog = false },
-                onConfirm = { newItem ->
-                    temporaryGroceries.removeAt(editGroceryIndex)
-                    temporaryGroceries.add(newItem)
-                    showEditGroceryDialog = false
-                },
-                focusDetailsOnNext = false,
-                imeActionDone = true,
-                allowDismissIfEmpty = true,
-                focusRequester = remember { FocusRequester() },
-                startValue = temporaryGroceries[editGroceryIndex].name,
-                startDetails = temporaryGroceries[editGroceryIndex].details,
-            )
+//            AddGroceryDialog(
+//                title = stringResource(R.string.edit_grocery),
+//                onDismissRequest = { showEditGroceryDialog = false },
+//                onConfirm = { newItem ->
+//                    temporaryGroceries.removeAt(editGroceryIndex)
+//                    temporaryGroceries.add(newItem)
+//                    showEditGroceryDialog = false
+//                },
+//                focusDetailsOnNext = false,
+//                imeActionDone = true,
+//                allowDismissIfEmpty = true,
+//                focusRequester = remember { FocusRequester() },
+//                startValue = temporaryGroceries[editGroceryIndex].name,
+//                startDetails = temporaryGroceries[editGroceryIndex].details,
+//            )
         }
     }
 }
@@ -955,9 +906,12 @@ fun RecipeImageGallery(
                 val selected = selectedImagesIndizes.contains(index)
                 val onlySelected = selected && selectedImagesIndizes.size == 1
 
+                val hapticFeedback = LocalHapticFeedback.current
+
                 val mod = if (!anyImageSelected) {
                         Modifier.longPressDraggableHandle(interactionSource = interactionSource, onDragStarted = {
                             onAddSelectedImageIndex(index)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         }, onDragStopped = {
                             onChangeAnyImageSelected(true)
                         })

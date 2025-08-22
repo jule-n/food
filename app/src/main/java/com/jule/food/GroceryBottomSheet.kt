@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -121,12 +123,8 @@ fun AddGroceryBottomSheet(
             modifier = Modifier.padding(horizontal = 10.dp).clickable {
                 focusManager.clearFocus(true)
             },
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall
-            )
             OutlinedTextField(value = currentText, onValueChange = { currentText = it }, modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), shape = RoundedCornerShape(20), placeholder = { Text(
@@ -143,7 +141,7 @@ fun AddGroceryBottomSheet(
             Surface(
                 color = detailBackgroundColor,
                 shape = RoundedCornerShape(20),
-                modifier = Modifier.height(48.dp)
+                modifier = Modifier.height(40.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -220,7 +218,7 @@ fun AddGroceryBottomSheet(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(10.dp).widthIn(max = width - 68.dp)
+                            modifier = Modifier.widthIn(max = width - 68.dp)
                         ) {
                             Icon(painterResource(R.drawable.book), contentDescription = null)
                             Spacer(Modifier.width(10.dp))
@@ -248,28 +246,30 @@ fun AddGroceryBottomSheet(
 
             Spacer(Modifier.height(10.dp))
 
-            Row() {
-
+            Button(
+                onClick = {
+                    // FROM RECipe
+                }
+            ) {
+                Box(modifier = Modifier.size(32.dp)) {
+                    Icon(painterResource(R.drawable.book), contentDescription = null, modifier = Modifier.size(10.dp))
+                    Icon(painterResource(R.drawable.add), contentDescription = null, modifier = Modifier.align(Alignment.Center))
+                }
+                Text("Add from Recipe")
             }
 
         }
 
         if (showRecipeDialog) {
-            DefaultDialog(
-                title = "Select recipe",
-                onDismissRequest = { showRecipeDialog = false}
-            ) {
-                RecipeGrid(
-                    recipes = activeRecipes,
-                    onClickRecipe = { index ->
-                        val recipeId = activeRecipes[index].id
-                        selectedRecipeId = recipeId
-                        showRecipeDialog = false
-                    },
-                    recipeGridState = rememberLazyGridState(),
-                    contentPadding = PaddingValues()
-                )
-            }
+            SelectRecipeBottomSheet(
+                onDismissRequest = { showRecipeDialog = false },
+                onClickRecipe = { recipeId ->
+                    selectedRecipeId = recipeId
+                    showRecipeDialog = false
+                },
+                allRecipes = allRecipes,
+                activeRecipes = activeRecipes
+            )
         }
     }
 

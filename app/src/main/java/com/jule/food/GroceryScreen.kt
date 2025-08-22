@@ -1,15 +1,21 @@
 package com.jule.food
 
 import android.widget.CheckBox
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,15 +41,21 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -51,13 +63,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,6 +87,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -84,6 +103,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFirst
+import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
@@ -102,9 +122,12 @@ fun GroceryScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var showAddGroceryDialog by remember { mutableStateOf(false) }
     var showGroupingDialog by remember { mutableStateOf(false) }
+    var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -116,33 +139,146 @@ fun GroceryScreen(
 
     val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId }
 
+    val selectedGroceryItems = remember { mutableStateListOf<UUID>() }
+    val selectionModeActive = selectedGroceryItems.isNotEmpty()
+
+    val activeRecipes = allRecipes.filter { recipe ->
+        selectedCategory!!.items.indexOfFirst { item -> item.recipeId == recipe.id } != -1
+    }
+
+    var assignRecipeToSelectedGroceriesDialogActive by remember { mutableStateOf(false) }
+
+
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
+    )
+
+    LaunchedEffect(selectionModeActive) {
+        if (selectionModeActive) {
+            scope.launch {
+                scaffoldState.bottomSheetState.expand()
+            }
+        } else {
+            scope.launch {
+                scaffoldState.bottomSheetState.hide()
+            }
+        }
+    }
+    LaunchedEffect(scaffoldState.bottomSheetState.targetValue) {
+        if (scaffoldState.bottomSheetState.targetValue == SheetValue.Hidden || scaffoldState.bottomSheetState.targetValue == SheetValue.PartiallyExpanded) {
+            selectedGroceryItems.clear()
+        }
+    }
+
+    BackHandler(enabled = selectionModeActive) {
+        selectedGroceryItems.clear()
+    }
+
+
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         modifier = modifier,
-        bottomBar = bottomBar,
+        bottomBar = {
+            AnimatedVisibility(!selectionModeActive, enter = slideInVertically { it }, exit = slideOutVertically { it }) { bottomBar() }
+        },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(stringResource(R.string.groceries)) },
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Outlined.Settings, "Settings")
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { showGroupingDialog = true }, modifier = Modifier.size(50.dp)) {
-                        Icon(painter = painterResource(id = R.drawable.categories), contentDescription = "Categories")
-                    }
-                },
-            )
+            AnimatedContent(
+                targetState = selectionModeActive,
+                transitionSpec = {
+                    slideInVertically { -it } togetherWith slideOutVertically { -it }
+                }
+            ) { selectionMode ->
+                if (!selectionMode || selectedCategory == null) {
+                    CenterAlignedTopAppBar(
+                        title = { Text(stringResource(R.string.groceries)) },
+                        actions = {
+                            IconButton(onClick = { showGroupingDialog = true }) {
+                                Icon(painter = painterResource(id = R.drawable.categories), contentDescription = "Categories")
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onOpenSettings) {
+                                Icon(Icons.Outlined.Settings, "Settings")
+                            }
+                        },
+                    )
+                } else {
+                    SelectionTopBar(
+                        numberSelected = selectedGroceryItems.size,
+                        onClearSelection = {
+                            selectedGroceryItems.clear()
+                        },
+                        actions = {
+
+                        }
+                    )
+                }
+            }
         },
         floatingActionButton = {
             if (groceryViewModel.dataLoaded) {
-                ExtendedFloatingActionButton(
-                    onClick = { showAddGroceryDialog = true },
-                    text = { Text(stringResource(R.string.add_grocery)) },
-                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
-                )
+                Box(modifier = Modifier.fillMaxWidth()) {
+
+                    AnimatedVisibility(!selectionModeActive, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.Center)) {
+                        val elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 6.dp, focusedElevation = 8.dp, hoveredElevation = 8.dp)
+                        SplitButtonLayout(
+                        modifier = Modifier.align(Alignment.Center),
+                            leadingButton = {
+                                SplitButtonDefaults.LeadingButton(
+                                    onClick = {
+                                        showAddGroceryDialog = true
+                                    },
+                                    elevation = elevation,
+                                    modifier = Modifier.height(SplitButtonDefaults.MediumContainerHeight),
+                                    shapes = SplitButtonDefaults.leadingButtonShapesFor(SplitButtonDefaults.MediumContainerHeight),
+                                    contentPadding = SplitButtonDefaults.leadingButtonContentPaddingFor(SplitButtonDefaults.MediumContainerHeight),
+                                    colors = ButtonDefaults.buttonColors().copy(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize))
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Text(stringResource(R.string.add_grocery))
+                                }
+                            },
+                            trailingButton = {
+                                var expanded by remember { mutableStateOf(false) }
+                                SplitButtonDefaults.TrailingButton(
+                                    checked = expanded,
+                                    onCheckedChange = {
+                                        expanded = it
+                                    },
+                                    elevation = elevation,
+                                    modifier = Modifier.height(SplitButtonDefaults.MediumContainerHeight),
+                                    shapes = SplitButtonDefaults.trailingButtonShapesFor(SplitButtonDefaults.MediumContainerHeight),
+                                    contentPadding = SplitButtonDefaults.trailingButtonContentPaddingFor(SplitButtonDefaults.MediumContainerHeight),
+                                    colors = ButtonDefaults.buttonColors().copy(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                                ) {
+                                    val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
+
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize).rotate(rotation))
+                                }
+
+                                DropdownMenu(
+                                    expanded = expanded,
+//                                        modifier = Modifier.align(Alignment.End),
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        onClick = { showAddFromRecipeDialog = true },
+                                        text = { Text("Add from recipe") },
+                                        leadingIcon = { Icon(painterResource(R.drawable.book), contentDescription = null)}
+                                    )
+                                }
+                            }
+                        )
+//                        FloatingActionButton()
+//                    ExtendedFloatingActionButton(
+//                        onClick = { },
+//                        text = { Text(stringResource(R.string.add_grocery)) },
+//                        icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
+//                    )
+                    }
+                }
             }
         }
     ) { innerPadding ->
@@ -157,7 +293,10 @@ fun GroceryScreen(
                 GroceryGridScreen(
                     allCategories = categories,
                     category = selectedCategory!!,
+                    allRecipes = allRecipes,
                     onChangeSelectedCategoryId = { newId ->
+                        if (selectionModeActive)
+                            selectedGroceryItems.clear()
                         groceryViewModel.changeSelectedCategoryId(newId)
                     },
                     onRemoveFromGroceries = { index ->
@@ -175,10 +314,18 @@ fun GroceryScreen(
                     onChangeCategoryName = { name, id ->
                         groceryViewModel.changeCategoryName(name, id)
                     },
+                    onMoveItemsToCategory = { itemIds, fromCategoryId, toCategoryId ->
+                        groceryViewModel.moveItemsToCategory(itemIds, fromCategoryId, toCategoryId)
+                    },
                     groupingOption = selectedGroupingOption,
                     showDeletedItems = showDeletedItems,
                     getRecipeNameFromId = getRecipeNameFromId,
                     snackbarHostState = snackbarHostState,
+                    selectedGroceryItems = selectedGroceryItems,
+                    onAddToSelection = { id -> selectedGroceryItems.add(id) },
+                    onRemoveFromSelection = { id -> selectedGroceryItems.remove(id) },
+                    scaffoldState = scaffoldState,
+                    onClearSelection = { selectedGroceryItems.clear() },
                     modifier = modifier
                 )
             } else {
@@ -208,21 +355,22 @@ fun GroceryScreen(
                 )
             },
             allRecipes = allRecipes,
-            activeRecipes = allRecipes.filter { recipe ->
-                selectedCategory!!.items.indexOfFirst { item -> item.recipeId == recipe.id} != -1
-            },
+            activeRecipes = activeRecipes,
             getRecipeNameFromId = getRecipeNameFromId
         )
-//        AddGroceryDialog(
-//            onDismissRequest = { showAddGroceryDialog = false },
-//            onConfirm = { newItem ->
-//                groceryViewModel.addToGroceries(
-//                    newItem,
-//                    selectedCategoryId
-//                )
-//            },
-//            focusRequester = addGroceryFocusRequester
-//        )
+    }
+
+    if (showAddFromRecipeDialog) {
+        SelectRecipeBottomSheet(
+            onDismissRequest = { showAddFromRecipeDialog = false },
+            allRecipes = allRecipes,
+            activeRecipes = activeRecipes,
+            onClickRecipe = { recipeId ->
+                showAddFromRecipeDialog = false
+                Toast.makeText(context, "Chose recipe ${allRecipes.fastFirst {it.id == recipeId}.name}", Toast.LENGTH_SHORT).show()
+            }
+        )
+//        SelectRecipeDialog
     }
 
 //    var tempGroupingOption by remember { mutableStateOf(groceryViewModel.selectedGroupingOption) }
@@ -261,16 +409,35 @@ fun GroceryScreen(
             }
         }
     }
+
+    if (assignRecipeToSelectedGroceriesDialogActive && selectedCategory != null) {
+        SelectRecipeBottomSheet(
+            onDismissRequest = { assignRecipeToSelectedGroceriesDialogActive = false },
+            onClickRecipe = { recipeId ->
+                val items = selectedCategory.items
+                selectedGroceryItems.forEach { itemId ->
+                    val result = items.fastFirstOrNull { it.id == itemId }
+                    if (result != null)
+                        result.recipeId = recipeId
+                }
+                assignRecipeToSelectedGroceriesDialogActive = false
+            },
+            allRecipes = allRecipes,
+            activeRecipes = activeRecipes
+        )
+    }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun GroceryGridScreen(
     allCategories: List<GroceryItemCategory>,
     category: GroceryItemCategory,
+    allRecipes: List<Recipe>,
     onChangeSelectedCategoryId: (UUID) -> Unit,
     onRemoveFromGroceries: (itemIndex: Int) -> Unit,
     onAddToGroceries: (GroceryItem) -> Unit,
+    onMoveItemsToCategory: (items: List<UUID>, fromCategoryId: UUID, toCategoryId: UUID) -> Unit,
     onAddCategory: (GroceryItemCategory) -> Unit,
     onRemoveCategory: (id: UUID) -> Unit,
     onChangeCategoryName: (String, id: UUID) -> Unit,
@@ -278,20 +445,42 @@ fun GroceryGridScreen(
     groupingOption: GroceryGroupingOption,
     getRecipeNameFromId: (UUID) -> String,
     snackbarHostState: SnackbarHostState,
+    selectedGroceryItems: List<UUID>,
+    onAddToSelection: (UUID) -> Unit,
+    onRemoveFromSelection: (UUID) -> Unit,
+    onClearSelection: () -> Unit,
+    scaffoldState: BottomSheetScaffoldState,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    var editingItemIndex: Int? by remember { mutableStateOf(null) }
-    var showEditGroceryDialog by remember { mutableStateOf(false) }
 
     var showCategoriesDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val deletedGroceryItems = remember { mutableStateListOf<GroceryItem>() }
 
-        Column (
-            modifier = modifier.fillMaxSize()
+    val selectionModeActive = selectedGroceryItems.isNotEmpty()
+    
+//    val peekHeight by animateDpAsState(targetValue = if(selectedGroceryItems.size == 1) 200.dp else 150.dp)
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetContent = {
+            EditGroceriesBottomSheet(
+                category = category,
+                allCategories = allCategories,
+                allRecipes = allRecipes,
+                onFinishAction = onClearSelection,
+                editingGroceryItems = selectedGroceryItems,
+                onMoveItemsToCategory = onMoveItemsToCategory
+            )
+        },
+//        sheetPeekHeight = 180.dp + 20.dp,
+    ) {
+        Column(
+            modifier = modifier.fillMaxSize().clickable(enabled = selectionModeActive, interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                onClearSelection()
+            }
         ) {
             CategoriesConnectedButtons(
                 allCategories = allCategories,
@@ -325,7 +514,7 @@ fun GroceryGridScreen(
 
                     val groupNames: MutableList<String> = mutableListOf()
                     val groups: MutableList<List<GroceryItem>> = mutableListOf()
-                    when(groupingOption) {
+                    when (groupingOption) {
                         GroceryGroupingOption.None -> {
                             groupNames.add("")
                             groups.add(allItems)
@@ -334,7 +523,9 @@ fun GroceryGridScreen(
                         GroceryGroupingOption.Recipe -> {
                             val recipeGroups = allItems.groupBy { it.recipeId }
                             groupNames.addAll(recipeGroups.keys.map { recipeId ->
-                                if (recipeId != null) getRecipeNameFromId(recipeId) else context.getString(R.string.no_recipe)
+                                if (recipeId != null) getRecipeNameFromId(recipeId) else context.getString(
+                                    R.string.no_recipe
+                                )
                             })
                             groups.addAll(recipeGroups.values)
                         }
@@ -351,51 +542,65 @@ fun GroceryGridScreen(
                     }
 
                     groups.forEachIndexed { index, groceryItems ->
-                        val isLast = index == groups.size-1
+                        val isLast = index == groups.size - 1
                         val isDeletedItems = showDeletedItems && isLast
 
 //                        val customKey: String = "${groupNames[index]}$index"
 
                         if (index > 0 || groupingOption != GroceryGroupingOption.None) {
-                            item (span = { GridItemSpan(maxLineSpan) }, key = groupNames[index]) {
-                                Text(groupNames[index], style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.padding(start = 10.dp).animateItem())
-                            }
+                            gridGroupTitle(
+                                title = groupNames[index],
+                                key = groupNames[index],
+                                animate = true
+                            )
                         }
-                        items(groceryItems, key = { groceryItem -> groceryItem.id }) { groceryItem ->
+                        items(
+                            groceryItems,
+                            key = { groceryItem -> groceryItem.id }) { groceryItem ->
                             GroceryItemDisplay(
                                 item = groceryItem,
                                 onClick = {
-                                    if (isDeletedItems) {
-                                        deletedGroceryItems.remove(groceryItem)
-                                        onAddToGroceries(groceryItem)
+                                    if (selectionModeActive) {
+                                        if (selectedGroceryItems.contains(groceryItem.id))
+                                            onRemoveFromSelection(groceryItem.id)
+                                        else
+                                            onAddToSelection(groceryItem.id)
                                     } else {
-                                        onRemoveFromGroceries(allItems.indexOf(groceryItem))
-                                        deletedGroceryItems.add(groceryItem)
+                                        if (isDeletedItems) {
+                                            deletedGroceryItems.remove(groceryItem)
+                                            onAddToGroceries(groceryItem)
+                                        } else {
+                                            onRemoveFromGroceries(allItems.indexOf(groceryItem))
+                                            deletedGroceryItems.add(groceryItem)
+                                        }
                                     }
                                 },
                                 onLongClick = {
-                                    if (!isDeletedItems) {
-                                        editingItemIndex = allItems.indexOf(groceryItem)
-                                        showEditGroceryDialog = true
+                                    if (!isDeletedItems && !selectionModeActive) {
+                                        onAddToSelection(groceryItem.id)
                                     }
                                 },
-                                itemColor = if (isDeletedItems) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f) else MaterialTheme.colorScheme.primary,
-                                textColor = if (isDeletedItems) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onPrimary,
                                 getRecipeNameFromId = getRecipeNameFromId,
                                 showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
+                                deleted = isDeletedItems,
+                                isSelected = selectedGroceryItems.contains(groceryItem.id),
+                                showSelection = selectionModeActive,
                                 modifier = Modifier.animateItem()
                             )
                         }
 
                         if (!isLast) {
-                            item (span = { GridItemSpan(maxLineSpan) }) {
-                                Spacer(modifier = Modifier.height(20.dp))
-                            }
+                            gridSpacer(20.dp)
+//                            item(span = { GridItemSpan(maxLineSpan) }) {
+//                                Spacer(modifier = Modifier.height(20.dp))
+//                            }
                         }
                     }
                 }
             }
+
         }
+    }
     if (showCategoriesDialog) {
         CategoriesDialog(
             allCategories = allCategories,
@@ -423,123 +628,23 @@ fun GroceryGridScreen(
         )
     }
 
-    val editGroceryFocusRequester = remember { FocusRequester() }
-    if (showEditGroceryDialog) {
-        AddGroceryDialog(
-            title = stringResource(R.string.edit_grocery),
-            onDismissRequest = { showEditGroceryDialog = false },
-            onConfirm = { newItem ->
-                onRemoveFromGroceries(editingItemIndex!!)
-                onAddToGroceries(newItem)
-                showEditGroceryDialog = false
-            },
-            imeActionDone = true,
-            focusRequester = editGroceryFocusRequester,
-            startValue = category.items[editingItemIndex!!].name,
-            startDetails = category.items[editingItemIndex!!].details,
-        )
-    }
+//    val editGroceryFocusRequester = remember { FocusRequester() }
+//    if (showEditGroceryDialog) {
+//        AddGroceryDialog(
+//            title = stringResource(R.string.edit_grocery),
+//            onDismissRequest = { showEditGroceryDialog = false },
+//            onConfirm = { newItem ->
+//                onRemoveFromGroceries(editingItemIndex!!)
+//                onAddToGroceries(newItem)
+//                showEditGroceryDialog = false
+//            },
+//            imeActionDone = true,
+//            focusRequester = editGroceryFocusRequester,
+//            startValue = category.items[editingItemIndex!!].name,
+//            startDetails = category.items[editingItemIndex!!].details,
+//        )
+//    }
 }
-
-@Composable
-fun AddGroceryDialog(
-    onDismissRequest: () -> Unit,
-    focusRequester: FocusRequester,
-    onConfirm: (GroceryItem) -> Unit,
-    focusDetailsOnNext: Boolean = false,
-    allowDismissIfEmpty: Boolean = true,
-    imeActionDone: Boolean = false,
-    title: String = stringResource(R.string.new_grocery),
-    startValue: String = "",
-    startDetails: String = ""
-) {
-    var currentText by remember { mutableStateOf(startValue) }
-    val isError = currentText.isEmpty()
-
-    var currentDetailText by remember { mutableStateOf(startDetails)}
-    val detailFocusRequester = remember { FocusRequester() }
-    val scope = rememberCoroutineScope()
-
-    fun confirm(){
-        onConfirm(GroceryItem(currentText, currentDetailText))
-        currentText = ""
-        currentDetailText = ""
-    }
-    var focusManager = LocalFocusManager.current
-
-    DefaultDialog(
-        title = title,
-        onDismissRequest = {
-            if (currentText.isEmpty() && allowDismissIfEmpty)
-                onDismissRequest()
-            else {
-                focusManager.clearFocus(true)
-            }
-        },
-        onCancel = {
-            onDismissRequest()
-        },
-        confirmEnabled = !isError,
-        buttons = true,
-        onConfirm = { confirm() }
-    ) {
-        focusManager = LocalFocusManager.current
-        OutlinedTextField(value = currentText, onValueChange = { currentText = it }, modifier = Modifier
-            .width(250.dp)
-            .focusRequester(focusRequester), shape = RoundedCornerShape(20), placeholder = { Text(stringResource(id = R.string.name)) }, keyboardOptions = KeyboardOptions.Default.copy(imeAction = if (imeActionDone) ImeAction.Done else ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = {
-                if (focusDetailsOnNext) {
-                    detailFocusRequester.requestFocus()
-                } else {
-                    confirm()
-                }
-            }, onDone = {
-                confirm()
-            })
-        )
-        val interactionSource = remember { MutableInteractionSource() }
-        val detailColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-        val detailPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-
-        BasicTextField(
-            value = currentDetailText,
-            onValueChange = { currentDetailText = it },
-            modifier = Modifier
-                .width(250.dp)
-                .height(40.dp)
-                .focusRequester(detailFocusRequester),
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                if (!isError) {
-                    confirm()
-                    scope.launch {
-                        focusRequester.requestFocus()
-                    }
-                }
-            }),
-            textStyle = TextStyle.Default.copy(color = detailColor),
-            cursorBrush = SolidColor(detailColor),
-            decorationBox = { innerTextField ->
-            TextFieldDefaults.DecorationBox(
-                value = currentDetailText,
-                innerTextField = innerTextField,
-                enabled = true,
-                singleLine = true,
-                visualTransformation = VisualTransformation.None,
-                interactionSource = interactionSource,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
-                colors = TextFieldDefaults.colors().copy(
-                    unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f), focusedContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                    unfocusedPlaceholderColor = detailPlaceholderColor, focusedPlaceholderColor = detailPlaceholderColor,
-                ),
-                shape = RoundedCornerShape(20),
-                placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, style = MaterialTheme.typography.bodyMedium) }
-            )
-        })
-    }
-}
-
 
 @Preview(showBackground = true)
 @Composable
@@ -555,8 +660,11 @@ fun GroceryScreenPreview() {
         val default2Id = groceryViewModel.addCategory("Default 2")
         groceryViewModel.addToGroceries(GroceryItem("Dosentomaten",""), default2Id)
         groceryViewModel.addToGroceries(GroceryItem("Milch",""), default2Id)
+
+        groceryViewModel.initializeEmpty()
+        groceryViewModel.changeSelectedCategoryId(defaultId)
     }
-    groceryViewModel.initializeEmpty()
+
 
     FoodTheme {
         GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf())

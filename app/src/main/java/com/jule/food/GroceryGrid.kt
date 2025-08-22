@@ -7,6 +7,7 @@ import androidx.compose.animation.core.copy
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,10 +91,7 @@ fun GroceryGrid(
     center: Boolean = false,
     minSize: Dp = 100.dp,
     contentPadding: PaddingValues = PaddingValues(),
-    showRecipeName: Boolean,
-    itemColor: Color = MaterialTheme.colorScheme.primary,
-    textColor: Color = MaterialTheme.colorScheme.onPrimary,
-    detailTextColor: Color = textColor.copy(alpha = 0.6f)
+    showRecipeName: Boolean
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize),
@@ -109,9 +107,6 @@ fun GroceryGrid(
                 onClick = { onClickItem(index) },
                 onLongClick = { onLongClickItem(index) },
                 getRecipeNameFromId = getRecipeNameFromId,
-                itemColor = itemColor,
-                textColor = textColor,
-                detailTextColor = detailTextColor,
                 center = center,
                 showRecipeName = showRecipeName,
                 modifier = Modifier.animateItem()
@@ -128,15 +123,25 @@ fun GroceryItemDisplay(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     center: Boolean = false,
-    itemColor: Color = MaterialTheme.colorScheme.primary,
-//    itemBrush: Brush ? = null,
-    textColor: Color = MaterialTheme.colorScheme.onPrimary,
-    detailTextColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+//    itemColor: Color = MaterialTheme.colorScheme.primary,
+////    itemBrush: Brush ? = null,
+//    textColor: Color = MaterialTheme.colorScheme.onPrimary,
+//    detailTextColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
     showRecipeName: Boolean = true,
+    showSelection: Boolean = false,
+    isSelected: Boolean = false,
+    deleted: Boolean = false,
     getRecipeNameFromId: ((UUID) -> String)? = null
 ) {
-//    val mainColor = getMainColors(darkTheme)[colorIndex]
-//    val accentColor = getAccentColors(darkTheme)[colorIndex]
+    val itemColor = if (!showSelection) {
+        if (!deleted) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
+    } else {
+        if (isSelected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
+    }
+    val textColor = MaterialTheme.colorScheme.contentColorFor(itemColor)
+    val detailTextColor = textColor.copy(alpha = 0.6f)
 
     val prim1 = lerp(itemColor, Color.White, 0.1f)
     val prim2 = lerp(itemColor, Color.White, 0.3f)
@@ -200,6 +205,12 @@ fun GroceryItemDisplay(
                 }
             }
         }
+        if (showSelection) {
+            Surface(color = Color.Black.copy(alpha = if (isSelected) 0.3f else 0f), shape = RoundedCornerShape(20), border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)), modifier = Modifier.size(20.dp)) {
+                if (isSelected)
+                    Icon(painter = painterResource(R.drawable.done), tint = Color.White, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 
@@ -220,7 +231,7 @@ fun GroceryItemPreview() {
                     .size(140.dp)
                     .padding(10.dp)
             ) {
-                GroceryItemDisplay(item = items[0], onClick = { }, onLongClick = {}, getRecipeNameFromId = { it.toString() })
+                GroceryItemDisplay(item = items[0], onClick = { }, onLongClick = {}, getRecipeNameFromId = { it.toString() }, showSelection = true,isSelected = true)
             }
             Box(
                 modifier = Modifier

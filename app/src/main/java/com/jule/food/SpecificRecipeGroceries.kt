@@ -180,35 +180,22 @@ fun SpecificRecipeGroceries(
                 ) {
                     itemsIndexed(items = recipe.groceries.sortedBy { it.name }, key = { _, item -> item.id }) {index, groceryItem ->
                         val isSelected = selectedItems.contains(groceryItem)
-                        val textColor by animateColorAsState(targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground)
 
-                        val itemColor by animateColorAsState(targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-                        val detailTextColor = textColor.copy(alpha = 0.6f)
-
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            GroceryItemDisplay(
-                                item = groceryItem,
-                                onClick = {
-                                    if (isSelected) {
-                                        selectedItems.remove(groceryItem)
-                                    } else {
-                                        selectedItems.add(groceryItem)
-                                    }
-                                },
-                                onLongClick = { },
-                                itemColor = itemColor,
-//                                itemColor = itemColor,
-                                textColor = textColor,
-                                detailTextColor = detailTextColor,
-                                center = true,
-                                modifier = Modifier.animateItem()
-                            )
-                            Surface(color = Color.Black.copy(alpha = if (isSelected) 0.3f else 0f), shape = RoundedCornerShape(20), border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)), modifier = Modifier.size(20.dp)) {
-                                if (isSelected)
-                                    Icon(painter = painterResource(R.drawable.done), tint = Color.White, contentDescription = null, modifier = Modifier.size(20.dp))
-                            }
-//                            Checkbox(checked = selectedItems.contains(groceryItem), onCheckedChange = {}, enabled = false, modifier = Modifier.offset(x = -15.dp, y = -15.dp).padding(0.dp))
-                        }
+                        GroceryItemDisplay(
+                            item = groceryItem,
+                            onClick = {
+                                if (isSelected) {
+                                    selectedItems.remove(groceryItem)
+                                } else {
+                                    selectedItems.add(groceryItem)
+                                }
+                            },
+                            onLongClick = { },
+                            center = true,
+                            modifier = Modifier.animateItem(),
+                            showSelection = true,
+                            isSelected = isSelected
+                        )
                     }
                 }
             }
