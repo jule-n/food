@@ -35,7 +35,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ButtonDefaults
@@ -101,29 +104,27 @@ fun AddGroceryBottomSheet(
     startValue: String = "",
     startDetails: String = ""
 ) {
-    var currentText by remember { mutableStateOf(startValue) }
-    val isError = currentText.isEmpty()
+    val groceryNameState = rememberTextFieldState("")
+    val groceryDetailState = rememberTextFieldState("")
 
-    var currentDetailText by remember { mutableStateOf(startDetails) }
     var selectedRecipeId: UUID? by remember { mutableStateOf(null) }
-    val detailFocusRequester = remember { FocusRequester() }
 
     var recipeActive by remember { mutableStateOf(false) }
     var showRecipeDialog by remember { mutableStateOf(false) }
 
+    val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+
     fun confirm(){
         val recipeId = if (recipeActive) selectedRecipeId!! else null
-        val newGroceryItem = GroceryItem(currentText, currentDetailText, recipeId)
+        val newGroceryItem = GroceryItem(groceryNameState.text.toString().trim(), groceryDetailState.text.toString().trim(), recipeId)
         onConfirm(newGroceryItem)
 
-        currentText = ""
-        currentDetailText = ""
-        recipeActive = false
+        groceryNameState.clearText()
+        groceryDetailState.clearText()
+//        recipeActive = false
     }
 
     val interactionSource = remember { MutableInteractionSource() }
-    val detailColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-    val detailPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
     ModalBottomSheet (
         onDismissRequest = onDismissRequest,
@@ -137,44 +138,12 @@ fun AddGroceryBottomSheet(
                     focusManager.clearFocus(true)
                 }
         ) {
-            BasicTextFieldWithBox(
-                value = currentText,
-                onValueChange = { currentText = it },
-                placeholder = { Text("New Grocery...", maxLines = 1, color = detailPlaceholderColor, style = MaterialTheme.typography.titleMedium) },
-                textStyle = MaterialTheme.typography.titleMedium,
-                contentPadding = PaddingValues(15.dp),
-                maxLines = 1,
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (currentText.isNotEmpty()) {
-                        confirm()
-                    }
-                }),
-//                colors = TextFieldDefaults.colors().copy(
-//                    unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
-//                    unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface
-//                ),
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+            GroceryBottomSheetInputs(
+                groceryNameState = groceryNameState,
+                groceryDetailState = groceryDetailState,
+                focusRequester = focusRequester,
+                onConfirm = { confirm() }
             )
-            Spacer(Modifier.height(5.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 10.dp)
-            ) {
-                Icon(painterResource(R.drawable.text), contentDescription = null, tint = if (currentDetailText.isEmpty()) detailPlaceholderColor else MaterialTheme.colorScheme.onBackground)
-                Spacer(Modifier.width(5.dp))
-                BasicTextFieldWithBox(
-                    value = currentDetailText,
-                    onValueChange = { currentDetailText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 5.dp)
-                        .focusRequester(detailFocusRequester),
-                    maxLines = 1,
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, color = detailPlaceholderColor, style = MaterialTheme.typography.bodyMedium) }
-                )
-            }
             Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.padding(start = 10.dp)
@@ -183,7 +152,7 @@ fun AddGroceryBottomSheet(
                     text = if (recipeActive) getRecipeNameFromId(selectedRecipeId!!) else "No Recipe",
                     icon = R.drawable.book,
                     isActive = recipeActive,
-                    inactiveColor = detailPlaceholderColor,
+                    inactiveColor = placeholderColor,
                     onClick = { showRecipeDialog = true },
                     onClear = { recipeActive = false }
                 )
@@ -192,34 +161,29 @@ fun AddGroceryBottomSheet(
                     text = "No Location",
                     icon = R.drawable.location,
                     isActive = false,
-                    inactiveColor = detailPlaceholderColor,
+                    inactiveColor = placeholderColor,
                     onClick = { },
                     onClear = { }
                 )
                 Spacer(Modifier.weight(1f))
                 TextButton(
-                    onClick = { confirm() }
+                    onClick = { confirm() },
+                    enabled = groceryNameState.text.isNotEmpty(),
                 ) {
                     Text(stringResource(R.string.save))
                 }
             }
-//            }
-
-        }
-
-        if (showRecipeDialog) {
-            SelectRecipeBottomSheet(
-                onDismissRequest = { showRecipeDialog = false },
-                onClickRecipe = { recipeId ->
-                    selectedRecipeId = recipeId
-                    showRecipeDialog = false
-                },
-                allRecipes = allRecipes,
-                activeRecipes = activeRecipes
-            )
+            AnimatedVisibility (showRecipeDialog) {
+                SelectRecipeGrid(
+                    recipes = allRecipes,
+                    onClickRecipe = { recipeId ->
+                        selectedRecipeId = recipeId
+                        showRecipeDialog = false
+                    }
+                )
+            }
         }
     }
-
 }
 
 @Composable
@@ -256,6 +220,57 @@ fun GroceryBottomSheetSelectionField(
                 Spacer(Modifier.width(10.dp))
             }
         }
+    }
+}
+
+@Composable
+fun GroceryBottomSheetInputs(
+    groceryNameState: TextFieldState,
+    groceryDetailState: TextFieldState,
+    focusRequester: FocusRequester,
+    onConfirm: () -> Unit,
+    placeholderColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+) {
+    val detailFocusRequester = remember { FocusRequester() }
+
+    BasicTextFieldWithBox(
+        state = groceryNameState,
+        placeholder = { Text("New Grocery...", maxLines = 1, color = placeholderColor, style = MaterialTheme.typography.titleMedium) },
+        textStyle = MaterialTheme.typography.titleMedium,
+        contentPadding = PaddingValues(15.dp),
+        lineLimits = TextFieldLineLimits.SingleLine,
+        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+        onKeyboardAction = KeyboardActionHandler {
+            if (groceryNameState.text.isNotEmpty()) {
+                onConfirm()
+            }
+        },
+        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+    )
+    Spacer(Modifier.height(5.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 10.dp)
+    ) {
+        Icon(painterResource(R.drawable.text), contentDescription = null, tint = if (groceryDetailState.text.isEmpty()) placeholderColor else MaterialTheme.colorScheme.onBackground)
+        Spacer(Modifier.width(5.dp))
+        BasicTextFieldWithBox(
+            state = groceryDetailState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 5.dp)
+                .focusRequester(detailFocusRequester),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+            onKeyboardAction = KeyboardActionHandler {
+                if (groceryNameState.text.isNotEmpty()) {
+                    onConfirm()
+                    focusRequester.requestFocus()
+                }
+            },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            placeholder = { Text(stringResource(id = R.string.details), maxLines = 1, color = placeholderColor, style = MaterialTheme.typography.bodyMedium) }
+        )
     }
 }
 

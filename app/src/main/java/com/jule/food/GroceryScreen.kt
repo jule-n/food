@@ -39,11 +39,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ButtonDefaults
@@ -72,6 +75,7 @@ import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -308,6 +312,9 @@ fun GroceryScreen(
                     onAddToGroceries = { newItem ->
                         groceryViewModel.addToGroceries(newItem, selectedCategoryId!!)
                     },
+                    onChangeItemNameDetails = { id, name, details ->
+                        groceryViewModel.changeGroceryItem(id, name, details, selectedCategoryId!!)
+                    },
                     onAddCategory = { newCategory ->
                         groceryViewModel.addCategory(newCategory)
                     },
@@ -440,6 +447,7 @@ fun GroceryGridScreen(
     onChangeSelectedCategoryId: (UUID) -> Unit,
     onRemoveFromGroceries: (itemIndex: Int) -> Unit,
     onAddToGroceries: (GroceryItem) -> Unit,
+    onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit,
     onMoveItemsToCategory: (items: List<UUID>, fromCategoryId: UUID, toCategoryId: UUID) -> Unit,
     onAddCategory: (GroceryItemCategory) -> Unit,
     onRemoveCategory: (id: UUID) -> Unit,
@@ -463,21 +471,49 @@ fun GroceryGridScreen(
     val deletedGroceryItems = remember { mutableStateListOf<GroceryItem>() }
 
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
-    
-//    val peekHeight by animateDpAsState(targetValue = if(selectedGroceryItems.size == 1) 200.dp else 150.dp)
+    val singleSelection = selectedGroceryItems.size == 1
+
+    val editGroceryNameState = rememberTextFieldState("")
+    val editGroceryDetailState = rememberTextFieldState("")
+
+    LaunchedEffect(singleSelection) {
+        if (singleSelection) {
+            val item = category.items.fastFirstOrNull { item -> item.id == selectedGroceryItems[0] }
+            if (item != null) {
+                editGroceryNameState.setTextAndPlaceCursorAtEnd(item.name)
+                editGroceryDetailState.setTextAndPlaceCursorAtEnd(item.details)
+            }
+        }
+    }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetContent = {
-            EditGroceriesBottomSheet(
+            EditGroceriesBottomSheetContent(
                 category = category,
                 allCategories = allCategories,
                 allRecipes = allRecipes,
                 onFinishAction = onClearSelection,
                 editingGroceryItems = selectedGroceryItems,
-                onMoveItemsToCategory = onMoveItemsToCategory
+                onMoveItemsToCategory = onMoveItemsToCategory,
+                onChangeItemNameDetails = onChangeItemNameDetails,
+                groceryNameState = editGroceryNameState,
+                groceryDetailState = editGroceryDetailState
             )
         },
+        sheetDragHandle = {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
+                TextButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
+                    if (singleSelection) {
+                        onChangeItemNameDetails(selectedGroceryItems[0], editGroceryNameState.text.toString().trim(), editGroceryDetailState.text.toString().trim())
+                    }
+                    onClearSelection()
+                }) {
+                    Text(stringResource(R.string.done))
+                }
+            }
+        }
 //        sheetPeekHeight = 180.dp + 20.dp,
     ) {
         Column(

@@ -195,6 +195,12 @@ class GroceryViewModel: ViewModel() {
     fun removeFromGroceries(index: Int, categoryId: UUID) {
         _groceryItemCategories.fastFirst { it.id == categoryId }.items.removeAt(index)
     }
+    fun changeGroceryItem(id: UUID, newName: String, newDetails: String, categoryId: UUID) {
+        val category = _groceryItemCategories.fastFirst { it.id == categoryId }
+        val item = category.items.fastFirst { it.id == id }
+        item.name = newName
+        item.details = newDetails
+    }
     fun moveItemsToCategory(itemIds: List<UUID>, fromCategoryId: UUID, toCategoryId: UUID) {
         val fromCategory = _groceryItemCategories.fastFirst { it.id == fromCategoryId }
         val toCategory = _groceryItemCategories.fastFirst { it.id == toCategoryId }

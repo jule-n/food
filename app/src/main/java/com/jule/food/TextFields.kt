@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,15 +78,12 @@ fun BasicOutlinedTextField(
 @Composable
 fun BasicTextFieldWithBox(
     modifier: Modifier = Modifier,
-    value: String,
-    onValueChange: (String) -> Unit,
+    state: TextFieldState,
     enabled: Boolean = true,
     textStyle: TextStyle = TextStyle.Default,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    singleLine: Boolean = true,
-    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
-    minLines: Int = 1,
+    onKeyboardAction: KeyboardActionHandler? = null,
+    lineLimits: TextFieldLineLimits,
     placeholder: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
     colors: TextFieldColors = TextFieldDefaults.colors().copy(
@@ -95,29 +96,27 @@ fun BasicTextFieldWithBox(
     val interactionSource = remember { MutableInteractionSource() }
 
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = singleLine,
-        maxLines = maxLines,
-        minLines = minLines,
+        state = state,
+        lineLimits = lineLimits,
         textStyle = textStyle,
         modifier = modifier,
         enabled = enabled,
         keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions
-    ) {
-        TextFieldDefaults.DecorationBox(
-            value = value,
-            innerTextField = it,
-            enabled = enabled,
-            singleLine = singleLine,
-            visualTransformation = VisualTransformation.None,
-            interactionSource = interactionSource,
-            trailingIcon = trailingIcon,
-            placeholder = placeholder,
-            contentPadding = contentPadding,
-            colors = colors,
-            shape = shape
-        )
-    }
+        onKeyboardAction = onKeyboardAction,
+        decorator = { innerTextField ->
+            TextFieldDefaults.DecorationBox(
+                value = state.text.toString(),
+                innerTextField = innerTextField,
+                enabled = enabled,
+                singleLine = lineLimits == TextFieldLineLimits.SingleLine,
+                visualTransformation = VisualTransformation.None,
+                interactionSource = interactionSource,
+                trailingIcon = trailingIcon,
+                placeholder = placeholder,
+                colors = colors,
+                contentPadding = contentPadding,
+                shape = shape
+            )
+        }
+    )
 }
