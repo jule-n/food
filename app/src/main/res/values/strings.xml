@@ -92,4 +92,5 @@
     <string name="active_recipes">Active recipes</string>
     <string name="all_recipes">All recipes</string>
     <string name="added_n_groceries">Added %d groceries to %s</string>
+    <string name="select_recipe">Select recipe</string>
 </resources>

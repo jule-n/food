@@ -103,6 +103,12 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier,
         bottomBar = bottomBar,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(stringResource(R.string.settings), textAlign = TextAlign.Center) },
+                navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.size(50.dp)) { Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = "Back") } }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         val isImportingFile = importingFile != null
@@ -116,10 +122,6 @@ fun SettingsScreen(
         }
 
         Column(modifier = Modifier.padding(innerPadding), verticalArrangement = Arrangement.spacedBy(15.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            CenterAlignedTopAppBar(
-                title = { Text(stringResource(R.string.settings), textAlign = TextAlign.Center) },
-                navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.size(50.dp)) { Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = "Back") } }
-            )
             SettingsScreenCategory(name = stringResource(R.string.appearance)) {
                 SelectTheme(currentThemeSetting = themeSetting, onChangeTheme = onChangeTheme, darkTheme = darkTheme)
                 SelectColor(currentColorSetting = colorSetting, onChangeColor = onChangeColor, darkTheme = darkTheme, dynamicTheme = dynamicTheme)

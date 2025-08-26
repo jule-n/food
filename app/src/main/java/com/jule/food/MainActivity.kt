@@ -171,10 +171,7 @@ class MainActivity : AppCompatActivity() {
                         },
                         groceryCategories = groceryViewModel.groceryItemCategories,
                         addToGroceries = { groceries, categoryId, recipeId ->
-                            val category = groceryViewModel.groceryItemCategories.fastFirstOrNull { it.id == categoryId }
-                            val categoryName = category?.name ?: "NOT FOUND"
-                            Toast.makeText(context, context.getString(R.string.added_n_groceries, groceries.size, categoryName), Toast.LENGTH_SHORT).show()
-                            groceryViewModel.addToGroceries(groceries, categoryId, recipeId)
+                            groceryViewModel.addToGroceries(groceries, categoryId, recipeId, context)
                         },
                         onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }
                     )

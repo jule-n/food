@@ -119,87 +119,18 @@ fun SpecificRecipeGroceries(
         }
     }
     if (showGroceryAddDialog) {
-        val selectedItems = remember { recipe.groceries.toMutableStateList() }
-        var chosenCategoryIndex: Int by remember { mutableIntStateOf(0) }
-
-        DefaultDialog(
-            title = stringResource(R.string.add_groceries_to_cart),
+        AddGroceriesFromRecipeDialog(
             onDismissRequest = { showGroceryAddDialog = false },
-            buttons = true,
-            onConfirm = {
-                showGroceryAddDialog = false
-                addToGroceries(selectedItems, groceryCategories[chosenCategoryIndex].id)
-//                addToGroceries(selectedItems)
-//                showGroceryAddDialog = false
-            }
-        ) {
-            LaunchedEffect(chosenCategoryIndex) {
-                Log.d("Groceries", "Chosen category: $chosenCategoryIndex")
-            }
-            SettingsScreenCategory(
-                name = stringResource(R.string.category)
-            ) {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    itemsIndexed(groceryCategories) { index, category ->
-                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
-                        Surface(
-                            onClick = { chosenCategoryIndex = index },
-                            enabled = true,
-                            color = color,
-//                            color = if (chosenCategoryIndex == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(20)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(
-                                    start = 10.dp,
-                                    top = 5.dp,
-                                    bottom = 5.dp
-                                ).fillMaxWidth().height(40.dp)
-                            ) {
-                                Text(
-                                    text = category.name,
-                                    textAlign = TextAlign.Left,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
+            recipe = recipe,
+            groceryCategories = groceryCategories,
+            includeCategoryChoice = true,
+            onConfirm = { groceries, categoryId ->
+                if (categoryId != null) {
+                    addToGroceries(groceries, categoryId)
+                    showGroceryAddDialog = false
                 }
             }
-            SettingsScreenCategory(
-                name = stringResource(R.string.groceries)
-            ) {
-
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(70.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    itemsIndexed(items = recipe.groceries.sortedBy { it.name }, key = { _, item -> item.id }) {index, groceryItem ->
-                        val isSelected = selectedItems.contains(groceryItem)
-
-                        GroceryItemDisplay(
-                            item = groceryItem,
-                            onClick = {
-                                if (isSelected) {
-                                    selectedItems.remove(groceryItem)
-                                } else {
-                                    selectedItems.add(groceryItem)
-                                }
-                            },
-                            onLongClick = { },
-                            center = true,
-                            modifier = Modifier.animateItem(),
-                            showSelection = true,
-                            isSelected = isSelected
-                        )
-                    }
-                }
-            }
-        }
+        )
     }
 }
 

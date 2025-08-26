@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,8 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +89,7 @@ fun BasicTextFieldWithBox(
     lineLimits: TextFieldLineLimits,
     placeholder: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    textColor: Color = MaterialTheme.colorScheme.onBackground,
     colors: TextFieldColors = TextFieldDefaults.colors().copy(
         unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
         unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent
@@ -98,7 +102,8 @@ fun BasicTextFieldWithBox(
     BasicTextField(
         state = state,
         lineLimits = lineLimits,
-        textStyle = textStyle,
+        textStyle = textStyle.copy(color = textColor),
+        cursorBrush = SolidColor(textColor),
         modifier = modifier,
         enabled = enabled,
         keyboardOptions = keyboardOptions,

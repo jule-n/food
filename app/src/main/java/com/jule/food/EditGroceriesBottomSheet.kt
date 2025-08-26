@@ -67,47 +67,57 @@ fun EditGroceriesBottomSheetContent(
     groceryNameState: TextFieldState,
     groceryDetailState: TextFieldState,
     onFinishAction: () -> Unit,
-    onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit,
+    onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit
 ) {
     val singleItem = editingGroceryItems.size == 1
-    var selectRecipeDialogActive by remember { mutableStateOf(false) }
+    var showRecipeSelection by remember { mutableStateOf(false) }
     var selectCategoryDialogActive by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
 
     val focusManager = LocalFocusManager.current
 
-
-    Column(
-        verticalArrangement = Arrangement.Center,
-        modifier = modifier
-    ) {
-        AnimatedVisibility (singleItem, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-
-            Column {
-                GroceryBottomSheetInputs(
-                    groceryNameState = groceryNameState,
-                    groceryDetailState = groceryDetailState,
-                    focusRequester = focusRequester,
-                    onConfirm = {
-                        if (singleItem) {
-                            onChangeItemNameDetails(editingGroceryItems[0], groceryNameState.text.toString().trim(), groceryDetailState.text.toString().trim())
-                            focusManager.clearFocus(true)
-                        }
-                    }
-                )
-                Spacer(Modifier.height(20.dp))
+    GroceryBottomSheetContentWithRecipeSelection(
+        modifier = modifier,
+        showRecipeSelection = showRecipeSelection,
+        onExitRecipeSelection = { showRecipeSelection = false },
+        onSelectRecipe = { recipeId ->
+            category.items.forEach { item ->
+                if (editingGroceryItems.contains(item.id)) {
+                    item.recipeId = recipeId
+                }
             }
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.height(80.dp).padding(start = 10.dp)
+            showRecipeSelection = false
+            onFinishAction()
+        },
+        allRecipes = allRecipes
+    ) {
+        Column(
+            verticalArrangement = Arrangement.Center
         ) {
+            AnimatedVisibility (singleItem, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                Column {
+                    GroceryBottomSheetInputs(
+                        groceryNameState = groceryNameState,
+                        groceryDetailState = groceryDetailState,
+                        focusRequester = focusRequester,
+                        onConfirm = {
+                            if (singleItem) {
+                                onChangeItemNameDetails(editingGroceryItems[0], groceryNameState.text.toString().trim(), groceryDetailState.text.toString().trim())
+                                focusManager.clearFocus(true)
+                            }
+                        }
+                    )
+                    Spacer(Modifier.height(20.dp))
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(80.dp).padding(start = 10.dp)
+            ) {
                 BottomSheetSmallAction(
-                    onClick = {
-                        selectRecipeDialogActive = true
-                    },
+                    onClick = { showRecipeSelection = true },
                     icon = R.drawable.book,
                     label = "Move to recipe"
                 )
@@ -118,21 +128,7 @@ fun EditGroceriesBottomSheetContent(
                     icon = R.drawable.arrow_right_full,
                     label = "Move to category"
                 )
-        }
-
-        AnimatedVisibility(selectRecipeDialogActive) {
-            SelectRecipeGrid(
-                recipes = allRecipes,
-                onClickRecipe = { recipeId ->
-                    category.items.forEach { item ->
-                        if (editingGroceryItems.contains(item.id)) {
-                            item.recipeId = recipeId
-                        }
-                    }
-                    selectRecipeDialogActive = false
-                    onFinishAction()
-                }
-            )
+            }
         }
     }
 

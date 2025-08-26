@@ -149,7 +149,7 @@ class GroceryViewModel: ViewModel() {
         category.items.add(item)
         category.items.sortBy { it.name }
     }
-    fun addToGroceries(items: List<GroceryItem>, categoryId: UUID, recipeId: UUID) {
+    fun addToGroceries(items: List<GroceryItem>, categoryId: UUID, recipeId: UUID, context: Context) {
         val category = _groceryItemCategories.fastFirst { it.id == categoryId }
         items.forEach { item ->
 //            Log.d("AddToGroceries", "Adding ${newItem.name}")
@@ -191,6 +191,8 @@ class GroceryViewModel: ViewModel() {
         }
 
         category.items.sortBy { it.name }
+
+        Toast.makeText(context, context.getString(R.string.added_n_groceries, items.size, category.name), Toast.LENGTH_SHORT).show()
     }
     fun removeFromGroceries(index: Int, categoryId: UUID) {
         _groceryItemCategories.fastFirst { it.id == categoryId }.items.removeAt(index)
@@ -263,7 +265,8 @@ class GroceryViewModel: ViewModel() {
 
     fun initializeEmpty() {
         if (groceryItemCategories.isEmpty()) {
-            addCategory("Default")
+            val id = addCategory("Default")
+            _selectedCategoryId = id
         }
         _dataLoaded = true
     }

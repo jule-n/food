@@ -153,8 +153,6 @@ fun GroceryScreen(
         selectedCategory!!.items.indexOfFirst { item -> item.recipeId == recipe.id } != -1
     }
 
-    var assignRecipeToSelectedGroceriesDialogActive by remember { mutableStateOf(false) }
-
 
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
@@ -271,7 +269,10 @@ fun GroceryScreen(
                                     onDismissRequest = { expanded = false }
                                 ) {
                                     DropdownMenuItem(
-                                        onClick = { showAddFromRecipeDialog = true },
+                                        onClick = {
+                                            showAddFromRecipeDialog = true
+                                            expanded = false
+                                        },
                                         text = { Text("Add from recipe") },
                                         leadingIcon = { Icon(painterResource(R.drawable.book), contentDescription = null)}
                                     )
@@ -369,18 +370,43 @@ fun GroceryScreen(
             getRecipeNameFromId = getRecipeNameFromId
         )
     }
+    val searchRecipesFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(showAddFromRecipeDialog) {
+        if (showAddFromRecipeDialog) {
+            scope.launch {
+                delay(100)
+                searchRecipesFocusRequester.requestFocus()
+            }
+        }
+    }
 
     if (showAddFromRecipeDialog) {
+        var chosenRecipeId: UUID? by remember { mutableStateOf(null) }
+        var showAddGroceriesFromRecipeDialog by remember { mutableStateOf(false) }
+
         SelectRecipeBottomSheet(
             onDismissRequest = { showAddFromRecipeDialog = false },
             allRecipes = allRecipes,
-            activeRecipes = activeRecipes,
-            onClickRecipe = { recipeId ->
-                showAddFromRecipeDialog = false
-                Toast.makeText(context, "Chose recipe ${allRecipes.fastFirst {it.id == recipeId}.name}", Toast.LENGTH_SHORT).show()
-            }
+            onSelectRecipe = { recipeId ->
+                chosenRecipeId = recipeId
+                showAddGroceriesFromRecipeDialog = true
+//                Toast.makeText(context, "Chose recipe ${allRecipes.fastFirst {it.id == recipeId}.name}", Toast.LENGTH_SHORT).show()
+            },
+            searchFocusRequester = searchRecipesFocusRequester
         )
-//        SelectRecipeDialog
+        if (showAddGroceriesFromRecipeDialog && selectedCategoryId != null) {
+            AddGroceriesFromRecipeDialog(
+                onDismissRequest = { showAddGroceriesFromRecipeDialog = false },
+                recipe = allRecipes.fastFirst { it.id == chosenRecipeId },
+                includeCategoryChoice = false,
+                groceryCategories = null,
+                onConfirm = { groceries, _ ->
+                    groceryViewModel.addToGroceries(groceries, selectedCategoryId, chosenRecipeId!!, context)
+                    showAddGroceriesFromRecipeDialog = false
+                    showAddFromRecipeDialog = false
+                }
+            )
+        }
     }
 
 //    var tempGroupingOption by remember { mutableStateOf(groceryViewModel.selectedGroupingOption) }
@@ -418,23 +444,6 @@ fun GroceryScreen(
                 )
             }
         }
-    }
-
-    if (assignRecipeToSelectedGroceriesDialogActive && selectedCategory != null) {
-        SelectRecipeBottomSheet(
-            onDismissRequest = { assignRecipeToSelectedGroceriesDialogActive = false },
-            onClickRecipe = { recipeId ->
-                val items = selectedCategory.items
-                selectedGroceryItems.forEach { itemId ->
-                    val result = items.fastFirstOrNull { it.id == itemId }
-                    if (result != null)
-                        result.recipeId = recipeId
-                }
-                assignRecipeToSelectedGroceriesDialogActive = false
-            },
-            allRecipes = allRecipes,
-            activeRecipes = activeRecipes
-        )
     }
 }
 
