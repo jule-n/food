@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -159,11 +162,40 @@ class RecipeViewModel : ViewModel() {
     private var _tags = mutableStateListOf<Tag>()
     val tags get() = _tags
 
+    private var _selectedTagIds = mutableStateListOf<UUID>()
+    val selectedTagIds get() = _selectedTagIds
+
+    fun addSelectedTagId(id: UUID) {
+        _selectedTagIds.add(id)
+    }
+    fun removeSelectedTagId(id: UUID) {
+        _selectedTagIds.remove(id)
+    }
+
+    private var _isTagSelectionExpanded by mutableStateOf(false)
+    val isTagSelectionExpanded get() = _isTagSelectionExpanded
+    fun changeIsTagSelectionExpanded(newValue: Boolean) {
+        _isTagSelectionExpanded = newValue
+    }
+
+    private var _isSearchBarExpanded by mutableStateOf(false)
+    val isSearchBarExpanded get() = _isSearchBarExpanded
+
+    fun changeIsSearchBarExpanded(newValue: Boolean) {
+        _isSearchBarExpanded = newValue
+    }
+
     private var _selectedRecipeId by mutableStateOf<UUID?>(null)
     val selectedRecipeId get() = _selectedRecipeId
-    fun setSelectedRecipeId(id: UUID?) {
+    fun setSelectedRecipeId(id: UUID, fromSearch: Boolean) {
         _selectedRecipeId = id
+        _lastSelectedRecipeFromSearch = fromSearch
     }
+    fun resetSelectedRecipeId() {
+        _selectedRecipeId = null
+    }
+    private var _lastSelectedRecipeFromSearch by mutableStateOf(false)
+    val lastSelectedRecipeFromSearch get() = _lastSelectedRecipeFromSearch
 
     private var _selectedRecipeImageIndex by mutableStateOf<Int?>(null)
     val selectedRecipeImageIndex get() = _selectedRecipeImageIndex

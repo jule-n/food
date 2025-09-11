@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -41,9 +42,10 @@ fun ExpandableTagSelectionFlowRow(
     onRemoveFromSelectedTagIds: (UUID) -> Unit,
     onAddToSelectedTagIds: (UUID) -> Unit,
     onLongClickTag: (UUID) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var maxLines by remember { mutableIntStateOf(2) }
     Column(
         verticalArrangement = Arrangement.Top,
         modifier = modifier
@@ -51,7 +53,7 @@ fun ExpandableTagSelectionFlowRow(
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            maxLines = maxLines,
+            maxLines = if (expanded) Int.MAX_VALUE else 2,
             modifier = Modifier.padding(horizontal = 10.dp).fillMaxWidth().animateContentSize()
         ) {
             for (tag in tags.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 }) {
@@ -94,9 +96,9 @@ fun ExpandableTagSelectionFlowRow(
         }
         AssistChip(
             onClick = {
-                maxLines = if (maxLines == 2) Int.MAX_VALUE else 2
+                onExpandedChange(!expanded)
             },
-            label = { Text(if (maxLines == 2) "Show more" else "Show less") },
+            label = { Text(if (!expanded) "Show more" else "Show less") },
             modifier = Modifier.padding(horizontal = 10.dp)
         )
     }
@@ -197,6 +199,8 @@ fun ExpandableTagSelectionFlowRowPreview() {
 
     val tags = listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag, kaeseTag2, kaeseTag3)
 
+    var expanded by remember { mutableStateOf(false) }
+
     FoodTheme {
 //        Scaffold() { innerPadding ->
         ExpandableTagSelectionFlowRow(
@@ -205,7 +209,9 @@ fun ExpandableTagSelectionFlowRowPreview() {
             possibleTagIdsToSelect = tags.map { it.id },
             onRemoveFromSelectedTagIds = {},
             onAddToSelectedTagIds = {},
-            onLongClickTag = {}
+            onLongClickTag = {},
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
         )
 //        }
     }

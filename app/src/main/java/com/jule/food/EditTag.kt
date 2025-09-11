@@ -337,7 +337,7 @@ fun EditTagDialog(
                             else
                                 selectedRecipes.add(recipe)
                         },
-                            showImage = false, fallbackBrush = br, minTextSize = 7.sp, maxTextSize = 13.sp
+                            showImage = false, fallbackBrush = br, minTextSize = 7.sp, maxTextSize = 13.sp, isRecipeSearch = false
                         )
                         Surface(color = Color.Black.copy(alpha = if (isSelected) 0.3f else 0f), shape = RoundedCornerShape(20), border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)), modifier = Modifier.size(20.dp)) {
                             if (isSelected)

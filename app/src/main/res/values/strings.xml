@@ -88,9 +88,12 @@
     <string name="recipe">Recipe</string>
     <string name="store_location">Store Location</string>
     <string name="group_by">Group by</string>
-    <string name="no_recipe">No recipe</string>
-    <string name="active_recipes">Active recipes</string>
-    <string name="all_recipes">All recipes</string>
+    <string name="no_recipe">No Recipe</string>
+    <string name="active_recipes">Active Recipes</string>
+    <string name="all_recipes">All Recipes</string>
     <string name="added_n_groceries">Added %d groceries to %s</string>
-    <string name="select_recipe">Select recipe</string>
+    <string name="select_recipe">Select Recipe</string>
+    <string name="n_recipes">%d Recipes</string>
+    <string name="moved_n_groceries_to_category">Moved %d groceries to category %s</string>
+    <string name="select_groceries_from_recipe_info">You may only choose recipes that you have added groceries to.</string>
 </resources>

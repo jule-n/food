@@ -1,5 +1,7 @@
 package com.jule.food
 
+import android.util.Log
+import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -8,7 +10,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,11 +27,13 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -54,11 +61,14 @@ import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import java.util.UUID
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditGroceriesBottomSheetContent(
     modifier: Modifier = Modifier,
+    sheetState: SheetState,
     allCategories: List<GroceryItemCategory>,
     category: GroceryItemCategory,
     allRecipes: List<Recipe>,
@@ -67,15 +77,24 @@ fun EditGroceriesBottomSheetContent(
     groceryNameState: TextFieldState,
     groceryDetailState: TextFieldState,
     onFinishAction: () -> Unit,
-    onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit
+    onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit,
+    getRecipeNameFromId: (UUID) -> String,
 ) {
     val singleItem = editingGroceryItems.size == 1
+    val context = LocalContext.current
     var showRecipeSelection by remember { mutableStateOf(false) }
     var selectCategoryDialogActive by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
 
     val focusManager = LocalFocusManager.current
+
+    val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+
+    LaunchedEffect(groceryNameState.text, groceryDetailState.text) {
+        if (editingGroceryItems.isNotEmpty())
+            onChangeItemNameDetails(editingGroceryItems[0], groceryNameState.text.toString().trim(), groceryDetailState.text.toString().trim())
+    }
 
     GroceryBottomSheetContentWithRecipeSelection(
         modifier = modifier,
@@ -88,14 +107,14 @@ fun EditGroceriesBottomSheetContent(
                 }
             }
             showRecipeSelection = false
-            onFinishAction()
+//            onFinishAction()
         },
         allRecipes = allRecipes
     ) {
         Column(
             verticalArrangement = Arrangement.Center
         ) {
-            AnimatedVisibility (singleItem, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            AnimatedVisibility (singleItem || editingGroceryItems.isEmpty(), enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 Column {
                     GroceryBottomSheetInputs(
                         groceryNameState = groceryNameState,
@@ -111,24 +130,81 @@ fun EditGroceriesBottomSheetContent(
                     Spacer(Modifier.height(20.dp))
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.height(80.dp).padding(start = 10.dp)
+
+            FlowRow(
+                modifier = Modifier.padding(start = 10.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                BottomSheetSmallAction(
-                    onClick = { showRecipeSelection = true },
+                val itemsRecipeIds = if (singleItem) {
+                    val id = category.items.fastFirstOrNull { it.id == editingGroceryItems[0] }?.recipeId
+                    if (id != null)
+                        listOf(id)
+                    else
+                        listOf()
+                } else {
+                    category.items.filter { editingGroceryItems.contains(it.id) }.mapNotNull { it.recipeId }
+                }
+                val displayNames = if (itemsRecipeIds.isEmpty()) null else {
+                    val distinctIdsNumber = itemsRecipeIds.toSet().size
+                    if (distinctIdsNumber == 1) { getRecipeNameFromId(itemsRecipeIds[0]) }
+                    else { stringResource(R.string.n_recipes, distinctIdsNumber) }
+                }
+                GroceryBottomSheetSelectionField(
+                    text = displayNames ?: stringResource(R.string.no_recipe),
                     icon = R.drawable.book,
-                    label = "Move to recipe"
+                    isActive = displayNames != null,
+                    inactiveColor = placeholderColor,
+                    onClick = { showRecipeSelection = true },
+                    onClear = {
+                        editingGroceryItems.forEach { itemId ->
+                            category.items.fastFirstOrNull { it.id == itemId }?.recipeId = null
+                        }
+                    }
                 )
-                BottomSheetSmallAction(
-                    onClick = {
-                        selectCategoryDialogActive = true
-                    },
-                    icon = R.drawable.arrow_right_full,
-                    label = "Move to category"
+                GroceryBottomSheetSelectionField(
+                    text = "No Location",
+                    icon = R.drawable.location,
+                    isActive = false,
+                    inactiveColor = placeholderColor,
+                    onClick = { },
+                    onClear = { }
                 )
+                GroceryBottomSheetSelectionField(
+                    text = category.name,
+                    icon = R.drawable.categories,
+                    isActive = true,
+                    inactiveColor = placeholderColor,
+                    onClick = { selectCategoryDialogActive = true },
+                    showClearButton = false
+                )
+//                Box(modifier = Modifier.weight(1f)) {
+//                    TextButton(
+//                        onClick = {  },
+//                        enabled = groceryNameState.text.isNotEmpty(),
+//                        modifier = Modifier.align(Alignment.CenterEnd)
+//                    ) {
+//                        Text(stringResource(R.string.save), maxLines = 1)
+//                    }
+//                }
             }
+//            Row(
+//                horizontalArrangement = Arrangement.spacedBy(10.dp),
+//                verticalAlignment = Alignment.CenterVertically,
+//                modifier = Modifier.height(80.dp).padding(start = 10.dp)
+//            ) {
+////                BottomSheetSmallAction(
+////                    onClick = { showRecipeSelection = true },
+////                    icon = R.drawable.book,
+////                    label = "Move to recipe"
+////                )
+//                BottomSheetSmallAction(
+//                    onClick = {
+//                        selectCategoryDialogActive = true
+//                    },
+//                    icon = R.drawable.arrow_right_full,
+//                    label = "Move to category"
+//                )
+//            }
         }
     }
 
@@ -140,6 +216,12 @@ fun EditGroceriesBottomSheetContent(
             onDismissRequest = { selectCategoryDialogActive = false },
             onSelectCategory = { categoryId ->
                 onMoveItemsToCategory(editingGroceryItems, category.id, categoryId)
+
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.moved_n_groceries_to_category, editingGroceryItems.size, allCategories.fastFirstOrNull { it.id == categoryId }?.name ?: "NULL"),
+                    Toast.LENGTH_SHORT
+                ).show()
 
                 selectCategoryDialogActive = false
                 onFinishAction()
@@ -192,6 +274,7 @@ fun EditGroceriesBottomSheetPreview() {
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
             sheetContent = { EditGroceriesBottomSheetContent(
+                sheetState = scaffoldState.bottomSheetState,
                 allCategories = groceryViewModel.groceryItemCategories,
                 category = groceryViewModel.groceryItemCategories[0],
                 editingGroceryItems = listOf(itemId),
@@ -204,7 +287,8 @@ fun EditGroceriesBottomSheetPreview() {
                 onMoveItemsToCategory = {_, _, _ -> },
                 onChangeItemNameDetails = { _, _, _ -> },
                 groceryNameState = rememberTextFieldState(item.name),
-                groceryDetailState = rememberTextFieldState(item.details)
+                groceryDetailState = rememberTextFieldState(item.details),
+                getRecipeNameFromId = { it.toString() }
             ) },
             modifier = Modifier.padding(innerPadding)
         ) {

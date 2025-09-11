@@ -1,5 +1,6 @@
 package com.jule.food
 
+import android.util.Log
 import android.widget.CheckBox
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -172,6 +173,7 @@ fun GroceryScreen(
     LaunchedEffect(scaffoldState.bottomSheetState.targetValue) {
         if (scaffoldState.bottomSheetState.targetValue == SheetValue.Hidden || scaffoldState.bottomSheetState.targetValue == SheetValue.PartiallyExpanded) {
             selectedGroceryItems.clear()
+            Log.d("GroceryScreen", "Target Value Hidden or Partially Expanded")
         }
     }
 
@@ -260,7 +262,9 @@ fun GroceryScreen(
                                 ) {
                                     val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
 
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize).rotate(rotation))
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier
+                                        .size(SplitButtonDefaults.TrailingIconSize)
+                                        .rotate(rotation))
                                 }
 
                                 DropdownMenu(
@@ -499,6 +503,7 @@ fun GroceryGridScreen(
         scaffoldState = scaffoldState,
         sheetContent = {
             EditGroceriesBottomSheetContent(
+                sheetState = scaffoldState.bottomSheetState,
                 category = category,
                 allCategories = allCategories,
                 allRecipes = allRecipes,
@@ -507,28 +512,35 @@ fun GroceryGridScreen(
                 onMoveItemsToCategory = onMoveItemsToCategory,
                 onChangeItemNameDetails = onChangeItemNameDetails,
                 groceryNameState = editGroceryNameState,
-                groceryDetailState = editGroceryDetailState
+                groceryDetailState = editGroceryDetailState,
+                getRecipeNameFromId = getRecipeNameFromId
             )
-        },
-        sheetDragHandle = {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
-                TextButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
-                    if (singleSelection) {
-                        onChangeItemNameDetails(selectedGroceryItems[0], editGroceryNameState.text.toString().trim(), editGroceryDetailState.text.toString().trim())
-                    }
-                    onClearSelection()
-                }) {
-                    Text(stringResource(R.string.done))
-                }
-            }
         }
+//        sheetDragHandle = {
+//            Box(modifier = Modifier.fillMaxWidth()) {
+//                BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
+//                TextButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
+//                    if (singleSelection) {
+//                        onChangeItemNameDetails(selectedGroceryItems[0], editGroceryNameState.text.toString().trim(), editGroceryDetailState.text.toString().trim())
+//                    }
+//                    onClearSelection()
+//                }) {
+//                    Text(stringResource(R.string.done))
+//                }
+//            }
+//        }
 //        sheetPeekHeight = 180.dp + 20.dp,
     ) {
         Column(
-            modifier = modifier.fillMaxSize().clickable(enabled = selectionModeActive, interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onClearSelection()
-            }
+            modifier = modifier
+                .fillMaxSize()
+                .clickable(
+                    enabled = selectionModeActive,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    onClearSelection()
+                }
         ) {
             CategoriesConnectedButtons(
                 allCategories = allCategories,
@@ -556,7 +568,9 @@ fun GroceryGridScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 100.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
                 ) {
                     val allItems = category.items
 

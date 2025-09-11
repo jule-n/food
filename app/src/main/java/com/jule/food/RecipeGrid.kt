@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -56,15 +57,16 @@ fun RecipeGrid(
     recipes: List<Recipe>,
     onClickRecipe: (listIndex: Int) -> Unit,
     recipeGridState: LazyGridState,
+    isRecipeSearch: Boolean,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(bottom = 100.dp),
     showImages: Boolean = true,
-    isRecipePage: Boolean = true,
+    userScrollEnabled: Boolean = true
 ) {
-    LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Fixed(3), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = contentPadding) {
+    LazyVerticalGrid(modifier = modifier, state = recipeGridState, columns = GridCells.Fixed(3), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = contentPadding, userScrollEnabled = userScrollEnabled) {
         itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
             RecipeSmallDisplay(
-                recipe = recipe, onClick = { onClickRecipe(index) }, showImage = showImages, isRecipePage = isRecipePage, modifier = Modifier.animateItem()
+                recipe = recipe, onClick = { onClickRecipe(index) }, showImage = showImages, isRecipeSearch = isRecipeSearch, modifier = Modifier.animateItem()
             )
         }
     }
@@ -76,9 +78,9 @@ fun RecipeGrid(
 fun RecipeSmallDisplay(
     recipe: Recipe,
     onClick: () -> Unit,
+    isRecipeSearch: Boolean,
     modifier: Modifier = Modifier,
     showImage: Boolean = true,
-    isRecipePage: Boolean = true,
     minTextSize: TextUnit = 10.sp,
     maxTextSize: TextUnit = 16.sp,
     fallbackBrush: Brush = Brush.linearGradient( listOf(MaterialTheme.colorScheme.secondaryContainer, Color.White) )
@@ -102,8 +104,7 @@ fun RecipeSmallDisplay(
                 if (image) {
                     val sharedTransitionScope = LocalSharedTransitionScope.current
                     val path = recipe.images[0]
-                    val model = if (isRecipePage) {
-                        ImageRequest.Builder(LocalContext.current)
+                    val model = ImageRequest.Builder(LocalContext.current)
                         .data(File(path))
                         .crossfade(true)
                         .placeholderMemoryCacheKey(path)
@@ -111,26 +112,17 @@ fun RecipeSmallDisplay(
                         .size(400, 400)
                         .scale(coil3.size.Scale.FIT)
                         .build()
-                    } else {
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(File(path))
-                            .crossfade(true)
-                            .size(400, 400)
-                            .scale(coil3.size.Scale.FIT)
-                            .build()
-                    }
+
                     with(sharedTransitionScope!!) {
                         AsyncImage(
                             model = model,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .conditional(isRecipePage) {
-                                    Modifier.sharedElement(
-                                        rememberSharedContentState(key = recipe.id),
-                                        animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                                    )
-                                }
+                                .sharedElement(
+                                    rememberSharedContentState(key = if (isRecipeSearch) "${recipe.id}_search" else "${recipe.id}_grid"),
+                                    animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                                )
                                 .clip(RoundedCornerShape(10))
                                 .fillMaxSize()
                         )
@@ -181,7 +173,8 @@ fun RecipeSmallDisplayPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             RecipeSmallDisplay(
-                recipe,
+                recipe = recipe,
+                isRecipeSearch = false,
                 onClick = { }
             )
         }

@@ -50,9 +50,13 @@ fun AddGroceriesFromRecipeDialog(
         },
         modifier = modifier
     ) {
+        SettingsScreenCategory(name = stringResource(R.string.recipe), modifier = Modifier.fillMaxWidth(), textStartPadding = 0.dp) {
+            Text(recipe.name, style = MaterialTheme.typography.titleMedium)
+        }
         if (includeCategoryChoice) {
             SettingsScreenCategory(
-                name = stringResource(R.string.category)
+                name = stringResource(R.string.category),
+                textStartPadding = 0.dp
             ) {
                 LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     itemsIndexed(groceryCategories!!) { index, category ->
@@ -85,7 +89,8 @@ fun AddGroceriesFromRecipeDialog(
             }
         }
         SettingsScreenCategory(
-            name = stringResource(R.string.groceries)
+            name = stringResource(R.string.groceries),
+            textStartPadding = 0.dp
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(70.dp),

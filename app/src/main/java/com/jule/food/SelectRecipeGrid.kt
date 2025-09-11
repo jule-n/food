@@ -47,7 +47,8 @@ fun SelectRecipeGrid(
     recipes: List<Recipe>,
     searchFocusRequester: FocusRequester,
     onClickRecipe: (UUID) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    subtitle: String? = null
 ) {
     val searchState = rememberTextFieldState()
 
@@ -64,6 +65,9 @@ fun SelectRecipeGrid(
             IconButton(onClick = onCancel) {
                 Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
             }
+        }
+        if (subtitle != null) {
+            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp, bottom = 10.dp))
         }
         TextField(
             state = searchState,
@@ -103,10 +107,14 @@ fun SelectRecipeGrid(
 fun RecipeTinyDisplay(
     modifier: Modifier = Modifier,
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+//    isInactive: Boolean,
 ) {
+//    val color = if (!isInactive) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+//    val textColor = if (!isInactive) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
     Surface(
         onClick = onClick,
+//        enabled = !isInactive,
         color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         modifier = modifier.padding(0.dp).aspectRatio(1.5f),
         shape = RoundedCornerShape(20)
@@ -146,7 +154,8 @@ fun SelectRecipeGridPreview() {
             recipes = recipes,
             onClickRecipe = {},
             onCancel = { },
-            searchFocusRequester = FocusRequester()
+            searchFocusRequester = FocusRequester(),
+            subtitle = "Subtitle"
         )
     }
 

@@ -211,7 +211,8 @@ fun GroceryBottomSheetSelectionField(
     isActive: Boolean,
     inactiveColor: Color,
     onClick: () -> Unit,
-    onClear: () -> Unit,
+    showClearButton: Boolean = true,
+    onClear: (() -> Unit)? = null,
     @DrawableRes icon: Int,
 ) {
     Surface(
@@ -235,10 +236,10 @@ fun GroceryBottomSheetSelectionField(
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isActive) MaterialTheme.colorScheme.onBackground else inactiveColor
             )
-            if (isActive) {
+            if (isActive && showClearButton) {
                 IconButton(
                     modifier = Modifier.height(40.dp),
-                    onClick = onClear
+                    onClick = { onClear?.invoke() }
                 ) {
                     Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
                 }

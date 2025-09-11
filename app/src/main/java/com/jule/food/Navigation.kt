@@ -76,6 +76,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -99,6 +100,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.NavType
@@ -151,7 +153,8 @@ fun BottomNavigationBar(
                 if (!groceriesSelected) {
                     navController.navigate(Groceries.route) {
                         launchSingleTop = true
-                        popUpTo(Groceries.route)
+//                        launchSingleTop = true
+//                        popUpTo(Recipes.route)
                     }
                 }
             },
@@ -163,15 +166,24 @@ fun BottomNavigationBar(
             selected = recipesSelected,
             onClick = {
                 if (!recipesSelected) {
-                    navController.navigate(Recipes.route) {
-                        popUpTo(Groceries.route)
+                    val poppingSuccessful = navController.popBackStack(Recipes.route, inclusive = false)
+                    if (poppingSuccessful) {
+                        Log.d("Navigation", "Popped back to recipes")
                     }
-//                    if (recipeViewModel.selectedRecipeId != null) {
-//                        navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeViewModel.selectedRecipeId}")
-//                        if (recipeViewModel.selectedRecipeImageIndex != null) {
-//                            navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.selectedRecipeImageIndex}")
-//                        }
-//                    }
+                    if (!poppingSuccessful) {
+                        Log.d("Navigation", "Recipes not in back stack")
+                        navController.navigate(Recipes.route) {
+                            launchSingleTop = true
+//                            launchSingleTop = true
+//                            popUpTo(Groceries.route)
+                        }
+                    }
+                    if (recipeViewModel.selectedRecipeId != null) {
+                        navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.lastSelectedRecipeFromSearch}")
+                        if (recipeViewModel.selectedRecipeImageIndex != null) {
+                            navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.selectedRecipeImageIndex}")
+                        }
+                    }
                 }
             },
             icon = { Icon(painterResource(Recipes.icon), contentDescription = null) },
@@ -207,13 +219,8 @@ fun NavigationHost(
     // Contained in SharedTransitionLayout to enable shared element transitions between destinations
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-            val recipeGridState = rememberLazyGridState()
-            val coroutineScope = rememberCoroutineScope()
             var scheduledDeletionOfCurrentRecipe by remember { mutableStateOf(false) }
-
-            LaunchedEffect(recipeViewModel.selectedRecipeId) {
-                Log.d("NavigationHost", "selectedRecipeId: ${recipeViewModel.selectedRecipeId}")
-            }
+            val recipeGridState = rememberLazyGridState()
 
             // Start at grocery screen
             NavHost(
@@ -244,22 +251,27 @@ fun NavigationHost(
                                     launchSingleTop = true
                                 }
                             },
-                            onClickRecipe = { recipeId ->
+                            onClickRecipe = { recipeId, fromSearch ->
                                 // When a recipe is clicked, navigate to the specific recipe screen and update the selectedRecipe variable
-                                navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeId}")
+                                navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeId}/${fromSearch}")
                                 recipeViewModel.addToRecentRecipes(recipeId)
-                                recipeViewModel.setSelectedRecipeId(recipeId)
+                                recipeViewModel.setSelectedRecipeId(recipeId, fromSearch)
                             }
                         )
                     }
                 }
                 // Specific recipe screen
                 composable(
-                    "${BottomNavItem.SpecificRecipe.route}/{id}",
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    "${BottomNavItem.SpecificRecipe.route}/{id}/{fromRecipeSearch}",
+                    arguments = listOf(
+                        navArgument("id") { type = NavType.StringType },
+                        navArgument("fromRecipeSearch") { type = NavType.BoolType }
+                    ),
                 ) { backStackEntry ->
                     val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
+
+                    val fromRecipeSearch = backStackEntry.arguments?.getBoolean("fromRecipeSearch") ?: false
 
 
                     DisposableEffect(Unit) {
@@ -268,9 +280,11 @@ fun NavigationHost(
                             if (scheduledDeletionOfCurrentRecipe) {
                                 recipeViewModel.removeRecipe(recipeViewModel.selectedRecipeId!!)
                             }
-                            // Reset selected recipe
-                            recipeViewModel.setSelectedRecipeId(null)
-                            Log.d("SpecificRecipeScreen","Test")
+                            val currentRoute = navController.currentDestination?.route
+                            if (currentRoute != null && currentRoute != Groceries.route && !currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route)) {
+                                // Reset selected recipe
+                                recipeViewModel.resetSelectedRecipeId()
+                            }
                         }
                     }
 
@@ -288,12 +302,12 @@ fun NavigationHost(
                                 scheduledDeletionOfCurrentRecipe = true
                                 navController.popBackStack()
                             },
-                            isPop = false,
                             onDisplayImage = { imageIndex ->
                                 // When an image is clicked, navigate to full screen image and update the selectedRecipeImage variable
                                 navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${id}/${imageIndex}")
                                 recipeViewModel.setSelectedRecipeImageIndex(imageIndex)
-                            }
+                            },
+                            fromRecipeSearch = fromRecipeSearch
                         )
                     }
                 }
@@ -321,7 +335,10 @@ fun NavigationHost(
 
                     DisposableEffect(Unit) {
                         onDispose {
-                            recipeViewModel.setSelectedRecipeImageIndex(null)
+                            if (navController.currentDestination?.route != Groceries.route) {
+                                // Reset selected recipe image
+                                recipeViewModel.setSelectedRecipeImageIndex(null)
+                            }
                         }
                     }
 

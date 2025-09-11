@@ -11,6 +11,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.res.stringResource
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,10 +32,11 @@ fun SelectRecipeBottomSheet(
             modifier = Modifier.verticalScroll(rememberScrollState())
         ) {
             SelectRecipeGrid(
-                recipes = allRecipes,
+                recipes = allRecipes.filter { recipe -> recipe.groceries.isNotEmpty() },
                 onClickRecipe = onSelectRecipe,
                 onCancel = onDismissRequest,
-                searchFocusRequester = searchFocusRequester
+                searchFocusRequester = searchFocusRequester,
+                subtitle = stringResource(R.string.select_groceries_from_recipe_info),
             )
         }
     }

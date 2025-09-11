@@ -63,6 +63,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -93,6 +94,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -133,7 +135,7 @@ fun SpecificRecipeScreen(
     onBack: () -> Unit,
     onDeleteRecipe: () -> Unit,
     onDisplayImage: (imageIndex: Int) -> Unit,
-    isPop: Boolean,
+    fromRecipeSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
 //    var expanded by remember { mutableStateOf(false) }
@@ -174,6 +176,7 @@ fun SpecificRecipeScreen(
                 }
 
             },
+            fromRecipeSearch = fromRecipeSearch,
             modifier = modifier
         )
     }
@@ -219,6 +222,7 @@ fun SpecificRecipeScreenMain(
     onDelete: () -> Unit,
     onAddImages: (List<String>) -> Unit,
     onOpenGroceryScreen: () -> Unit,
+    fromRecipeSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
     var titleValue by remember { mutableStateOf(TextFieldValue(recipe.name)) }
@@ -403,7 +407,8 @@ fun SpecificRecipeScreenMain(
                     onAddSelectedImageIndex = { selectedImagesIndizes.add(it) },
                     onRemoveSelectedImageIndex = { selectedImagesIndizes.remove(it) },
                     anyImageSelected = anyImageSelected,
-                    onChangeAnyImageSelected = { anyImageSelected = it }
+                    onChangeAnyImageSelected = { anyImageSelected = it },
+                    fromRecipeSearch = fromRecipeSearch
                 )
                 SpecificRecipeGroceries(
                     recipe = recipe,
@@ -437,7 +442,9 @@ fun SpecificRecipeScreenMain(
                         Box(modifier = Modifier.padding(horizontal = 10.dp).background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(10))) {
                             BasicTextField(
                                 state = textFieldState,
+                                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground),
                                 lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 10),
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
                                 modifier = Modifier.onFocusChanged { focusState ->
                                     if (!focusState.isFocused && wasFocused) {
                                         val newNote = textFieldState.text.toString()
@@ -830,6 +837,7 @@ fun SpecificRecipeImages(
     onRemoveSelectedImageIndex: (Int) -> Unit,
     anyImageSelected: Boolean,
     onChangeAnyImageSelected: (Boolean) -> Unit,
+    fromRecipeSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
     var imageEditDialogActive by remember { mutableStateOf(false) }
@@ -844,7 +852,7 @@ fun SpecificRecipeImages(
     ) {
         RecipeImageGallery(recipeId = recipe.id, images = recipe.images, onDisplayImage = onDisplayImage, onChangeImageOrder = onChangeImageOrder,
             selectedImagesIndizes = selectedImagesIndizes, onAddSelectedImageIndex = onAddSelectedImageIndex, onRemoveSelectedImageIndex = onRemoveSelectedImageIndex,
-            anyImageSelected = anyImageSelected, onChangeAnyImageSelected = onChangeAnyImageSelected)
+            anyImageSelected = anyImageSelected, onChangeAnyImageSelected = onChangeAnyImageSelected, fromRecipeSearch = fromRecipeSearch)
     }
 }
 
@@ -861,6 +869,7 @@ fun RecipeImageGallery(
     onRemoveSelectedImageIndex: (Int) -> Unit,
     anyImageSelected: Boolean,
     onChangeAnyImageSelected: (Boolean) -> Unit,
+    fromRecipeSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
     if (images.isEmpty())
@@ -949,7 +958,7 @@ fun RecipeImageGallery(
                                 modifier = Modifier
                                     .conditional(index == 0) {
                                         Modifier.sharedElement(
-                                            rememberSharedContentState(key = recipeId),
+                                            rememberSharedContentState(key = if (fromRecipeSearch) "${recipeId}_search" else "${recipeId}_grid"),
                                             animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
                                         )
                                     }
@@ -1000,7 +1009,7 @@ fun SpecificRecipeScreenPreview() {
                     groceryCategories = listOf(),
                     onDisplayImage = { },
                     onDeleteRecipe = { },
-                    isPop = false
+                    fromRecipeSearch = false
                 )
             }
         }

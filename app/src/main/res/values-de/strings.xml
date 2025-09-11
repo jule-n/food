@@ -91,4 +91,8 @@
     <string name="active_recipes">Aktive Rezepte</string>
     <string name="all_recipes">Alle Rezepte</string>
     <string name="added_n_groceries">%d Einkäufe zu %s hinzugefügt</string>
+    <string name="select_recipe">Rezept auswählen</string>
+    <string name="n_recipes">%d Rezepte</string>
+    <string name="moved_n_groceries_to_category">%d Einkäufe nach Kategorie %s bewegt</string>
+    <string name="select_groceries_from_recipe_info">Du kannst nur Rezepte auswählen, denen du Einkäufe hinzugefügt hast.</string>
 </resources>

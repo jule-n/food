@@ -165,10 +165,11 @@ fun SettingsScreen(
 fun SettingsScreenCategory (
     name: String,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    textStartPadding: Dp = 10.dp,
+    content: @Composable () -> Unit
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.padding(start = 10.dp))
+        Text(name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.padding(start = textStartPadding))
         content()
     }
 }

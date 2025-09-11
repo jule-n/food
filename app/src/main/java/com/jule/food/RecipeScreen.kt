@@ -34,15 +34,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ContextualFlowRow
-import androidx.compose.foundation.layout.ContextualFlowRowOverflow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowOverflow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +52,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -70,12 +72,15 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -105,20 +110,25 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopSearchBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -132,6 +142,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -141,10 +152,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -157,9 +171,13 @@ import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
@@ -175,7 +193,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
-
+import kotlin.math.ceil
 
 
 val LocalNavAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
@@ -208,14 +226,14 @@ val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { nu
 //    }
 //}
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeScreen(
     bottomBar: @Composable () -> Unit,
     recipeViewModel: RecipeViewModel,
     recipeGridState: LazyGridState,
     onOpenSettings: () -> Unit,
-    onClickRecipe: (UUID) -> Unit,
+    onClickRecipe: (recipeId: UUID, fromSearch: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -247,7 +265,7 @@ fun RecipeScreen(
                     onDismissRequest = { showNewRecipeDialog = false },
                     onConfirm = { name ->
                         val id = recipeViewModel.addRecipe(name = name.trim())
-                        onClickRecipe(id)
+                        onClickRecipe(id, false)
                         showNewRecipeDialog = false
                     },
                     confirmWithKeyboard = true,
@@ -284,13 +302,21 @@ fun RecipeScreen(
                         newIndex
                     )
                 },
-                onChangeSelectedRecipe = onClickRecipe,
+                onClickRecipe = onClickRecipe,
                 onChangeTagRecipes = { tagId, newRecipes ->
                     recipeViewModel.changeTagRecipes(tagId, newRecipes)
                 },
                 recipeGridState = recipeGridState,
-                onOpenSettings = onOpenSettings
+                onOpenSettings = onOpenSettings,
+                searchBarExpanded = recipeViewModel.isSearchBarExpanded,
+                onChangeSearchBarExpanded = { recipeViewModel.changeIsSearchBarExpanded(it) },
+                selectedTagIds = recipeViewModel.selectedTagIds,
+                onAddSelectedTagId = { recipeViewModel.addSelectedTagId(it) },
+                onRemoveSelectedTagId = { recipeViewModel.removeSelectedTagId(it) },
+                tagSelectionExpanded = recipeViewModel.isTagSelectionExpanded,
+                onChangeTagSelectionExpanded = { recipeViewModel.changeIsTagSelectionExpanded(it) }
             )
+
             } else {
                 Box(
                     modifier = modifier.fillMaxSize()
@@ -299,7 +325,6 @@ fun RecipeScreen(
                 }
             }
         }
-
     }
 }
 
@@ -311,16 +336,24 @@ fun RecipeGridScreen(
     recipes: List<Recipe>,
     recentRecipeIds: List<UUID>,
     tags: List<Tag>,
+    selectedTagIds: List<UUID>,
+    onAddSelectedTagId: (UUID) -> Unit,
+    onRemoveSelectedTagId: (UUID) -> Unit,
     onChangeTagName: (UUID, String) -> Unit,
     onChangeTagIconIndex: (UUID, Int) -> Unit,
     onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
     onDeleteTagId: (UUID) -> Unit,
-    onChangeSelectedRecipe: (UUID) -> Unit,
+    onClickRecipe: (recipeId: UUID, fromSearch: Boolean) -> Unit,
     recipeGridState: LazyGridState,
     onOpenSettings: () -> Unit,
+    searchBarExpanded: Boolean,
+    onChangeSearchBarExpanded: (Boolean) -> Unit,
+    tagSelectionExpanded: Boolean,
+    onChangeTagSelectionExpanded: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
+    val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
 
     val focusManager = LocalFocusManager.current
@@ -331,78 +364,78 @@ fun RecipeGridScreen(
 
     val editTagSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    val selectedTagIds = remember { mutableStateListOf<UUID>() }
     val recipesSelected = recipes.filter { recipe -> selectedTagIds.isEmpty() || recipe.tags.containsAll(selectedTagIds) }
     val possibleTagIdsToSelect = tags.map { it.id }.filter { tagId ->
             recipesSelected.any { recipe -> recipe.tags.containsAll(selectedTagIds.toList() + tagId) }
         }
 
+    val textFieldState = rememberTextFieldState()
 
 
-    var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .clickable(
-                enabled = expanded,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {
-                    focusManager.clearFocus(true)
+    val inputField = @Composable {
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.padding(start = 5.dp)
+        ) {
+            Icon(Icons.Outlined.Settings, contentDescription = "Settings")
+        }
+        SearchBarDefaults.InputField(
+            state = textFieldState,
+            onSearch = { searchTerm ->
+                focusManager.clearFocus(true)
+            },
+            expanded = searchBarExpanded,
+            onExpandedChange = onChangeSearchBarExpanded,
+            leadingIcon = {
+                if (searchBarExpanded) {
+                    IconButton(
+                        onClick = {
+                            onChangeSearchBarExpanded(false)
+                            textFieldState.clearText()
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                } else {
+                    Icon(Icons.Default.Search, contentDescription = null)
                 }
-            )
-    ) {
-        val textFieldState = rememberTextFieldState()
-        val recipeGridStateSearch = rememberLazyGridState()
-        val inputField = @Composable {
-            SearchBarDefaults.InputField(
-                state = textFieldState,
-                onSearch = { focusManager.clearFocus(true) },
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
-                leadingIcon = {
-                    if (expanded) {
-                        IconButton(
-                            onClick = { expanded = false }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            },
+            trailingIcon = {
+                AnimatedContent(
+                    targetState = searchBarExpanded && textFieldState.text != ""
+                ) { showClearButton ->
+                    if (showClearButton) {
+                        IconButton(onClick = {
+                            textFieldState.edit { delete(0, textFieldState.text.length) }
+                        }) {
+                            Icon(Icons.Outlined.Clear, contentDescription = "Clear Search")
                         }
                     } else {
-                        Icon(Icons.Default.Search, contentDescription = null)
-                    }
-                },
-                trailingIcon = {
-                    AnimatedContent(
-                        targetState = expanded && textFieldState.text != ""
-                    ) { showClearButton ->
-                        if (showClearButton) {
-                            IconButton(onClick = {
-                                textFieldState.edit { delete(0, textFieldState.text.length) }
-                            }) {
-                                Icon(Icons.Outlined.Clear, contentDescription = "Clear Search")
-                            }
-                        } else {
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(Icons.Outlined.Settings, contentDescription = "Settings")
-                            }
-                        }
-                    }
-                },
-                placeholder = {
-                    Text(stringResource(R.string.search_recipes), textAlign = TextAlign.Center)
-                }
-            )
-        }
 
+                    }
+                }
+            },
+            placeholder = {
+                Text(stringResource(R.string.search_recipes), textAlign = TextAlign.Center)
+            }
+        )
+    }
+
+    Box {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .zIndex(1f)
         ) {
             SearchBar(
                 inputField = inputField,
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
+                expanded = searchBarExpanded,
+                onExpandedChange = {
+                    onChangeSearchBarExpanded(it)
+                    textFieldState.clearText()
+                },
                 windowInsets = WindowInsets(
                     left = 0.dp,
                     right = 0.dp,
@@ -412,7 +445,14 @@ fun RecipeGridScreen(
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.background,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = interactionSource
+                        ) {
+                            focusManager.clearFocus(true)
+                        }
                 ) {
                     if (textFieldState.text == "") {
                         Column(
@@ -427,9 +467,10 @@ fun RecipeGridScreen(
                             RecipeGrid(
                                 recipes = recentRecipeIds.map { getRecipeFromId(it, recipes) },
                                 onClickRecipe = { listIndex ->
-                                    onChangeSelectedRecipe(recentRecipeIds[listIndex])
+                                    onClickRecipe(recentRecipeIds[listIndex], true)
                                 },
-                                showImages = expanded,
+                                showImages = searchBarExpanded,
+                                isRecipeSearch = true,
                                 recipeGridState = rememberLazyGridState()
                             )
                         }
@@ -463,29 +504,42 @@ fun RecipeGridScreen(
                                 ),
                                 recipes = searchResults,
                                 onClickRecipe = { listIndex ->
-                                    onChangeSelectedRecipe(searchResults[listIndex].id)
+                                    onClickRecipe(searchResults[listIndex].id, true)
                                 },
-                                recipeGridState = recipeGridStateSearch
+                                isRecipeSearch = true,
+                                recipeGridState = rememberLazyGridState()
                             )
                         }
                     }
                 }
             }
         }
-
-
-        if (!expanded) {
-            Spacer(Modifier.height(10.dp))
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .clickable(
+                    enabled = searchBarExpanded,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = {
+                        focusManager.clearFocus(true)
+                    }
+                )
+                .verticalScroll(state = rememberScrollState())
+        ) {
+            Spacer(Modifier.height(SearchBarDefaults.InputFieldHeight + 20.dp))
             ExpandableTagSelectionFlowRow(
                 tags = tags,
                 selectedTagIds = selectedTagIds,
-                onAddToSelectedTagIds = { selectedTagIds.add(it) },
-                onRemoveFromSelectedTagIds = { selectedTagIds.remove(it) },
+                onAddToSelectedTagIds = onAddSelectedTagId,
+                onRemoveFromSelectedTagIds = onRemoveSelectedTagId,
                 possibleTagIdsToSelect = possibleTagIdsToSelect,
                 onLongClickTag = { id ->
                     editTag = getTagFromId(id, tags)
                     showEditTagSheet = true
-                }
+                },
+                expanded = tagSelectionExpanded,
+                onExpandedChange = onChangeTagSelectionExpanded
             )
             Spacer(Modifier.height(10.dp))
             Surface(
@@ -496,43 +550,72 @@ fun RecipeGridScreen(
                     bottomStartPercent = 0,
                     bottomEndPercent = 0
                 ),
-//                shape = RoundedCornerShape(5),
-                modifier = Modifier.weight(1f)
             ) {
-                RecipeGrid(
-                    contentPadding = PaddingValues(
-                        top = 10.dp,
-                        bottom = 100.dp,
-                        start = 10.dp,
-                        end = 10.dp
-                    ),
-                    recipes = recipesSelected,
-                    onClickRecipe = { listIndex ->
-                        onChangeSelectedRecipe(recipesSelected[listIndex].id)
+                BoxWithConstraints {
+                    val spacingPerRecipe = 10.dp
+                    val recipesPerRow = 3
+                    val rowNumber =
+                        ceil(recipesSelected.size.toDouble() / recipesPerRow).toInt()
+                    val maxWidthWithoutSpacing =
+                        maxWidth - ((recipesPerRow + 1) * spacingPerRecipe)
+                    val widthPerRecipe = maxWidthWithoutSpacing / 3
+                    val heightPerRecipe = widthPerRecipe + 40.dp
+                    val spacingBetweenRows = (rowNumber - 1) * spacingPerRecipe
+                    val spacingTopBottom = 110.dp
+
+                    val totalHeight =
+                        heightPerRecipe * rowNumber + spacingBetweenRows + spacingTopBottom
+                    val height = max(totalHeight, 1000.dp)
+                    RecipeGrid(
+                        modifier = Modifier.height(height),
+                        contentPadding = PaddingValues(
+                            top = 10.dp,
+                            bottom = 100.dp,
+                            start = 10.dp,
+                            end = 10.dp
+                        ),
+                        recipes = recipesSelected,
+                        onClickRecipe = { listIndex ->
+                            onClickRecipe(recipesSelected[listIndex].id, false)
+                        },
+                        recipeGridState = recipeGridState,
+                        userScrollEnabled = false,
+                        isRecipeSearch = false,
+                        showImages = true
+                    )
+                }
+            }
+
+
+            if (showEditTagSheet) {
+                EditTagSheet(
+                    tag = editTag!!,
+                    recipes = recipes,
+                    onDeleteTag = {
+                        showEditTagSheet = false
+                        onDeleteTagId(editTag!!.id)
+//                showEditTagDialog = false
                     },
-                    recipeGridState = recipeGridState,
+                    onChangeTagName = { newName -> onChangeTagName(editTag!!.id, newName) },
+                    onChangeTagIconIndex = { newIndex ->
+                        onChangeTagIconIndex(
+                            editTag!!.id,
+                            newIndex
+                        )
+                    },
+                    onChangeTagRecipes = { newRecipes ->
+                        onChangeTagRecipes(
+                            editTag!!.id,
+                            newRecipes
+                        )
+                    },
+                    onDismissRequest = { showEditTagSheet = false },
+                    state = editTagSheetState,
                 )
             }
         }
     }
 
-
-    if (showEditTagSheet) {
-        EditTagSheet(
-            tag = editTag!!,
-            recipes = recipes,
-            onDeleteTag = {
-                showEditTagSheet = false
-                onDeleteTagId(editTag!!.id)
-//                showEditTagDialog = false
-            },
-            onChangeTagName = { newName -> onChangeTagName(editTag!!.id, newName) },
-            onChangeTagIconIndex = { newIndex -> onChangeTagIconIndex(editTag!!.id, newIndex) },
-            onChangeTagRecipes = { newRecipes -> onChangeTagRecipes(editTag!!.id, newRecipes) },
-            onDismissRequest = { showEditTagSheet = false },
-            state = editTagSheetState,
-        )
-    }
 }
 
 // Dialog for adding a tag
@@ -666,12 +749,19 @@ fun RecipeScreenPreview() {
     recipeViewModel.addRecipe(name = "Apfelsalat", tags = listOf(saladTag.id, appleTag.id))
     recipeViewModel.addRecipe(name = "Pizza", tags = listOf(kaeseTag.id, kaeseTag2.id, kaeseTag3.id))
     recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
     recipeViewModel.addTags(listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag, kaeseTag2, kaeseTag3))
 
     recipeViewModel.initializeEmpty()
 
     FoodTheme {
-        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = recipeViewModel) }, recipeViewModel = recipeViewModel, onOpenSettings = {}, onClickRecipe = {}, recipeGridState = rememberLazyGridState())
+        RecipeScreen(bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = recipeViewModel) }, recipeViewModel = recipeViewModel, onOpenSettings = {}, onClickRecipe = { _, _ -> }, recipeGridState = rememberLazyGridState())
     }
 }
 
@@ -683,7 +773,7 @@ fun RecipeImagePreview() {
         RecipeSmallDisplay(
             recipe = Recipe(name = "Dorade in Salzkruste"),
             onClick = {},
-
+            isRecipeSearch = false
         )
     }
 }
