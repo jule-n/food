@@ -1,90 +1,60 @@
 package com.jule.food
 
-import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.zIndex
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.request.maxBitmapSize
-import coil3.request.transformations
-import coil3.size.Scale
 import com.jule.food.ui.theme.FoodTheme
-import me.saket.telephoto.zoomable.ZoomSpec
-import me.saket.telephoto.zoomable.ZoomableContentLocation
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
-import me.saket.telephoto.zoomable.rememberZoomableState
-import me.saket.telephoto.zoomable.zoomable
 import java.io.File
-import java.util.UUID
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 // Composable for viewing an image in full screen
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewer(
-    recipeId: UUID,
     bottomBar: @Composable () -> Unit,
     images: List<String>,
     startIndex: Int,
-    onDeleteRecipeImage: (String) -> Unit,
     onClose: () -> Unit
 ) {
     val pagerState = rememberPagerState(startIndex, pageCount = { images.size })
-    var showAppBar by remember { mutableStateOf(false) }
+    var showAppBar by remember { mutableStateOf(true) }
     val interactionSource = remember { MutableInteractionSource() }
+
     FoodTheme(
         darkTheme = true
     ) {
@@ -106,7 +76,7 @@ fun ImageViewer(
                     state = pagerState,
                 ) { page ->
 //                    val imageKey = if (page == 0) recipeId.toString() else "${recipeId}_${page}"
-                    var targetVal by remember { mutableStateOf(0f) }
+                    var targetVal by remember { mutableFloatStateOf(0f) }
                     val offsetY by animateFloatAsState(targetVal)
 
                     val context = LocalContext.current
@@ -138,7 +108,7 @@ fun ImageViewer(
                                     targetVal += delta
                                 },
                                 onDragStopped = {
-                                    if (Math.abs(offsetY) > height / 6) {
+                                    if (abs(offsetY) > height / 8) {
                                         onClose()
                                     } else {
                                         targetVal = 0f
@@ -157,14 +127,9 @@ fun ImageViewer(
                 ) {
                     TopAppBar(
                         title = { },
-                        navigationIcon = { IconButton(onClick = onClose) {
-                            Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = null, tint = Color.White)
+                        navigationIcon = { IconButtonWithTooltip(onClick = onClose, tooltipText = stringResource(R.string.back)) {
+                            Icon(painter = painterResource(R.drawable.arrow_left), contentDescription = stringResource(R.string.back), tint = Color.White)
                         }},
-                        actions = {
-                            IconButton(onClick = { }) {
-                                Icon(painter = painterResource(R.drawable.delete), contentDescription = null, tint = Color.White)
-                            }
-                        },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.8f))
                     )
                 }

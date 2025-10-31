@@ -3,17 +3,6 @@ package com.jule.food
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import androidx.compose.runtime.MutableIntState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
-import androidx.lifecycle.ViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
@@ -89,8 +78,8 @@ fun deleteFiles(paths: List<String>) {
 }
 
 // Create an export file including several data files and image files in specific folders
-fun createZipExportFile(context: Context, dataFiles: List<File>, imageFiles: List<File>, name: String): File {
-    val zipFile = File(context.filesDir, name)
+fun createZipExportFile(context: Context, dataFiles: List<File>, imageFiles: List<File>, name: String, addToDir: String = ""): File {
+    val zipFile = File(context.filesDir.toString() + addToDir, name)
     ZipOutputStream(FileOutputStream(zipFile)).use { zipOut ->
         // Add data folder
         zipOut.putNextEntry(ZipEntry("data/"))

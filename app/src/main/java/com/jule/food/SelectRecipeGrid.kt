@@ -1,6 +1,8 @@
 package com.jule.food
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -9,10 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -81,6 +85,7 @@ fun SelectRecipeGrid(
                 Text(text = stringResource(R.string.search_recipes))
             },
             shape = SearchBarDefaults.inputFieldShape,
+            lineLimits = TextFieldLineLimits.SingleLine,
             modifier = Modifier.focusRequester(searchFocusRequester)
         )
         BoxWithConstraints (modifier = Modifier.padding(10.dp)){
@@ -108,14 +113,18 @@ fun RecipeTinyDisplay(
     modifier: Modifier = Modifier,
     recipe: Recipe,
     onClick: () -> Unit,
+    selected: Boolean? = null
 //    isInactive: Boolean,
 ) {
 //    val color = if (!isInactive) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
 //    val textColor = if (!isInactive) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+    val color = if (selected == null) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else
+        if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
+
     Surface(
         onClick = onClick,
 //        enabled = !isInactive,
-        color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
+        color = color,
         modifier = modifier.padding(0.dp).aspectRatio(1.5f),
         shape = RoundedCornerShape(20)
     ) {
@@ -124,9 +133,22 @@ fun RecipeTinyDisplay(
             modifier = Modifier.wrapContentHeight(Alignment.CenterVertically).padding(5.dp),
             textAlign = TextAlign.Center,
             maxLines = 2,
-            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp),
-//            overflow = TextOverflow.Ellipsis
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp)
         )
+        if (selected != null) {
+            Box(modifier = Modifier.size(20.dp)) {
+                Surface(
+                    color = Color.Black.copy(alpha = if (selected) 0.3f else 0f),
+//                    shape = RoundedCornerShape(60),
+                    shape = RoundedCornerShape(topStartPercent = 60, topEndPercent = 20, bottomStartPercent = 20, bottomEndPercent = 20),
+                    border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)),
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    if (selected)
+                        Icon(painter = painterResource(R.drawable.done), tint = Color.White, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
     }
 }
 
@@ -137,7 +159,8 @@ fun RecipeTinyDisplayPreview() {
         RecipeTinyDisplay(
             recipe = Recipe("Recipe 1"),
             onClick = {},
-            modifier = Modifier.height(60.dp)
+            modifier = Modifier.height(60.dp),
+            selected = true
         )
     }
 }

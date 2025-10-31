@@ -1,30 +1,16 @@
 package com.jule.food
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // Icon button for selecting images from users phone
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -57,7 +43,7 @@ fun SelectImagesIconButton(
     )
 
     // On clicking the button, launch the correct activity (depending on if max images is 1)
-    FilledIconButton(
+    FilledExpressiveIconButtonWithTooltip(
         shapes = IconButtonDefaults.shapes(),
         onClick = {
             if (maxImages == 1) {
@@ -65,8 +51,9 @@ fun SelectImagesIconButton(
             } else {
                 multipleImagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             }
-        }
+        },
+        tooltipText = stringResource(R.string.add_images)
     ) {
-        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Images")
+        Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_images))
     }
 }

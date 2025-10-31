@@ -1,11 +1,16 @@
 package com.jule.food
 
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,7 +18,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,25 +29,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
@@ -51,23 +48,16 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -89,6 +79,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -99,6 +90,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -107,15 +99,18 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.google.android.gms.common.internal.StringResourceValueReader
 import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,8 +118,8 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.File
 import java.util.UUID
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpecificRecipeScreen(
     bottomBar: @Composable () -> Unit,
@@ -140,20 +135,13 @@ fun SpecificRecipeScreen(
 ) {
 //    var expanded by remember { mutableStateOf(false) }
     var showGroceryScreen by remember { mutableStateOf(false) }
-    val recipes = recipeViewModel.recipes
     val tags = recipeViewModel.tags
 
     AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(false), exit = completeSlideOut(true)) {
         SpecificRecipeScreenMain(
             recipe = recipe,
-            recipes = recipes,
             onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it) },
             allTags = tags,
-            onAddNewTag = { recipeViewModel.addTag(it) },
-            onDeleteTagId = { recipeViewModel.deleteTagId(it) },
-            onChangeTagName = { id, newName -> recipeViewModel.changeTagName(id, newName) },
-            onChangeTagIconIndex = { id, newIndex -> recipeViewModel.changeTagIconIndex(id, newIndex) },
-            onChangeTagRecipes = { id, newRecipes -> recipeViewModel.changeTagRecipes(id, newRecipes) },
             onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it) },
             onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it) },
             addToGroceries = { groceries, categoryId -> addToGroceries(groceries, categoryId, recipe.id) },
@@ -192,6 +180,9 @@ fun SpecificRecipeScreen(
                 showGroceryScreen = false
                 recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries)
             },
+            onCancel = {
+                showGroceryScreen = false
+            },
             modifier = modifier
         )
     }
@@ -203,15 +194,9 @@ fun SpecificRecipeScreen(
 fun SpecificRecipeScreenMain(
     bottomBar: @Composable () -> Unit,
     recipe: Recipe,
-    recipes: List<Recipe>,
     onDisplayImage: (imageIndex: Int) -> Unit,
     onChangeRecipeName: (String) -> Unit,
     allTags: List<Tag>,
-    onAddNewTag: (Tag) -> Unit,
-    onDeleteTagId: (UUID) -> Unit,
-    onChangeTagName: (UUID, String) -> Unit,
-    onChangeTagIconIndex: (UUID, Int) -> Unit,
-    onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
     onChangeRecipeTags: (List<UUID>) -> Unit,
     onChangeRecipeNote: (String) -> Unit,
     onChangeImageOrder: (fromIndex: Int, toIndex: Int) -> Unit,
@@ -250,150 +235,110 @@ fun SpecificRecipeScreenMain(
         anyImageSelected = false
     }
 
+    var showConfirmDeleteImagesDialog by remember { mutableStateOf(false) }
+    var showConfirmDeleteRecipeDialog by remember { mutableStateOf(false) }
 
-    with (LocalNavAnimatedVisibilityScope.current!!) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            bottomBar = bottomBar,
-            modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                AnimatedContent(
-                    targetState = selectedImagesIndizes.size > 0,
-                    transitionSpec = {
-                        slideInVertically { -it } togetherWith slideOutVertically { -it }
-                    }
-                ) { imagesSelected ->
-                    if (!imagesSelected) {
-                        SpecificRecipeTopBar(
-                            onBack = onBack,
-                            scrollBehaviour = scrollBehavior
-                        )
-                    } else {
-                        SelectionTopBar(
-                            numberSelected = selectedImagesIndizes.size,
-                            onClearSelection = {
-                                selectedImagesIndizes.clear()
-                                anyImageSelected = false
-                            },
-                            actions = {
-                                IconButton(onClick = {
-                                    val imageCount = selectedImagesIndizes.size
-                                    onDeleteImages(selectedImagesIndizes)
-                                    selectedImagesIndizes.clear()
-                                    anyImageSelected = false
+    val scrollState = rememberScrollState()
+    var showEditNameSheet by remember { mutableStateOf(false) }
+    val editNameFocusRequester = remember { FocusRequester() }
 
-                                    coroutineScope.launch {
-                                        val result = snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_n_images, imageCount), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
-                                    }
-                                }) {
-                                    Icon(painterResource(R.drawable.delete), contentDescription = "Delete Images")
-                                }
-                            },
-                            scrollBehavior = scrollBehavior
-                        )
-                    }
+//    val backgroundColor by animateColorAsState(
+//        targetValue = if (scrollState.value == 0) MaterialTheme.colorScheme.background else TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+//    )
+
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = bottomBar,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            AnimatedContent(
+                targetState = selectedImagesIndizes.size > 0,
+                transitionSpec = {
+                    slideInVertically { -it } togetherWith slideOutVertically { -it }
+                }
+            ) { imagesSelected ->
+                if (!imagesSelected) {
+                    SpecificRecipeTopBar(
+                        recipeName = recipe.name,
+                        onBack = onBack,
+                        onEditName = { showEditNameSheet = true },
+                        scrollValue = scrollState.value,
+                        scrollBehaviour = scrollBehavior
+                    )
+                } else {
+                    SelectionTopBar(
+                        numberSelected = selectedImagesIndizes.size,
+                        onClearSelection = {
+                            selectedImagesIndizes.clear()
+                            anyImageSelected = false
+                        },
+                        actions = {
+                            IconButtonWithTooltip(
+                                onClick = {
+                                    showConfirmDeleteImagesDialog = true
+                                },
+                                tooltipText = stringResource(R.string.delete_images)
+                            ) {
+                                Icon(painterResource(R.drawable.delete), contentDescription = stringResource(R.string.delete_images), tint = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        scrollBehavior = scrollBehavior
+                    )
                 }
             }
-        ) { innerPadding ->
-            val scrollState = rememberScrollState()
+        }
+    ) { innerPadding ->
 
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
 //                    .padding(top = 10.dp, start = 10.dp, end = 10.dp, bottom = 12.dp)
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        enabled = true,
-                        onClick = {
-                            if (anyImageSelected) {
-                                selectedImagesIndizes.clear()
-                                anyImageSelected = false
-                            } else {
-                                focusManager.clearFocus(true)
-                            }
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = true,
+                    onClick = {
+                        if (anyImageSelected) {
+                            selectedImagesIndizes.clear()
+                            anyImageSelected = false
+                        } else {
+                            focusManager.clearFocus(true)
                         }
-                    )
-            ) {
-                val editNameFocusRequester = remember { FocusRequester() }
-                var showEditNameDialog by remember { mutableStateOf(false)}
-                val backgroundColor by animateColorAsState(
-                    targetValue = if (scrollState.value == 0) MaterialTheme.colorScheme.background else TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+                    }
                 )
+        ) {
 
-                Box(
-                    modifier = Modifier.height(TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp).background(Color.Transparent).zIndex(1f)
-                ) {
+//            Box(
+//                modifier = Modifier.height(TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp).background(Color.Transparent).zIndex(1f)
+//            ) {
+//
+//            }
 
-                    Text(
-                        recipe.name,
-                        maxLines = 2,
-                        style = MaterialTheme.typography.displaySmallEmphasized,
-                        autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp),
-                        modifier = Modifier.combinedClickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onLongClick = {
-                                showEditNameDialog = true
-                            },
-                            onClick = {
-                                if (anyImageSelected) {
-                                    selectedImagesIndizes.clear()
-                                    anyImageSelected = false
-                                }
-                            }
-                        ).fillMaxWidth().background(color = backgroundColor).padding(start = 10.dp)
-                    )
-                }
-                LaunchedEffect(showEditNameDialog) {
-                    if (showEditNameDialog) {
-                        editNameFocusRequester.requestFocus()
-                    }
-                }
-                if (showEditNameDialog) {
-                    val textFieldState by remember { mutableStateOf(TextFieldState(recipe.name)) }
-                    DefaultDialog(
-                        title = stringResource(R.string.change_recipe_name),
-                        buttons = true,
-                        onDismissRequest = {
-                            if (textFieldState.text.toString() != recipe.name)
-                                showEditNameDialog = false
-                            else
-                                focusManager.clearFocus(true)
-                        },
-                        onConfirm = {
-                            onChangeRecipeName(textFieldState.text.toString())
-                            showEditNameDialog = false
-                        },
-                        confirmEnabled = !isRecipeError(textFieldState.text.toString()),
-                        onCancel = { showEditNameDialog = false },
-                        onClickDialogEnabled = true,
-                        onClickDialog = { focusManager.clearFocus(true) }
-                    ) {
-                        focusManager = LocalFocusManager.current
-                        OutlinedTextField(
-                            state = textFieldState,
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier
-                                .width(250.dp)
-                                .focusRequester(editNameFocusRequester),
-                            shape = RoundedCornerShape(20),
-                            placeholder = { Text(stringResource(id = R.string.name)) },
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                            onKeyboardAction = { onDone ->
-                                focusManager.clearFocus(true)
-                            }
-                        )
-                    }
-                }
             Column(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier
                     .verticalScroll(scrollState)
                     .fillMaxSize()
-                    .padding(top = TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp)
+//                    .padding(top = TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight - 48.dp)
             ) {
+                Text(
+                    recipe.name,
+                    maxLines = 2,
+                    style = MaterialTheme.typography.displaySmallEmphasized,
+                    autoSize = TextAutoSize.StepBased(maxFontSize = 30.sp),
+                    modifier = Modifier
+                        .clickable(interactionSource = interactionSource, indication = null) {
+                            if (anyImageSelected) {
+                                selectedImagesIndizes.clear()
+                                anyImageSelected = false
+                            }
+                        }
+                        .fillMaxWidth()
+//                        .background(color = backgroundColor)
+                        .padding(start = 10.dp)
+                )
                 SpecificRecipeImages(
                     recipe = recipe,
                     onAddImages = onAddImages,
@@ -417,66 +362,19 @@ fun SpecificRecipeScreenMain(
                     onOpenGroceryScreen = onOpenGroceryScreen
                 )
 //                var currentText by remember { mutableStateOf(TextFieldValue(recipe.note)) }
-                val textFieldState = rememberTextFieldState(recipe.note)
-                var noNote by remember { mutableStateOf(recipe.note == "") }
-                val noteTextFocusRequester by remember { mutableStateOf(FocusRequester()) }
-                SpecificRecipeSection(
-                    icon = R.drawable.text,
-                    title = stringResource(R.string.notes),
-                    actionButtons = {
-                        AnimatedVisibility (noNote, enter = fadeIn() + expandVertically(expandFrom = Alignment.Top), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)) {
-                            FilledIconButton(shapes = IconButtonDefaults.shapes(), onClick = {
-                                noNote = false
-                                coroutineScope.launch {
-                                    delay(100)
-                                    noteTextFocusRequester.requestFocus()
-                                }
-                            }) {
-                                Icon(painterResource(R.drawable.add), contentDescription = "Add Note")
-                            }
-                        }
-                    },
-                ) {
-                    AnimatedVisibility (!noNote) {
-                        var wasFocused by remember { mutableStateOf(false) }
-                        Box(modifier = Modifier.padding(horizontal = 10.dp).background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(10))) {
-                            BasicTextField(
-                                state = textFieldState,
-                                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground),
-                                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 10),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
-                                modifier = Modifier.onFocusChanged { focusState ->
-                                    if (!focusState.isFocused && wasFocused) {
-                                        val newNote = textFieldState.text.toString()
-                                        onChangeRecipeNote(newNote)
-                                        if (newNote == "")
-                                            noNote = true
-                                    }
-                                    if (focusState.isFocused) {
-                                        wasFocused = true
-                                    }
-
-                                }.fillMaxWidth().padding(5.dp).focusRequester(noteTextFocusRequester)
-                            )
-                        }
-                    }
-                }
+                SpecificRecipeNotes(
+                    recipe = recipe,
+                    onChangeRecipeNote = onChangeRecipeNote
+                )
                 Spacer(Modifier.height(10.dp))
                 SpecificRecipeTags(
                     recipe = recipe,
-                    recipes = recipes,
                     allTags = allTags,
-                    onAddNewTag = onAddNewTag,
-                    onDeleteTagId = onDeleteTagId,
-                    onChangeTagName = onChangeTagName,
-                    onChangeTagIconIndex = onChangeTagIconIndex,
                     onChangeRecipeTags = onChangeRecipeTags,
-                    onChangeTagRecipes = onChangeTagRecipes
                 )
                 Spacer(Modifier.height(10.dp))
-                var showDeleteDialog by remember { mutableStateOf(false) }
                 Button(
-                    onClick = { showDeleteDialog = true },
+                    onClick = { showConfirmDeleteRecipeDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
@@ -487,34 +385,128 @@ fun SpecificRecipeScreenMain(
                 }
                 Spacer(Modifier.height(10.dp))
 
-                if (showDeleteDialog) {
-                    DefaultDialog(
-                        title = stringResource(R.string.delete_recipe),
-                        buttons = true,
-                        onDismissRequest = { showDeleteDialog = false },
-                        onConfirm = onDelete
-                    ) {
-                        Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, recipe.name), textAlign = TextAlign.Center)
-                    }
-                }
             }
         }
+    }
+
+    LaunchedEffect(showEditNameSheet) {
+        if (showEditNameSheet) {
+            editNameFocusRequester.requestFocus()
         }
+    }
+    if (showEditNameSheet) {
+        val textFieldState by remember { mutableStateOf(TextFieldState(recipe.name)) }
+        DefaultDialog(
+            title = stringResource(R.string.change_recipe_name),
+            buttons = true,
+            onDismissRequest = {
+                if (textFieldState.text.toString() != recipe.name)
+                    showEditNameSheet = false
+                else
+                    focusManager.clearFocus(true)
+            },
+            onConfirm = {
+                onChangeRecipeName(textFieldState.text.toString())
+                showEditNameSheet = false
+            },
+            confirmEnabled = !isRecipeError(textFieldState.text.toString()),
+            onCancel = { showEditNameSheet = false },
+            onClickDialogEnabled = true,
+            onClickDialog = { focusManager.clearFocus(true) }
+        ) {
+            focusManager = LocalFocusManager.current
+            OutlinedTextField(
+                state = textFieldState,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .width(250.dp)
+                    .focusRequester(editNameFocusRequester),
+                shape = RoundedCornerShape(20),
+                placeholder = { Text(stringResource(id = R.string.name)) },
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                onKeyboardAction = {
+                    focusManager.clearFocus(true)
+                }
+            )
+        }
+    }
+
+    if (showConfirmDeleteRecipeDialog) {
+        DeleteDialog(
+            title = stringResource(R.string.delete_recipe),
+            onDismissRequest = { showConfirmDeleteRecipeDialog = false },
+            onConfirm = onDelete
+        ) {
+            Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, recipe.name), textAlign = TextAlign.Center)
+        }
+    }
+
+    if (showConfirmDeleteImagesDialog) {
+        val imageCount = selectedImagesIndizes.size
+
+        DeleteDialog(
+            title = stringResource(R.string.delete_images),
+            onDismissRequest = { showConfirmDeleteImagesDialog = false },
+            onConfirm = {
+                showConfirmDeleteImagesDialog = false
+
+                onDeleteImages(selectedImagesIndizes)
+                selectedImagesIndizes.clear()
+                anyImageSelected = false
+
+                coroutineScope.launch {
+                    Toast.makeText(context, context.getString(R.string.deleted_n_images, imageCount), Toast.LENGTH_SHORT).show()
+//                    snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_n_images, imageCount), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
+                }
+            }
+        ) {
+            Text(stringResource(R.string.are_you_sure_you_want_to_delete_n_images, imageCount), textAlign = TextAlign.Center)
+        }
+
     }
 }
 
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpecificRecipeTopBar(
-    modifier: Modifier = Modifier,
+    recipeName: String,
     onBack: () -> Unit,
-    scrollBehaviour: TopAppBarScrollBehavior
+    onEditName: () -> Unit,
+    scrollValue: Int,
+    scrollBehaviour: TopAppBarScrollBehavior,
+    modifier: Modifier = Modifier
 ) {
     TopAppBar(
         modifier = modifier,
-        title = { },
-        navigationIcon = { IconButton(onClick = onBack) { Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back") } },
+        title = {
+            val density = LocalDensity.current
+            with (density) {
+                val scrollValueDp = scrollValue.toDp()
+                if (scrollValueDp > 0.dp) {
+                    val scrollPercentage = (scrollValueDp / 50.dp).coerceIn(0f, 1f)
+                    LaunchedEffect(scrollPercentage) {
+                        Log.d("SpecificRecipeTopBar", "scrollPercentage: $scrollPercentage")
+                    }
+                    val requiredOffsetPx = 20.dp.toPx()
+                    val position by animateIntAsState(targetValue = (requiredOffsetPx - (requiredOffsetPx * scrollPercentage)).roundToInt())
+                    val alpha by animateFloatAsState(0f + (1f * scrollPercentage))
+
+                    Text(text = recipeName, modifier = Modifier.offset { IntOffset(0, position) }.alpha(alpha))
+
+                }
+            }
+        },
+        navigationIcon = {
+            IconButtonWithTooltip(onClick = onBack, tooltipText = stringResource(R.string.back)) {
+                Icon(painterResource(R.drawable.arrow_left), contentDescription = stringResource(R.string.back))
+            }
+        },
+        actions = {
+            IconButtonWithTooltip(onClick = onEditName, tooltipText = stringResource(R.string.change_recipe_name)) {
+                Icon(painterResource(R.drawable.edit), contentDescription = stringResource(R.string.change_recipe_name))
+            }
+        },
         scrollBehavior = scrollBehaviour
     )
 }
@@ -553,433 +545,6 @@ fun SpecificRecipeSection(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SpecificRecipeEditGroceriesScreen(
-    bottomBar: @Composable () -> Unit,
-    recipe: Recipe,
-    onConfirm: (List<GroceryItem>) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val temporaryGroceries = remember { recipe.groceries.toMutableStateList() }
-
-    val deletedGroceries = remember { mutableStateListOf<GroceryItem>() }
-    var showAddGroceryDialog by remember { mutableStateOf(false) }
-    var showEditGroceryDialog by remember { mutableStateOf(false) }
-    var editGroceryId: UUID? by remember { mutableStateOf(null) }
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { recipe.images.size })
-
-
-    BackHandler(
-        onBack = {
-            onConfirm(temporaryGroceries)
-        }
-    )
-
-    Scaffold(
-        bottomBar = bottomBar,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Text(text = stringResource(R.string.edit_groceries), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(text = recipe.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp))
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        onConfirm(temporaryGroceries)
-                    }) {
-                        Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddGroceryDialog = true },
-                text = { Text(stringResource(R.string.add_grocery)) },
-                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
-            )
-        },
-        modifier = modifier
-    ) { innerPadding ->
-        Column(modifier = Modifier
-            .padding(innerPadding)
-            .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            if (recipe.images.isNotEmpty()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HorizontalPager(
-                        state = pagerState,
-                    ) { index ->
-                        ZoomableImage(recipe.images[index], modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(0.3f), contentScale = ContentScale.Fit)
-                        //                Image(painter = painterResource(R.drawable.cauliflower_wings), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f), contentDescription = null)
-                    }
-                    if (recipe.images.size > 1) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            for(i in 0..<recipe.images.size) {
-                                Box(modifier = Modifier
-                                    .size(5.dp)
-                                    .background(
-                                        color = if (i == pagerState.currentPage) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(
-                                            alpha = 0.6f
-                                        ), shape = CircleShape
-                                    ))
-                            }
-                        }
-                    }
-                }
-            }
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(80.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-//        contentPadding = PaddingValues(5.dp),
-                modifier = modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                items(items = temporaryGroceries.sortedBy { it.name }, key = { item -> item.id } ) { groceryItem ->
-                    GroceryItemDisplay(
-                        item = groceryItem,
-                        onClick = {
-                            temporaryGroceries.remove(groceryItem)
-                            deletedGroceries.add(groceryItem)
-                        },
-                        onLongClick = {
-                            editGroceryId = groceryItem.id
-                            showEditGroceryDialog = true
-                        },
-                        center = true,
-                        modifier = Modifier.animateItem()
-                    )
-                }
-                if (deletedGroceries.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxCurrentLineSpan) }) {}
-                    item(span = { GridItemSpan(maxCurrentLineSpan) }) {
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .animateItem()) {
-                            Text(
-                                stringResource(R.string.deleted), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.align(
-                                    Alignment.BottomStart))
-                        }
-                    }
-                    items(items = deletedGroceries.sortedBy { it.name }, key = { item -> item.id } ) { groceryItem ->
-                        GroceryItemDisplay(
-                            item = groceryItem,
-                            onClick = {
-                                deletedGroceries.remove(groceryItem)
-                                temporaryGroceries.add(groceryItem)
-                            },
-                            onLongClick = { },
-                            center = true,
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-                }
-            }
-        }
-        val groceryDialogFocusRequester = remember { FocusRequester() }
-        LaunchedEffect(showAddGroceryDialog) {
-            if (showAddGroceryDialog) {
-                groceryDialogFocusRequester.requestFocus()
-            }
-        }
-        if (showAddGroceryDialog) {
-//            AddGroceryDialog(
-//                onDismissRequest = { showAddGroceryDialog = false },
-//                onConfirm = { newGrocery ->
-//                    temporaryGroceries.add(newGrocery)
-//                },
-//                focusRequester = groceryDialogFocusRequester,
-//                focusDetailsOnNext = true
-//            )
-        }
-        if (showEditGroceryDialog) {
-            val editGroceryIndex = temporaryGroceries.indexOfFirst { it.id == editGroceryId!! }
-//            AddGroceryDialog(
-//                title = stringResource(R.string.edit_grocery),
-//                onDismissRequest = { showEditGroceryDialog = false },
-//                onConfirm = { newItem ->
-//                    temporaryGroceries.removeAt(editGroceryIndex)
-//                    temporaryGroceries.add(newItem)
-//                    showEditGroceryDialog = false
-//                },
-//                focusDetailsOnNext = false,
-//                imeActionDone = true,
-//                allowDismissIfEmpty = true,
-//                focusRequester = remember { FocusRequester() },
-//                startValue = temporaryGroceries[editGroceryIndex].name,
-//                startDetails = temporaryGroceries[editGroceryIndex].details,
-//            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun SpecificRecipeTags(
-    recipe: Recipe,
-    recipes: List<Recipe>,
-    allTags: List<Tag>,
-    onAddNewTag: (Tag) -> Unit,
-    onDeleteTagId: (UUID) -> Unit,
-    onChangeTagName: (UUID, String) -> Unit,
-    onChangeTagIconIndex: (UUID, Int) -> Unit,
-    onChangeTagRecipes: (UUID, List<Recipe>) -> Unit,
-    onChangeRecipeTags: (List<UUID>) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var tagSelectionDialogActive by remember { mutableStateOf(false) }
-    var editTag: Tag? by remember { mutableStateOf(null) }
-    var showEditTagDialog by remember { mutableStateOf(false) }
-    var showAddTagDialog by remember { mutableStateOf(false) }
-    val addTagFocusRequester = remember { FocusRequester() }
-    SpecificRecipeSection(
-        icon = R.drawable.tag,
-        title = stringResource(R.string.tags),
-        actionButtons = {
-            FilledIconButton(onClick = { tagSelectionDialogActive = true }, shapes = IconButtonDefaults.shapes(),) {
-                Icon(painterResource(R.drawable.edit), contentDescription = "Edit")
-            }
-        },
-//        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-        modifier = modifier
-    ) {
-        TagDisplayFlowRow(allTags = allTags, recipe = recipe)
-
-        if (tagSelectionDialogActive) {
-            val selectedTagIds = remember { recipe.tags.toMutableStateList() }
-            var dialogFocusManager = LocalFocusManager.current
-
-            DefaultDialog(
-                title = stringResource(R.string.select_tags),
-                onDismissRequest = {
-                    onChangeRecipeTags(selectedTagIds)
-                    tagSelectionDialogActive = false
-                },
-                onClickDialogEnabled = true,
-                onClickDialog = { dialogFocusManager.clearFocus(true) }
-            ) {
-                dialogFocusManager = LocalFocusManager.current
-
-                TagSelectionFlowRow(
-                    tags = allTags.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 },
-                    selectedTagIds = selectedTagIds,
-                    onRemoveFromSelectedTagIds = { selectedTagIds.remove(it) },
-                    onAddToSelectedTagIds = { selectedTagIds.add(it) },
-                    onLongClickTag = { id ->
-                        editTag = getTagFromId(id, allTags)
-                        showEditTagDialog = true
-                    }
-                )
-
-                TextButtonWithIcon(
-                    text = { Text(stringResource(R.string.new_tag)) },
-                    onClick = { showAddTagDialog = true },
-                    icon = R.drawable.add
-                )
-            }
-        }
-        if (showEditTagDialog) {
-            EditTagDialog(
-                tag = editTag!!,
-                recipes = recipes,
-                onDeleteTag = {
-                    showEditTagDialog = false
-                    onDeleteTagId(editTag!!.id)
-                },
-                onChangeTagName = { newName -> onChangeTagName(editTag!!.id, newName) },
-                onChangeTagIconIndex = { newIndex -> onChangeTagIconIndex(editTag!!.id, newIndex) },
-                onChangeTagRecipes = { newRecipes -> onChangeTagRecipes(editTag!!.id, newRecipes) },
-                onDismissRequest = {
-                    showEditTagDialog = false
-                }
-            )
-        }
-        LaunchedEffect(showAddTagDialog) {
-            if (showAddTagDialog) {
-                addTagFocusRequester.requestFocus()
-            }
-        }
-        if (showAddTagDialog) {
-            AddTagDialog(
-                onConfirm = { tag ->
-                    onAddNewTag(tag)
-                    showAddTagDialog = false
-                },
-                onCancel = { showAddTagDialog = false},
-                focusRequester = addTagFocusRequester
-            )
-        }
-//        DisplayTagsRow(getTagsFromIds(recipe.tags, allTags))
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class,
-    ExperimentalMaterial3Api::class
-)
-@Composable
-fun SpecificRecipeImages(
-    recipe: Recipe,
-    onDisplayImage: (imageIndex: Int) -> Unit,
-    onAddImages: (List<String>) -> Unit,
-    onChangeImageOrder: (fromIndex: Int, toIndex: Int) -> Unit,
-    selectedImagesIndizes: List<Int>,
-    onAddSelectedImageIndex: (Int) -> Unit,
-    onRemoveSelectedImageIndex: (Int) -> Unit,
-    anyImageSelected: Boolean,
-    onChangeAnyImageSelected: (Boolean) -> Unit,
-    fromRecipeSearch: Boolean,
-    modifier: Modifier = Modifier
-) {
-    var imageEditDialogActive by remember { mutableStateOf(false) }
-
-    SpecificRecipeSection(
-        modifier = modifier,
-        icon = R.drawable.outline_image_24,
-        title = stringResource(R.string.images),
-        actionButtons = {
-            SelectImagesIconButton(maxImages = 10, onSelectImages = onAddImages)
-        }
-    ) {
-        RecipeImageGallery(recipeId = recipe.id, images = recipe.images, onDisplayImage = onDisplayImage, onChangeImageOrder = onChangeImageOrder,
-            selectedImagesIndizes = selectedImagesIndizes, onAddSelectedImageIndex = onAddSelectedImageIndex, onRemoveSelectedImageIndex = onRemoveSelectedImageIndex,
-            anyImageSelected = anyImageSelected, onChangeAnyImageSelected = onChangeAnyImageSelected, fromRecipeSearch = fromRecipeSearch)
-    }
-}
-
-
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun RecipeImageGallery(
-    recipeId: UUID,
-    onDisplayImage: (imageIndex: Int) -> Unit,
-    images: List<String>,
-    onChangeImageOrder: (fromIndex: Int, toIndex: Int) -> Unit,
-    selectedImagesIndizes: List<Int>,
-    onAddSelectedImageIndex: (Int) -> Unit,
-    onRemoveSelectedImageIndex: (Int) -> Unit,
-    anyImageSelected: Boolean,
-    onChangeAnyImageSelected: (Boolean) -> Unit,
-    fromRecipeSearch: Boolean,
-    modifier: Modifier = Modifier
-) {
-    if (images.isEmpty())
-        return
-
-    val context = LocalContext.current
-
-    val rowState = rememberLazyListState()
-    val reorderableRowState = rememberReorderableLazyListState(lazyListState = rowState, onMove = { from, to ->
-        onChangeImageOrder(from.index, to.index)
-    })
-
-
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        contentPadding = PaddingValues(horizontal = 10.dp),
-        state = rowState,
-        modifier = modifier.height(200.dp)
-    ) {
-        itemsIndexed(images, key = { _, path -> path }) { index, path ->
-            ReorderableItem(
-                state = reorderableRowState,
-                key = path
-            ) { isDragging ->
-                val interactionSource = remember { MutableInteractionSource() }
-                val model = if (index == 0) {
-                    ImageRequest.Builder(context)
-                        .data(File(path))
-                        .crossfade(true)
-                        .placeholderMemoryCacheKey(path)
-                        .memoryCacheKey(path)
-                        .build()
-                } else {
-                    ImageRequest.Builder(context)
-                        .data(File(path))
-                        .crossfade(true)
-                        .placeholderMemoryCacheKey(path)
-                        .memoryCacheKey(path)
-                        .build()
-                }
-
-                val selected = selectedImagesIndizes.contains(index)
-                val onlySelected = selected && selectedImagesIndizes.size == 1
-
-                val hapticFeedback = LocalHapticFeedback.current
-
-                val mod = if (!anyImageSelected) {
-                        Modifier.longPressDraggableHandle(interactionSource = interactionSource, onDragStarted = {
-                            onAddSelectedImageIndex(index)
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }, onDragStopped = {
-                            onChangeAnyImageSelected(true)
-                        })
-                    } else if (images.size != 1 && onlySelected) {
-                        Modifier.draggableHandle(interactionSource = interactionSource)
-                    } else {
-                        Modifier
-                    }
-
-                key (anyImageSelected) {
-                    Surface(
-                        onClick = {
-                            if (!anyImageSelected && selectedImagesIndizes.isEmpty()) {
-                                onDisplayImage(index)
-                            }
-                            else if (anyImageSelected) {
-                                if (selectedImagesIndizes.contains(index)) {
-                                    onRemoveSelectedImageIndex(index)
-                                    if (selectedImagesIndizes.isEmpty())
-                                        onChangeAnyImageSelected(false)
-                                } else {
-                                    onAddSelectedImageIndex(index)
-                                }
-                            }
-                        },
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(10),
-                        modifier = mod
-                    ) {
-                        with(LocalSharedTransitionScope.current!!) {
-                            AsyncImage(
-                                model = model,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .conditional(index == 0) {
-                                        Modifier.sharedElement(
-                                            rememberSharedContentState(key = if (fromRecipeSearch) "${recipeId}_search" else "${recipeId}_grid"),
-                                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                                        )
-                                    }
-                                    .clip(RoundedCornerShape(10))
-                                    .width(150.dp)
-                                    .conditional(selected) {
-                                        Modifier.border(
-                                            width = 3.dp,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            shape = RoundedCornerShape(10)
-                                        )
-                                    }
-    //                                .clickable(onClick = { onSelectImage(index) }, interactionSource = interactionSource, indication = LocalIndication.current)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Preview(showBackground = true)
 @Composable

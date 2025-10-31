@@ -2,15 +2,16 @@ package com.jule.food
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -26,12 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.Hyphens
@@ -41,14 +38,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.times
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.jule.food.ui.theme.FoodTheme
-import com.jule.food.ui.theme.displayLargeFontFamily
 import java.io.File
+import kotlin.math.ceil
 
 
 // Display a grid of recipes
@@ -72,6 +70,46 @@ fun RecipeGrid(
     }
 }
 
+@Composable
+fun RecipeGridWithConstrainedHeight(
+    recipes: List<Recipe>,
+    onClickRecipe: (listIndex: Int) -> Unit,
+    recipeGridState: LazyGridState,
+    isRecipeSearch: Boolean,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(bottom = 100.dp),
+    showImages: Boolean = true,
+    userScrollEnabled: Boolean = true
+) {
+    BoxWithConstraints {
+        val spacingPerRecipe = 10.dp
+        val recipesPerRow = 3
+        val rowNumber =
+            ceil(recipes.size.toDouble() / recipesPerRow).toInt()
+        val maxWidthWithoutSpacing =
+            maxWidth - ((recipesPerRow + 1) * spacingPerRecipe)
+        val widthPerRecipe = maxWidthWithoutSpacing / 3
+        val heightPerRecipe = widthPerRecipe + 40.dp
+        val spacingBetweenRows = (rowNumber - 1) * spacingPerRecipe
+        val spacingTopBottom = 110.dp
+
+        val totalHeight =
+            heightPerRecipe * rowNumber + spacingBetweenRows + spacingTopBottom
+        val height = max(totalHeight, 1000.dp)
+
+        RecipeGrid(
+            modifier = modifier.height(height),
+            contentPadding = contentPadding,
+            recipes = recipes,
+            onClickRecipe = onClickRecipe,
+            recipeGridState = recipeGridState,
+            userScrollEnabled = userScrollEnabled,
+            isRecipeSearch = isRecipeSearch,
+            showImages = showImages,
+        )
+    }
+}
+
 // Display a single recipe
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -87,11 +125,13 @@ fun RecipeSmallDisplay(
 ) {
     val image = recipe.images.isNotEmpty() && showImage
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(10),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 4.dp,
-        modifier = modifier
+        onClick = onClick,
+//        modifier = modifier.clickable(enabled = onClick != null) {
+//            onClick?.invoke()
+//        }
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally

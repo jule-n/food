@@ -1,217 +1,367 @@
 package com.jule.food
 
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
-import androidx.compose.foundation.horizontalScroll
+import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastFirstOrNull
+import com.jule.food.ui.theme.FoodTheme
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.UUID
 
-
-// Connected buttons for the grocery category selection
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-fun CategoriesConnectedButtons(
+fun CategoriesConnectedButtonsCustom(
     allCategories: List<GroceryItemCategory>,
-    selectedCategory: GroceryItemCategory,
+    selectedCategoryId: UUID,
     onChangeSelectedCategoryId: (UUID) -> Unit,
-    onEditCategories: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val index = allCategories.indexOf(selectedCategory)
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        ConnectedButtonGroup(
-            options = allCategories.map { it.name },
-            selectedOptionIndex = index,
-            onSelectedOptionChange = { newIndex -> onChangeSelectedCategoryId(allCategories[newIndex].id)},
-            checkedContainerColor = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier
-                .padding(horizontal = 10.dp)
-                .fillMaxWidth()
-        )
-        Spacer(Modifier.width(10.dp))
-        IconButton(onClick = onEditCategories) {
-            Icon(painter = painterResource(id = R.drawable.edit), contentDescription = "Edit Categories")
+    with (LocalSharedTransitionScope.current!!) {
+        LazyRow(
+            modifier = modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) {
+            items(allCategories) { category ->
+                val selected = category.id == selectedCategoryId
+                val color by animateColorAsState(
+                    targetValue = if (selected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant
+                )
+                val textColor by animateColorAsState(
+                    targetValue = if (selected) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                val shapeCornerRadius by animateIntAsState(
+                    targetValue = if (selected) 50 else 20
+                )
+                Button(
+                    onClick = { onChangeSelectedCategoryId(category.id) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = color,
+                        contentColor = textColor
+                    ),
+                    shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(shapeCornerRadius), pressedShape = RoundedCornerShape(10)),
+                    modifier = Modifier.sharedElement(
+                        sharedContentState = rememberSharedContentState(category.id),
+                        animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                    ).height(40.dp)
+                ) {
+                    Text(category.name)
+                }
+            }
         }
     }
 }
 
-// Dialog for editing the grocery categories
-@OptIn(ExperimentalAnimationGraphicsApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
-fun CategoriesDialog(
+fun CategoriesEditScreen(
     allCategories: List<GroceryItemCategory>,
-    onAddCategory: (GroceryItemCategory) -> Unit,
+    onAddNewCategory: (GroceryItemCategory) -> Unit,
     onDeleteCategory: (UUID) -> Unit,
-    onDismissRequest: () -> Unit,
-    onChangeCategoryName: (String, id: UUID) -> Unit,
+    onChangeCategoryName: (newName: String, id: UUID) -> Unit,
+    onReorderCategories: (fromIndex: Int, toIndex: Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val hapticFeedback = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
 
-    var isEditingIndex: Int? by remember { mutableStateOf(null) }
+    val deleteEnabled = allCategories.size > 1
+    val lazyListState = rememberLazyListState()
+    val reorderableListState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        onReorderCategories(from.index, to.index)
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+    }
 
-    DefaultDialog(
-        title = stringResource(id = R.string.categories),
-        onDismissRequest = {
-            if (isEditingIndex == null)
-                onDismissRequest()
-            else
-                focusManager.clearFocus(true)
-        },
-//        showOverlay = showAddCategoryDialog,
-        onClickDialogEnabled = isEditingIndex != null,
-        onClickDialog = {
-            focusManager.clearFocus(true)
-        }
-    ) {
-        focusManager = LocalFocusManager.current
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            allCategories.forEachIndexed { index, category ->
-                var textFieldValue by remember { mutableStateOf(TextFieldValue(category.name)) }
-                var lastValueWithoutError by remember { mutableStateOf(category.name) }
+    var showAddCategorySheet by remember { mutableStateOf(false) }
+    val addCategoryFocusRequester = remember { FocusRequester() }
+    var showConfirmDeleteCategoryDialog by remember { mutableStateOf(false) }
+    var categoryIdToDelete: UUID? by remember { mutableStateOf(null) }
 
-                val focusRequester = remember { FocusRequester() }
+    with (LocalSharedTransitionScope.current!!) {
+        LazyColumn(
+            state = lazyListState,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = modifier
+                .padding(top = 20.dp)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    focusManager.clearFocus(true)
+                }
+                .fillMaxHeight()
+            ,
+        ) {
+            items(allCategories, key = { it.id }) { category ->
 
-                LaunchedEffect(isEditingIndex) {
-                    if (isEditingIndex == index) {
-                        focusRequester.requestFocus()
-                        textFieldValue = textFieldValue.copy(selection = TextRange(0, textFieldValue.text.length))
-//                        submitted = false
-                    }
+                val textState = rememberTextFieldState(category.name)
+                LaunchedEffect(textState.text) {
+                    onChangeCategoryName(textState.text.trim().toString(), category.id)
                 }
 
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                    shape = RoundedCornerShape(20)
+                ReorderableItem(
+                    state = reorderableListState,
+                    key = category.id
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-                        .padding(start = 10.dp, top = 5.dp, bottom = 5.dp)
-                        .fillMaxWidth()) {
-                        EditableText(
-                            editable = isEditingIndex == index,
-                            textAlign = TextAlign.Left,
-                            textState = textFieldValue,
-                            onTextChange = { newValue ->
-                                if (!isCategoryError(newValue.text)) {
-                                    lastValueWithoutError = newValue.text
-                                }
-                                textFieldValue = newValue
-                            },
-                            onSubmit = {
-                                isEditingIndex = null
-                                textFieldValue = textFieldValue.copy(text = lastValueWithoutError)
-                                onChangeCategoryName(lastValueWithoutError.trim(), category.id)
-                            },
-                            focusRequester = focusRequester,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary,
+                        shape = RoundedCornerShape(20),
+                        modifier = Modifier.sharedElement(
+                            sharedContentState = rememberSharedContentState(category.id),
+                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
                         )
-
-                        val image = AnimatedImageVector.animatedVectorResource(R.drawable.edit_to_done)
-                        IconButton(onClick = {
-                            if (isEditingIndex == null)
-                                isEditingIndex = index
-                            else {
-                                isEditingIndex = null
-                                textFieldValue = textFieldValue.copy(text = lastValueWithoutError)
-                                onChangeCategoryName(lastValueWithoutError.trim(), category.id)
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp)
+                            .height(48.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
+                            BasicTextFieldWithBox(
+                                state = textState,
+                                lineLimits = TextFieldLineLimits.SingleLine,
+                                textStyle = ButtonDefaults.textStyleFor(40.dp),
+                                textColor = MaterialTheme.colorScheme.onTertiary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButtonWithTooltip(
+                                onClick = {},
+                                tooltipText = stringResource(R.string.reorder_categories),
+                                modifier = Modifier.draggableHandle(
+                                    onDragStarted = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
+                                    onDragStopped = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+                                )
+                            ) {
+                                Icon(painter = painterResource(R.drawable.drag_handle), contentDescription = stringResource(R.string.reorder_categories))
                             }
-                        }) {
-                            Icon(rememberAnimatedVectorPainter(image, isEditingIndex == index), contentDescription = "Edit/Done")
-                        }
-                        val deleteEnabled = allCategories.size > 1 && isEditingIndex != index
-                        IconButton(onClick = { onDeleteCategory(category.id) }, enabled = deleteEnabled) {
-                            Icon(painter = painterResource(id = R.drawable.delete), contentDescription = "Delete", tint = if (deleteEnabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f))
+                            FilledIconButtonWithTooltip(
+                                onClick = {
+                                    categoryIdToDelete = category.id
+                                    showConfirmDeleteCategoryDialog = true
+                                },
+                                tooltipText = stringResource(R.string.delete),
+                                enabled = deleteEnabled,
+//                                shapes = IconButtonDefaults.shapes(),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.onError,
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(painter = painterResource(id = R.drawable.delete), contentDescription = stringResource(R.string.delete))
+                            }
                         }
                     }
                 }
             }
-            val enabled = allCategories.size < 10
-//            val enabled = true
-            if (enabled) {
-                FloatingActionButton(
-                    onClick = { showAddCategoryDialog = true },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
+            item {
+                Button(
+                    onClick = { showAddCategorySheet = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ),
+                    modifier = Modifier.padding(start = 10.dp).animateItem()
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Category")
-                }
-            } else {
-                Surface(
-                    color = ButtonDefaults.buttonColors().disabledContainerColor,
-                    shape = FloatingActionButtonDefaults.shape,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(55.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Icon(imageVector = Icons.Default.Add, modifier = Modifier
-                            .size(24.dp)
-                            .align(Alignment.Center), contentDescription = null, tint = ButtonDefaults.buttonColors().disabledContentColor)
-                    }
+                    Text(stringResource(id = R.string.new_category))
                 }
             }
         }
     }
 
-    val newCategoryFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(showAddCategoryDialog) {
-        if (showAddCategoryDialog) {
-            newCategoryFocusRequester.requestFocus()
+    LaunchedEffect(showAddCategorySheet) {
+        if (showAddCategorySheet) {
+            addCategoryFocusRequester.requestFocus()
         }
     }
-    if (showAddCategoryDialog) {
-        EnterTextDialog(
-            title = stringResource(id = R.string.new_category),
-            onDismissRequest = { showAddCategoryDialog = false },
-            onConfirm = { name ->
-                onAddCategory(GroceryItemCategory(name.trim()))
-                showAddCategoryDialog = false
+
+    if (showAddCategorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddCategorySheet = false },
+            dragHandle = null
+        ) {
+            val textFieldState = rememberTextFieldState()
+
+            var showEmptyCategoryError by remember { mutableStateOf(false) }
+            val isCategoryNameEmpty = textFieldState.text.isEmpty()
+            val isCategoryNameTooLong = isCategoryNameTooLong(textFieldState.text.toString())
+
+            if (!showEmptyCategoryError) {
+                LaunchedEffect(textFieldState.text) {
+                    if (textFieldState.text.isNotEmpty())
+                        showEmptyCategoryError = true
+                }
+            }
+
+            BasicTextFieldWithBox(
+                state = textFieldState,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                textStyle = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth().focusRequester(addCategoryFocusRequester),
+                placeholder = { Text(
+                    text = "${stringResource(R.string.new_category)}...",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                )},
+                contentPadding = PaddingValues(15.dp),
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                onKeyboardAction = {
+                    val name = textFieldState.text.trim().toString()
+                    onAddNewCategory(GroceryItemCategory(name))
+                    showAddCategorySheet = false
+                }
+            )
+            SheetErrorMessage(
+                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong,
+                message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
+                        if (isCategoryNameEmpty) stringResource(R.string.name_empty) else ""
+            )
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextButton(
+                    enabled = !isCategoryNameEmpty && !isCategoryNameTooLong,
+                    onClick = {
+                        val name = textFieldState.text.trim().toString()
+                        onAddNewCategory(GroceryItemCategory(name))
+                        showAddCategorySheet = false
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            }
+        }
+    }
+
+    if (showConfirmDeleteCategoryDialog && categoryIdToDelete != null) {
+        val deletedCategoryName = allCategories.fastFirstOrNull { it.id == categoryIdToDelete }?.name ?: ""
+        DeleteDialog(
+            title = stringResource(R.string.delete_category),
+            onDismissRequest = {
+                showConfirmDeleteCategoryDialog = false
+                categoryIdToDelete = null
             },
-            confirmWithKeyboard = true,
-            isError = { isCategoryError(it) },
-            focusRequester = newCategoryFocusRequester
-        )
+            onConfirm = {
+                Toast.makeText(context, context.getString(R.string.deleted_category_name, deletedCategoryName), Toast.LENGTH_SHORT).show()
+
+                onDeleteCategory(categoryIdToDelete!!)
+                showConfirmDeleteCategoryDialog = false
+                categoryIdToDelete = null
+            }
+        ) {
+            Text(stringResource(R.string.are_you_sure_you_want_to_delete_category_name, deletedCategoryName))
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Preview(showBackground = true)
+@Composable
+fun CategoriesConnectedButtonsCustomPreview() {
+    val categories = remember { mutableStateListOf(
+        GroceryItemCategory("Lebensmittel"),
+        GroceryItemCategory("Drogerie"),
+        GroceryItemCategory("Heute"),
+        GroceryItemCategory("Deine Oma")
+    )}
+    var selectedCategoryId by remember { mutableStateOf(categories.first().id) }
+    var editScreen by remember { mutableStateOf(true) }
+
+
+
+    SharedTransitionLayout {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            FoodTheme {
+                Scaffold { innerPadding ->
+                    AnimatedContent(
+                        targetState = editScreen,
+                        modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                        transitionSpec = { fadeIn() togetherWith fadeOut() }
+                    ) { onEditScreen ->
+                        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                            Column {
+                                TextButton(onClick = { editScreen = !editScreen} ) {
+                                    Text("Toggle Edit Screen")
+                                }
+                                if (!onEditScreen) {
+                                    CategoriesConnectedButtonsCustom(
+                                        allCategories = categories,
+                                        selectedCategoryId = selectedCategoryId,
+                                        onChangeSelectedCategoryId = { selectedCategoryId = it }
+                                    )
+                                } else {
+                                    CategoriesEditScreen(
+                                        allCategories = categories,
+                                        onDeleteCategory = {},
+                                        onAddNewCategory = {},
+                                        onChangeCategoryName = { _, _ -> },
+                                        onReorderCategories = { fromIndex, toIndex ->
+                                            categories.apply {
+                                                add(toIndex, removeAt(fromIndex))
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

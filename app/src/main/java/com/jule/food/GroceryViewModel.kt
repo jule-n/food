@@ -1,32 +1,19 @@
 package com.jule.food
 
-import android.app.Activity.MODE_PRIVATE
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import android.widget.Toast
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.util.fastFirst
-import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
-import kotlin.random.Random
 
 
 enum class GroceryGroupingOption { None, Recipe, Location }
@@ -83,8 +70,8 @@ class GroceryItem(
     }
 }
 
-fun isCategoryError(name: String): Boolean {
-    return name.isEmpty() || name.length > 20
+fun isCategoryNameTooLong(name: String): Boolean {
+    return name.length > 40
 }
 
 class GroceryViewModel: ViewModel() {
@@ -120,29 +107,30 @@ class GroceryViewModel: ViewModel() {
         _groceryItemCategories.add(newCategory)
         return newCategory.id
     }
-    fun addCategory(name: String, id: UUID) {
+
+    private fun addCategory(name: String, id: UUID) {
         val newCategory = GroceryItemCategory(name = name, id = id)
         _groceryItemCategories.add(newCategory)
-
     }
+
     fun addCategory(category: GroceryItemCategory) {
         _groceryItemCategories.add(category)
 //        _groceryItemCategories.sortBy { it.name }
     }
     fun removeCategory(id: UUID) {
-        _groceryItemCategories.removeIf( { it.id == id } )
+        _groceryItemCategories.removeIf { it.id == id }
         if (_selectedCategoryId == id) {
             _selectedCategoryId = _groceryItemCategories[0].id
         }
     }
-
-    fun changeCategoryIndex(oldIndex: Int, newIndex: Int) {
-        _groceryItemCategories.apply {
-            add(newIndex, removeAt(oldIndex))
-        }
-    }
     fun changeCategoryName(newName: String, id: UUID) {
         _groceryItemCategories.fastFirst { it.id == id }.name = newName
+    }
+    fun reorderCategories(fromIndex: Int, toIndex: Int) {
+        _groceryItemCategories.apply {
+            add(toIndex, removeAt(fromIndex))
+        }
+        Log.d("GroceryViewModel", "Attempting to move category from $fromIndex to $toIndex.")
     }
     fun addToGroceries(item: GroceryItem, categoryId: UUID) {
         val category = _groceryItemCategories.fastFirst { it.id == categoryId }
@@ -214,7 +202,7 @@ class GroceryViewModel: ViewModel() {
         toCategory.items.sortBy { it.name }
     }
 
-    fun getSaveable(): SaveableGroceryItemCategories {
+    private fun getSaveable(): SaveableGroceryItemCategories {
         val output = mutableListOf<SaveableGroceryItemCategory>()
         groceryItemCategories.forEach { category ->
             val outputItems = mutableListOf<SaveableGroceryItem>()
@@ -281,10 +269,10 @@ class GroceryViewModel: ViewModel() {
             }
         }
 
-        if (_groceryItemCategories.firstOrNull { it.id == categories.selectedId } != null) {
-            _selectedCategoryId = categories.selectedId
+        _selectedCategoryId = if (_groceryItemCategories.firstOrNull { it.id == categories.selectedId } != null) {
+            categories.selectedId
         } else {
-            _selectedCategoryId = _groceryItemCategories.first().id
+            _groceryItemCategories.first().id
         }
     }
 }

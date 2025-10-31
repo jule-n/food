@@ -64,7 +64,7 @@
     <string name="edit_specific_tag">Tag %s</string>
     <string name="edit_groceries">Einkäufe bearbeiten</string>
     <string name="choose_image">Bild wählen</string>
-    <string name="add_groceries_to_cart">Zu Einkäufen hinzufügen</string>
+    <string name="add_groceries_to_cart">Zu Einkaufsliste hinzufügen</string>
     <string name="choose_category">Kategorie wählen</string>
     <string name="recipes_with_tag">Rezepte mit Tag \"%s\"</string>
     <string name="category">Kategorie</string>
@@ -90,9 +90,31 @@
     <string name="no_recipe">Kein Rezept</string>
     <string name="active_recipes">Aktive Rezepte</string>
     <string name="all_recipes">Alle Rezepte</string>
-    <string name="added_n_groceries">%d Einkäufe zu %s hinzugefügt</string>
+    <string name="added_n_groceries">%d Einkäuf(e) zu %s hinzugefügt</string>
     <string name="select_recipe">Rezept auswählen</string>
     <string name="n_recipes">%d Rezepte</string>
-    <string name="moved_n_groceries_to_category">%d Einkäufe nach Kategorie %s bewegt</string>
+    <string name="moved_n_groceries_to_category">%d Einkäuf(e) nach Kategorie %s bewegt</string>
     <string name="select_groceries_from_recipe_info">Du kannst nur Rezepte auswählen, denen du Einkäufe hinzugefügt hast.</string>
+    <string name="edit_tag_screen_info">Auf einen Tag klicken um ihn zu bearbeiten.</string>
+    <string name="icon">Icon</string>
+    <string name="delete_tag">Tag löschen</string>
+    <string name="select_icon">Icon auswählen</string>
+    <string name="delete_images">Bilder löschen</string>
+    <string name="are_you_sure_you_want_to_delete_n_images">Möchtest du wirklich %d Bild(er) löschen?</string>
+    <string name="tag_name">Tag name</string>
+    <string name="delete_category">Kategorie löschen</string>
+    <string name="deleted_category_name">Kategorie \"%s\" gelöscht</string>
+    <string name="are_you_sure_you_want_to_delete_category_name">Möchtest du wirklich \"%s\" löschen?</string>
+    <string name="edit_categories">Kategorien bearbeiten</string>
+    <string name="reorder_categories">Kategorien neu anordnen</string>
+    <string name="back">Zurück</string>
+    <string name="clear_search">Suchfeld leeren</string>
+    <string name="add_images">Bilder hinzufügen</string>
+    <string name="add_note">Notiz hinzufügen</string>
+    <string name="show_recipe_images">Rezeptbilder anzeigen</string>
+    <string name="close">Schließen</string>
+    <string name="add_from_recipe">Aus Rezept hinzufügen</string>
+    <string name="share">Teilen</string>
+    <string name="name_too_long">Name muss &lt;=%d Zeichen haben</string>
+    <string name="name_empty">Name darf nicht leer sein</string>
 </resources>

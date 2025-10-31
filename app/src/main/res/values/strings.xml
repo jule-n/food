@@ -65,7 +65,7 @@
     <string name="edit_specific_tag">Tag %s</string>
     <string name="edit_groceries">Edit Groceries</string>
     <string name="choose_image">Choose Image</string>
-    <string name="add_groceries_to_cart">Add to Groceries</string>
+    <string name="add_groceries_to_cart">Add to grocery list</string>
     <string name="choose_category">Choose Category</string>
     <string name="recipes_with_tag">Recipes tagged \"%s\"</string>
     <string name="category">Category</string>
@@ -91,9 +91,31 @@
     <string name="no_recipe">No Recipe</string>
     <string name="active_recipes">Active Recipes</string>
     <string name="all_recipes">All Recipes</string>
-    <string name="added_n_groceries">Added %d groceries to %s</string>
+    <string name="added_n_groceries">Added %d grocerie(s) to %s</string>
     <string name="select_recipe">Select Recipe</string>
     <string name="n_recipes">%d Recipes</string>
-    <string name="moved_n_groceries_to_category">Moved %d groceries to category %s</string>
+    <string name="moved_n_groceries_to_category">Moved %d grocerie(s) to category %s</string>
     <string name="select_groceries_from_recipe_info">You may only choose recipes that you have added groceries to.</string>
+    <string name="edit_tag_screen_info">Click on a tag to modify it.</string>
+    <string name="icon">Icon</string>
+    <string name="delete_tag">Delete Tag</string>
+    <string name="select_icon">Select Icon</string>
+    <string name="delete_images">Delete Images</string>
+    <string name="are_you_sure_you_want_to_delete_n_images">Are you sure you want to delete %d image(s)?</string>
+    <string name="tag_name">Tag name</string>
+    <string name="delete_category">Delete Category</string>
+    <string name="deleted_category_name">Deleted category \"%s\"</string>
+    <string name="are_you_sure_you_want_to_delete_category_name">Are you sure you want to delete \"%s\"?</string>
+    <string name="edit_categories">Edit Categories</string>
+    <string name="reorder_categories">Reorder categories</string>
+    <string name="back">Back</string>
+    <string name="clear_search">Clear search</string>
+    <string name="add_images">Add images</string>
+    <string name="add_note">Add note</string>
+    <string name="show_recipe_images">Show recipe images</string>
+    <string name="close">Close</string>
+    <string name="add_from_recipe">Add from recipe</string>
+    <string name="share">Share</string>
+    <string name="name_too_long">Name has to be &lt;=%d characters</string>
+    <string name="name_empty">Name must not be empty</string>
 </resources>

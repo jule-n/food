@@ -1,11 +1,12 @@
 package com.jule.food
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,13 +16,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,10 +39,11 @@ fun ExpandableTagSelectionFlowRow(
     selectedTagIds: List<UUID>,
     onRemoveFromSelectedTagIds: (UUID) -> Unit,
     onAddToSelectedTagIds: (UUID) -> Unit,
-    onLongClickTag: (UUID) -> Unit,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showExpansionButton: Boolean = true,
+    extraContent: @Composable () -> Unit = {}
 ) {
     Column(
         verticalArrangement = Arrangement.Top,
@@ -64,13 +63,9 @@ fun ExpandableTagSelectionFlowRow(
 
                     if (alpha > 0) {
                         val selected = selectedTagIds.contains(tag.id)
-                        FilterChipLongClick(
+                        FilterChip(
                             selected = selected,
-                            key1 = tag.id,
                             onClick = { if (selectedTagIds.contains(tag.id)) onRemoveFromSelectedTagIds(tag.id) else onAddToSelectedTagIds(tag.id) },
-                            onLongClick = {
-                                onLongClickTag(tag.id)
-                            },
                             label = { Text(tag.name) },
                             leadingIcon = {
                                 val painter = if (selected) R.drawable.done else tagIcons[tag.iconIndex]
@@ -83,6 +78,7 @@ fun ExpandableTagSelectionFlowRow(
                             modifier = Modifier
                                 .padding(0.dp)
                                 .height(FilterChipDefaults.Height)
+                                .animateContentSize()
                                 .graphicsLayer {
                                     this.alpha = alpha
                                     this.scaleX = scale
@@ -94,13 +90,18 @@ fun ExpandableTagSelectionFlowRow(
                 }
             }
         }
-        AssistChip(
-            onClick = {
-                onExpandedChange(!expanded)
-            },
-            label = { Text(if (!expanded) "Show more" else "Show less") },
-            modifier = Modifier.padding(horizontal = 10.dp)
-        )
+        AnimatedVisibility (showExpansionButton) {
+            Row {
+                AssistChip(
+                    onClick = {
+                        onExpandedChange(!expanded)
+                    },
+                    label = { Text(if (!expanded) "Show more" else "Show less") },
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+                extraContent()
+            }
+        }
     }
 }
 @Composable
@@ -109,7 +110,6 @@ fun TagSelectionFlowRow(
     selectedTagIds: List<UUID>,
     onRemoveFromSelectedTagIds: (UUID) -> Unit,
     onAddToSelectedTagIds: (UUID) -> Unit,
-    onLongClickTag: (UUID) -> Unit,
     modifier: Modifier = Modifier
 ) {
     FlowRow(
@@ -119,13 +119,9 @@ fun TagSelectionFlowRow(
     ) {
         for (tag in tags.sortedBy { if (selectedTagIds.contains(it.id)) 0 else 1 }) {
             val selected = selectedTagIds.contains(tag.id)
-            FilterChipLongClick(
+            FilterChip(
                 selected = selected,
-                key1 = tag.id,
                 onClick = { if (selectedTagIds.contains(tag.id)) onRemoveFromSelectedTagIds(tag.id) else onAddToSelectedTagIds(tag.id) },
-                onLongClick = {
-                    onLongClickTag(tag.id)
-                },
                 label = { Text(tag.name) },
                 leadingIcon = {
                     val painter = if (selected) R.drawable.done else tagIcons[tag.iconIndex]
@@ -166,7 +162,7 @@ fun TagDisplayFlowRow(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier.padding(horizontal = 10.dp).fillMaxWidth()
     ) {
-        tags.forEachIndexed { index, tag ->
+        tags.forEach { tag ->
             FilterChip(
                 selected = true,
                 enabled = false,
@@ -209,7 +205,6 @@ fun ExpandableTagSelectionFlowRowPreview() {
             possibleTagIdsToSelect = tags.map { it.id },
             onRemoveFromSelectedTagIds = {},
             onAddToSelectedTagIds = {},
-            onLongClickTag = {},
             expanded = expanded,
             onExpandedChange = { expanded = it }
         )

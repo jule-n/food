@@ -4,10 +4,6 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -15,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
-import androidx.compose.ui.util.fastFirst
 import androidx.lifecycle.ViewModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -34,9 +29,19 @@ class Recipe(
     var name by mutableStateOf(name)
     var note by mutableStateOf(note)
 }
+
+class Tag(
+    name: String,
+    iconIndex: Int,
+    val id: UUID = UUID.randomUUID()
+) {
+    var name by mutableStateOf(name)
+    var iconIndex by mutableIntStateOf(iconIndex)
+}
+
 @Serializable
-data class Tag(
-    var name: String,
+class SaveableTag(
+    val name: String,
     var iconIndex: Int,
     @Serializable(with = UUIDSerializer::class)
     val id: UUID = UUID.randomUUID()
@@ -57,7 +62,8 @@ class SaveableRecipe(
 @Serializable
 class SaveableRecipes(
     val recipes: List<SaveableRecipe>,
-    val tags: List<Tag>
+    val tags: List<SaveableTag>,
+    val recentRecipeIds: List<@Serializable(with = UUIDSerializer::class)UUID>? = null
 )
 
 // Function for getting tags from UUIDs
@@ -73,11 +79,11 @@ fun getRecipeFromId(id: UUID, recipes: List<Recipe>): Recipe {
 }
 // Function that checks whether a given recipe name is valid
 fun isRecipeError(name: String): Boolean {
-    return name.isEmpty() || name.length > 30
+    return name.isEmpty() || name.length > 40
 }
 // Function that checks whether a given tag name is valid
-fun isTagError(name: String): Boolean {
-    return name.isEmpty() || name.length > 15
+fun isTagNameTooLong(name: String): Boolean {
+    return name.length > 20
 }
 
 @DrawableRes val tagIcons: List<Int> = listOf(
@@ -227,7 +233,7 @@ class RecipeViewModel : ViewModel() {
         return newRecipe.id
     }
     // Add a new recipe with a name and id, and optionally, images, groceries, tags and notes
-    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "", id: UUID) {
+    private fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "", id: UUID) {
         val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableStateList(), note = note, id = id)
 
         _recipes.add(newRecipe)
@@ -307,12 +313,12 @@ class RecipeViewModel : ViewModel() {
         _tags[index].iconIndex = newIndex
     }
     // Change the recipes that have this tag
-    fun changeTagRecipes(id: UUID, newRecipes: List<Recipe>) {
+    fun changeTagRecipes(id: UUID, newRecipeIds: List<UUID>) {
         recipes.forEach { recipe ->
             // Loop through all recipes, remove the tag from it if it is there
             recipe.tags.removeIf { tagId -> tagId == id }
             // If the new list of recipes contains the tag, add it
-            if (newRecipes.contains(recipe))
+            if (newRecipeIds.contains(recipe.id))
                 recipe.tags.add(id)
         }
     }
@@ -344,13 +350,15 @@ class RecipeViewModel : ViewModel() {
 
     // Get the saveable data type
     private fun getSaveable(): SaveableRecipes {
-        val output = mutableListOf<SaveableRecipe>()
+        val saveableRecipes = mutableListOf<SaveableRecipe>()
         recipes.forEach { recipe ->
             // Go through all recipes and convert them to the saveable type
             val groceries = recipe.groceries.map { SaveableGroceryItem(it.name, it.details) }
-            output.add(SaveableRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id))
+            saveableRecipes.add(SaveableRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id))
         }
-        return SaveableRecipes(output, tags)
+        val saveableTags = tags.map { SaveableTag(it.name, it.iconIndex, it.id) }
+
+        return SaveableRecipes(saveableRecipes, saveableTags, recentRecipeIds)
     }
 
     // Get the Json string for exporting the data 
@@ -392,7 +400,12 @@ class RecipeViewModel : ViewModel() {
             val groceries = recipe.groceries.map { GroceryItem(it.name, it.details) }
             addRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id)
         }
-        addTags(recipes.tags)
+        recipes.tags.forEach { tag ->
+            addTag(Tag(tag.name, tag.iconIndex, tag.id))
+        }
+
+        _recentRecipeIds.clear()
+        _recentRecipeIds.addAll(recipes.recentRecipeIds ?: listOf())
     }
 
     fun deleteImageFiles() {

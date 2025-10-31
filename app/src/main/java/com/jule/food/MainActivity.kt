@@ -1,51 +1,38 @@
 package com.jule.food
 
+//import reorderable
+//import androidx.datastore.core.DataStore
+//import androidx.datastore.preferences.core.Preferences
+//import androidx.datastore.preferences.preferencesDataStore
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-//import reorderable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.util.fastFirstOrNull
+import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
-//import androidx.datastore.core.DataStore
-//import androidx.datastore.preferences.core.Preferences
-//import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
-import kotlinx.coroutines.launch
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import kotlin.concurrent.read
+import androidx.core.net.toUri
 
 class MainActivity : AppCompatActivity() {
 // Import
@@ -68,7 +55,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/zip"  // Set the type to specifically check for .zip files
-            val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary")
+            val uri = "content://com.android.externalstorage.documents/document/primary".toUri()
             putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
         }
 
@@ -107,11 +94,38 @@ class MainActivity : AppCompatActivity() {
             val zipFile = createZipExportFile(this, listOf(groceries, recipes), images, "test.zip")
             exportFileToLocation(this, zipFile, exportUri)
 
-            Toast.makeText(this, "Exported successfully as \"${exportUri.path}\"", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Exported successfully as \"${exportUri.path?.substringAfterLast('/')}\"", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "Canceled Export", Toast.LENGTH_SHORT).show()
         }
     }
+
+
+//    private fun shareZipFile() {
+//        Toast.makeText(this, "Creating .zip file. This will take a few seconds...", Toast.LENGTH_LONG).show()
+//        val downloadsDir = File(this.filesDir.toString() + "/downloads")
+//        if (!downloadsDir.exists()) {
+//            if (!downloadsDir.mkdirs()) {
+//                Log.e("MainActivity", "Failed to create downloads directory")
+//                return
+//            }
+//            Log.d("MainActivity", "Created downloads directory")
+//        }
+//        val groceries = File(filesDir, "groceries.json").apply { writeText(groceryViewModel.getJson())}
+//        val recipes = File(filesDir, "recipes.json").apply { writeText(recipeViewModel.getJson())}
+//        val images = createImageFilesFromPaths(recipeViewModel.getImagePaths())
+//        val zipFile = createZipExportFile(this, listOf(groceries, recipes), images, "recipes.zip", addToDir = "/downloads")
+//
+//        val shareUri = FileProvider.getUriForFile(this, "com.jule.food.fileprovider", zipFile)
+//
+//        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+//            type = "application/zip"
+//            putExtra(Intent.EXTRA_STREAM, shareUri)
+//            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+//        }
+//        val shareIntent = Intent.createChooser(sendIntent, null)
+//        startActivity(shareIntent, null)
+//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -173,7 +187,7 @@ class MainActivity : AppCompatActivity() {
                         addToGroceries = { groceries, categoryId, recipeId ->
                             groceryViewModel.addToGroceries(groceries, categoryId, recipeId, context)
                         },
-                        onDeleteRecipeImage = { id, path -> Log.d("onDeleteRecipeImage", "Request to delete at Recipe: $id, Path: $path") }
+//                        onShare = { shareZipFile() }
                     )
             }
         }
@@ -242,7 +256,7 @@ fun AppPreview() {
     groceryViewModel.initializeEmpty()
 
     FoodTheme(darkTheme = darkTheme) {
-        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), onDeleteRecipeImage = { _, _ ->}, groceryViewModel = groceryViewModel)
+        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), groceryViewModel = groceryViewModel)
     }
 }
 

@@ -1,11 +1,11 @@
 package com.jule.food
 
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,340 +13,322 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jule.food.ui.theme.FoodTheme
+import java.util.UUID
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddTagSheet(
+    allRecipes: List<Recipe>,
+    onAddTag: (tag: Tag, recipeIds: List<UUID>) -> Unit,
+    focusRequester: FocusRequester,
+    onDismissRequest: () -> Unit
+) {
+    val nameState = rememberTextFieldState("")
+    var iconIndex by remember { mutableIntStateOf(0) }
+    val selectedRecipeIds = remember { mutableStateListOf<UUID>() }
+
+    ModalBottomSheet(
+        sheetState = rememberModalBottomSheetState(),
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        dragHandle = null
+    ) {
+        AddEditTagSheetContent(
+            nameState = nameState,
+            currentIconIndex = iconIndex,
+            onSelectIconIndex = { iconIndex = it },
+            isAddSheet = true,
+            allRecipes = allRecipes,
+            selectedRecipeIds = selectedRecipeIds,
+            onRemoveSelectedRecipeId = { selectedRecipeIds.remove(it) },
+            onAddSelectedRecipeId = { selectedRecipeIds.add(it) },
+            onAddNewTag = {
+                val newTag = Tag(nameState.text.trim().toString(), iconIndex)
+                onAddTag(newTag, selectedRecipeIds)
+                onDismissRequest()
+            },
+            focusRequester = focusRequester
+        )
+    }
+}
 
 // Bottom Sheet for editing a specific tag and its recipes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTagSheet(
     tag: Tag,
-    recipes: List<Recipe>,
+    allRecipes: List<Recipe>,
     onDeleteTag: () -> Unit,
     onChangeTagName: (String) -> Unit,
     onChangeTagIconIndex: (Int) -> Unit,
-    onChangeTagRecipes: (List<Recipe>) -> Unit,
-    state: SheetState,
+    onChangeTagRecipeIds: (List<UUID>) -> Unit,
     onDismissRequest: () -> Unit
 ) {
-    var nameValue by remember { mutableStateOf(TextFieldValue(tag.name)) }
-    var lastValueWithoutError by remember { mutableStateOf(tag.name) }
-    var isEditing by remember { mutableStateOf(false) }
-    var iconSelectionExpanded by remember { mutableStateOf(false) }
-    var focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
+    val nameState = rememberTextFieldState(tag.name)
 
-    val selectedRecipes = remember { recipes.filter { it.tags.contains(tag.id) }.toMutableStateList() }
+    val selectedRecipeIds = remember { allRecipes.filter { it.tags.contains(tag.id) }.map { it.id }.toMutableStateList() }
+
+    LaunchedEffect(nameState.text) {
+        val isTagNameEmpty = nameState.text.isEmpty()
+        val isTagNameTooLong = isTagNameTooLong(nameState.text.toString())
+        if (!isTagNameEmpty && !isTagNameTooLong) {
+            onChangeTagName(nameState.text.trim().toString())
+        }
+    }
 
     ModalBottomSheet(
-        sheetState = state,
+        sheetState = rememberModalBottomSheetState(),
         onDismissRequest = {
-            onChangeTagRecipes(selectedRecipes)
-            if (isEditing) {
+            onChangeTagRecipeIds(selectedRecipeIds)
+            onDismissRequest()
+        },
+        dragHandle = null
+    ) {
+        AddEditTagSheetContent(
+            nameState = nameState,
+            currentIconIndex = tag.iconIndex,
+            onSelectIconIndex = onChangeTagIconIndex,
+            isAddSheet = false,
+            allRecipes = allRecipes,
+            selectedRecipeIds = selectedRecipeIds,
+            onRemoveSelectedRecipeId = { selectedRecipeIds.remove(it) },
+            onAddSelectedRecipeId = { selectedRecipeIds.add(it) },
+            onDelete = onDeleteTag
+        )
+    }
+
+
+}
+
+@Composable
+fun AddEditTagSheetContent(
+    nameState: TextFieldState,
+    currentIconIndex: Int,
+    onSelectIconIndex: (Int) -> Unit,
+    selectedRecipeIds: List<UUID>,
+    onRemoveSelectedRecipeId: (UUID) -> Unit,
+    onAddSelectedRecipeId: (UUID) -> Unit,
+    allRecipes: List<Recipe>,
+    onDelete: (() -> Unit)? = null,
+    onAddNewTag: (() -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
+    isAddSheet: Boolean
+) {
+    val focusManager = LocalFocusManager.current
+
+    var showSelectIconDialog by remember { mutableStateOf(false) }
+    val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                 focusManager.clearFocus(true)
             }
-            else
-                onDismissRequest()
-        },
-//        modifier = Modifier.height(height = if (state.currentValue == SheetValue.PartiallyExpanded) 100.dp else 500.dp)
     ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            contentPadding = PaddingValues(horizontal = 5.dp)
-        ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.size(48.dp))
-                        FilterChip(selected = false, onClick = {}, label = {
-                            EditableText(
-                                editable = true,
-                                textState = nameValue,
-                                textAlign = TextAlign.Center,
-                                onTextChange = {
-                                    if (!isTagError(it.text))
-                                        lastValueWithoutError = it.text
-                                    nameValue = it
-                                },
-                                onSubmit = {
-                                    focusManager.clearFocus(true)
-                                },
-                                submitOnFocusLoss = false,
-                                modifier = Modifier
-                                    .height(40.dp)
-                                    .wrapContentHeight(align = Alignment.CenterVertically)
-                                    .onFocusChanged { focusState ->
-                                        if (focusState.isFocused) {
-                                            isEditing = true
-                                            scope.launch {
-                                                nameValue =
-                                                    nameValue.copy(
-                                                        selection = TextRange(
-                                                            0,
-                                                            nameValue.text.length
-                                                        )
-                                                    )
-                                            }
-                                        } else {
-                                            isEditing = false
-                                            lastValueWithoutError = lastValueWithoutError.trim()
-                                            onChangeTagName(lastValueWithoutError)
-                                            nameValue = nameValue.copy(text = lastValueWithoutError)
-                                        }
-                                    })
-                        },
-                            enabled = true,
-                            leadingIcon = {
-                                IconButton(
-                                    onClick = { iconSelectionExpanded = true },
-                                    modifier = Modifier.size(30.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(tagIcons[tag.iconIndex]),
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                                        contentDescription = "Edit"
-                                    )
-                                }
-                                IconSelectionDropdown(
-                                    expanded = iconSelectionExpanded,
-                                    icons = tagIcons,
-                                    selectedIconIndex = tag.iconIndex,
-                                    onSelectIconIndex = onChangeTagIconIndex,
-                                    onDismissRequest = { iconSelectionExpanded = false })
-                            }
-                        )
-                        IconButton(
-                            onClick = onDeleteTag,
-                        ) {
-                            Icon(painter = painterResource(R.drawable.delete), contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                        }
-
-//                    TextButtonWithIcon(
-//                        text = {
-//                            Text(
-//                                stringResource(R.string.delete),
-//                                color = MaterialTheme.colorScheme.onBackground
-//                            )
-//                        },
-//                        onClick = onDeleteTag,
-//                        icon = R.drawable.delete,
-//                        iconTint = MaterialTheme.colorScheme.error
-//                    )
+        Row {
+            Column(modifier = Modifier.weight(1f)) {
+                BasicTextFieldWithBox(
+                    state = nameState,
+                    placeholder = { Text(
+                        text = "${if (isAddSheet) stringResource(R.string.new_tag) else stringResource(R.string.tag_name)}...",
+                        maxLines = 1, color = placeholderColor, style = MaterialTheme.typography.titleMedium) },
+                    textStyle = MaterialTheme.typography.titleMedium,
+                    contentPadding = PaddingValues(15.dp),
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    onKeyboardAction = KeyboardActionHandler {
+                        focusManager.clearFocus(true)
+                    },
+                    modifier = Modifier.fillMaxWidth().conditional(focusRequester != null) {
+                        Modifier.focusRequester(focusRequester!!)
                     }
+                )
 
-                    Text(
-                        stringResource(R.string.recipes), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier
-                        .padding(start = 10.dp)
-                        .fillMaxWidth())
+                var showEmptyTagError by remember { mutableStateOf(false) }
+                val isTagNameEmpty = nameState.text.isEmpty()
+                val isTagNameTooLong = isTagNameTooLong(nameState.text.toString())
 
+                if (!showEmptyTagError) {
+                    LaunchedEffect(nameState.text) {
+                        if (nameState.text.isNotEmpty())
+                            showEmptyTagError = true
+                    }
                 }
+
+                SheetErrorMessage(
+                    isError = (showEmptyTagError && isTagNameEmpty) || isTagNameTooLong,
+                    message = if (isTagNameTooLong) stringResource(R.string.name_too_long, 20) else
+                            if (isTagNameEmpty) stringResource(R.string.name_empty) else ""
+                )
             }
 
-            items(recipes) { recipe ->
-                val selected = selectedRecipes.contains(recipe)
-                Surface(
-                    checked = selected,
-                    onCheckedChange = { checked -> if (checked) selectedRecipes.add(recipe) else selectedRecipes.remove(recipe) },
-                    //                    onClick = { if (selected) selectedRecipes.remove(recipe) else selectedRecipes.add(recipe) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp),
-//                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(10)
+            if (isAddSheet) {
+                TextButton(onClick = { onAddNewTag?.invoke() }, modifier = Modifier.padding(end = 5.dp)) {
+                    Text(stringResource(R.string.save))
+                }
+            } else {
+                Button(
+                    onClick = { showDeleteConfirmDialog = true },
+                    colors = ButtonDefaults.buttonColors().copy(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.padding(end = 5.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Checkbox(checked = selected, onCheckedChange = null)
-                        Text(recipe.name, overflow = TextOverflow.Ellipsis, maxLines = 1)
+                    Icon(painterResource(R.drawable.delete), contentDescription = "Delete")
+                    Text(stringResource(R.string.delete_tag))
+                }
+            }
+        }
+        Spacer(Modifier.height(5.dp))
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
+            shape = RoundedCornerShape(50),
+            onClick = {
+                showSelectIconDialog = true
+            },
+            modifier = Modifier.padding(start = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Text("${stringResource(R.string.icon)}:", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.width(5.dp))
+                Icon(painterResource(tagIcons[currentIconIndex]), contentDescription = "Icon", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(stringResource(R.string.recipes), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 10.dp))
+        BoxWithConstraints (modifier = Modifier.padding(10.dp)){
+            val itemSize = (maxWidth - 30.dp - 10.dp) / 4
+            FlowRow(
+                maxItemsInEachRow = 4,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+//                modifier = Modifier.width(maxWidth)
+            ) {
+                allRecipes.forEach { recipe ->
+                    val selected = selectedRecipeIds.contains(recipe.id)
+                    RecipeTinyDisplay(
+                        recipe = recipe,
+                        modifier = Modifier.width(itemSize),
+                        onClick = {
+                            if (selected) {
+                                onRemoveSelectedRecipeId(recipe.id)
+                            } else {
+                                onAddSelectedRecipeId(recipe.id)
+                            }
+                        },
+                        selected = selected
+                    )
+                }
+            }
+        }
+    }
+
+    if (showSelectIconDialog) {
+        DefaultDialog(title = stringResource(R.string.select_icon), onDismissRequest = { showSelectIconDialog = false }) {
+            FlowRow {
+                tagIcons.forEachIndexed { index, icon ->
+                    IconButton(
+                        onClick = {
+                            onSelectIconIndex(index)
+                            showSelectIconDialog = false
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
                     }
                 }
             }
         }
+    }
 
-//        Column(
-//            horizontalAlignment = Alignment.CenterHorizontally,
-//            verticalArrangement = Arrangement.spacedBy(20.dp),
-//        ) {
-//
-//            LazyVerticalGrid(
-//                columns = GridCells.Fixed(2),
-//                verticalArrangement = Arrangement.spacedBy(10.dp),
-//                horizontalArrangement = Arrangement.spacedBy(5.dp)
-//            ) {
-//            }
-////            LazyColumn(modifier = Modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {}
-//
-//        }
+    if (showDeleteConfirmDialog) {
+        DefaultDialog(
+            title = stringResource(R.string.delete_tag),
+            buttons = true,
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            onConfirm = onDelete
+        ) {
+            Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_item, nameState.text), textAlign = TextAlign.Center)
+        }
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@Preview(showBackground = true)
 @Composable
-fun EditTagDialog(
-    tag: Tag,
-    recipes: List<Recipe>,
-    onDeleteTag: () -> Unit,
-    onChangeTagName: (String) -> Unit,
-    onChangeTagIconIndex: (Int) -> Unit,
-    onChangeTagRecipes: (List<Recipe>) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    var nameValue by remember { mutableStateOf(TextFieldValue(tag.name)) }
-    var lastValueWithoutError by remember { mutableStateOf(tag.name) }
-    var isEditing by remember { mutableStateOf(false) }
-    var iconSelectionExpanded by remember { mutableStateOf(false) }
-    var focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
-//    val focusRequester = remember { FocusRequester() }
+fun EditTagSheetPreview() {
+    val recipeViewModel: RecipeViewModel = viewModel()
 
-    var showChangeRecipesDialog by remember { mutableStateOf(false) }
-    val selectedRecipes = remember { recipes.filter { it.tags.contains(tag.id) }.toMutableStateList() }
+    val fishTag = Tag("Nudeeln", 0)
+    val salzigTag = Tag("Salzig", 1)
+    val saladTag = Tag("Salat", 2)
+    val appleTag = Tag("Apfel", 3)
+    val kaeseTag = Tag("Käse", 4)
 
-    DefaultDialog(
-        title = stringResource(R.string.edit_specific_tag, tag.name),
-        onDismissRequest = {
-            if (isEditing) {
-                focusManager.clearFocus(true)
-            }
-            else
-                onDismissRequest()
-        },
-        onClickDialogEnabled = isEditing,
-        onClickDialog = {
-            focusManager.clearFocus(true)
-        }
-    ) {
-        focusManager = LocalFocusManager.current
+    recipeViewModel.addRecipe(name = "Dorade in Salzkruste", tags = listOf(fishTag.id, salzigTag.id, appleTag.id))
+    recipeViewModel.addRecipe(name = "Apfelsalat", tags = listOf(saladTag.id, appleTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
 
-        FilterChip(selected = false, onClick = {}, label = {
-            EditableText(
-                editable = true,
-                textState = nameValue,
-                textAlign = TextAlign.Center,
-                onTextChange = {
-                    if (!isTagError(it.text))
-                        lastValueWithoutError = it.text
-                    nameValue = it
-                },
-                onSubmit = {
-                    focusManager.clearFocus(true)
-                },
-                submitOnFocusLoss = false,
-                modifier = Modifier
-                    .height(40.dp)
-                    .wrapContentHeight(align = Alignment.CenterVertically)
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            isEditing = true
-                            scope.launch {
-                                nameValue =
-                                    nameValue.copy(selection = TextRange(0, nameValue.text.length))
-                            }
-                        } else {
-                            isEditing = false
-                            lastValueWithoutError = lastValueWithoutError.trim()
-                            onChangeTagName(lastValueWithoutError)
-                            nameValue = nameValue.copy(text = lastValueWithoutError)
-                        }
-                    }) },
-            enabled = true,
-            leadingIcon = {
-                IconButton(onClick = { iconSelectionExpanded = true }, modifier = Modifier.size(30.dp)) {
-                    Icon(painter = painterResource(tagIcons[tag.iconIndex]), modifier = Modifier.size(
-                        FilterChipDefaults.IconSize), contentDescription = "Edit")
-                }
-                IconSelectionDropdown(expanded = iconSelectionExpanded, icons = tagIcons, selectedIconIndex = tag.iconIndex, onSelectIconIndex = onChangeTagIconIndex, onDismissRequest = { iconSelectionExpanded = false })
-            }
+    FoodTheme {
+        EditTagSheet(
+            tag = saladTag,
+            allRecipes = recipeViewModel.recipes,
+            onDeleteTag = {},
+            onChangeTagName = {},
+            onChangeTagIconIndex = {},
+            onChangeTagRecipeIds = {},
+            onDismissRequest = {}
         )
-
-        TextButtonWithIcon(
-            text = { Text(stringResource(R.string.recipes), color = MaterialTheme.colorScheme.onBackground) },
-            onClick = { showChangeRecipesDialog = true },
-            icon = R.drawable.book
-        )
-        TextButtonWithIcon(
-            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.onBackground) },
-            onClick = onDeleteTag,
-            icon = R.drawable.delete,
-            iconTint = MaterialTheme.colorScheme.error
-        )
-    }
-    if (showChangeRecipesDialog) {
-        DefaultDialog(
-            title = stringResource(R.string.recipes_with_tag, tag.name),
-            onDismissRequest = {
-                onChangeTagRecipes(selectedRecipes)
-                showChangeRecipesDialog = false
-            }
-        ) {
-
-            val prim1 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.1f)
-            val prim2 = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
-
-            LazyVerticalGrid(columns = GridCells.Adaptive(60.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(recipes) { index, recipe ->
-                    val isSelected = selectedRecipes.contains(recipe)
-                    val color1 by animateColorAsState(targetValue = if (isSelected) prim1 else Color.LightGray)
-                    val color2 by animateColorAsState(targetValue = if (isSelected) prim2 else Color.White)
-                    val br = Brush.linearGradient(listOf(color1, color2))
-                    Box() {
-                        RecipeSmallDisplay(recipe, onClick = {
-                            if (isSelected)
-                                selectedRecipes.remove(recipe)
-                            else
-                                selectedRecipes.add(recipe)
-                        },
-                            showImage = false, fallbackBrush = br, minTextSize = 7.sp, maxTextSize = 13.sp, isRecipeSearch = false
-                        )
-                        Surface(color = Color.Black.copy(alpha = if (isSelected) 0.3f else 0f), shape = RoundedCornerShape(20), border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)), modifier = Modifier.size(20.dp)) {
-                            if (isSelected)
-                                Icon(painter = painterResource(R.drawable.done), tint = Color.White, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-//                            Checkbox(checked = isSelected, enabled = false, onCheckedChange= {}, modifier = Modifier.align(Alignment.TopStart).offset(-15.dp, -15.dp))
-                    }
-                }
-            }
-        }
     }
 }

@@ -1,51 +1,25 @@
 package com.jule.food
 
-import android.os.Debug
-import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateBounds
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -53,27 +27,15 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,43 +46,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.Console
 import java.util.UUID
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddGroceryBottomSheet(
     modifier: Modifier = Modifier,
     onDismissRequest: () -> Unit,
     focusRequester: FocusRequester,
     onConfirm: (GroceryItem) -> Unit,
-    focusDetailsOnNext: Boolean = false,
-    allowDismissIfEmpty: Boolean = true,
-    imeActionDone: Boolean = false,
-    activeRecipes: List<Recipe>,
     allRecipes: List<Recipe>,
     getRecipeNameFromId: ((UUID) -> String),
-    title: String = stringResource(R.string.new_grocery),
-    startValue: String = "",
-    startDetails: String = ""
 ) {
     val groceryNameState = rememberTextFieldState("")
     val groceryDetailState = rememberTextFieldState("")
@@ -139,6 +87,7 @@ fun AddGroceryBottomSheet(
 
         groceryNameState.clearText()
         groceryDetailState.clearText()
+        focusRequester.requestFocus()
 //        recipeActive = false
     }
 
@@ -159,7 +108,7 @@ fun AddGroceryBottomSheet(
             showRecipeSelection = showRecipeSelection,
             allRecipes = allRecipes
         ) {
-            Column() {
+            Column {
                 GroceryBottomSheetInputs(
                     groceryNameState = groceryNameState,
                     groceryDetailState = groceryDetailState,
@@ -198,6 +147,68 @@ fun AddGroceryBottomSheet(
                             Text(stringResource(R.string.save), maxLines = 1)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddGroceryBottomSheetBasic(
+    modifier: Modifier = Modifier,
+    onDismissRequest: () -> Unit,
+    focusRequester: FocusRequester,
+    onConfirm: (GroceryItem) -> Unit,
+) {
+    val groceryNameState = rememberTextFieldState("")
+    val groceryDetailState = rememberTextFieldState("")
+
+    val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+
+    fun confirm(){
+        val newGroceryItem = GroceryItem(groceryNameState.text.toString().trim(), groceryDetailState.text.toString().trim())
+        onConfirm(newGroceryItem)
+
+        groceryNameState.clearText()
+        groceryDetailState.clearText()
+        focusRequester.requestFocus()
+//        recipeActive = false
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet (
+        sheetState = sheetState,
+        onDismissRequest = onDismissRequest,
+        dragHandle = null,
+        modifier = modifier
+    ) {
+        GroceryBottomSheetInputs(
+            groceryNameState = groceryNameState,
+            groceryDetailState = groceryDetailState,
+            focusRequester = focusRequester,
+            onConfirm = { confirm() }
+        )
+        Spacer(Modifier.height(10.dp))
+        FlowRow(
+            modifier = Modifier.padding(start = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            GroceryBottomSheetSelectionField(
+                text = "No Location",
+                icon = R.drawable.location,
+                isActive = false,
+                inactiveColor = placeholderColor,
+                onClick = { },
+                onClear = { }
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                TextButton(
+                    onClick = { confirm() },
+                    enabled = groceryNameState.text.isNotEmpty(),
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
+                    Text(stringResource(R.string.save), maxLines = 1)
                 }
             }
         }
@@ -294,7 +305,6 @@ fun GroceryBottomSheetInputs(
             onKeyboardAction = KeyboardActionHandler {
                 if (groceryNameState.text.isNotEmpty()) {
                     onConfirm()
-                    focusRequester.requestFocus()
                 }
             },
             textStyle = MaterialTheme.typography.bodyMedium,
@@ -319,10 +329,10 @@ fun GroceryBottomSheetContentWithRecipeSelection(
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).fillMaxHeight()
     ) {
-        Box() {
+        Box {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
-                onClick = {
+                modifier = Modifier.clickable(interactionSource = interactionSource, indication = null) {
                     focusManager.clearFocus(true)
                 }
             ) {
@@ -387,16 +397,11 @@ fun GroceryBottomSheetContentWithRecipeSelection(
 @Preview(showBackground = true)
 @Composable
 fun GroceryBottomSheetPreview() {
-    MaterialTheme() {
+    MaterialTheme {
         AddGroceryBottomSheet(
             onDismissRequest = {},
             focusRequester = remember { FocusRequester() },
             onConfirm = { },
-            activeRecipes = listOf(
-                Recipe("Recipe 1"),
-                Recipe("Recipe 2"),
-                Recipe("Recipe 3")
-            ),
             allRecipes = listOf(
                 Recipe("Recipe 1"),
                 Recipe("Recipe 2"),

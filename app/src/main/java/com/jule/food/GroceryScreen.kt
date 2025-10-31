@@ -1,21 +1,19 @@
 package com.jule.food
 
 import android.util.Log
-import android.widget.CheckBox
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,65 +22,49 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -94,16 +76,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -126,6 +101,7 @@ fun GroceryScreen(
     allRecipes: List<Recipe>,
     bottomBar: @Composable () -> Unit,
     onOpenSettings: () -> Unit,
+//    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -136,8 +112,6 @@ fun GroceryScreen(
     var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val coroutineScope = rememberCoroutineScope()
 
 
     val categories = groceryViewModel.groceryItemCategories
@@ -150,9 +124,7 @@ fun GroceryScreen(
     val selectedGroceryItems = remember { mutableStateListOf<UUID>() }
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
 
-    val activeRecipes = allRecipes.filter { recipe ->
-        selectedCategory!!.items.indexOfFirst { item -> item.recipeId == recipe.id } != -1
-    }
+    var isEditingCategories by remember { mutableStateOf(false) }
 
 
     val scaffoldState = rememberBottomSheetScaffoldState(
@@ -177,8 +149,12 @@ fun GroceryScreen(
         }
     }
 
-    BackHandler(enabled = selectionModeActive) {
-        selectedGroceryItems.clear()
+    BackHandler(enabled = selectionModeActive || isEditingCategories) {
+        if (selectionModeActive) {
+            selectedGroceryItems.clear()
+        } else if (isEditingCategories) {
+            isEditingCategories = false
+        }
     }
 
 
@@ -197,28 +173,41 @@ fun GroceryScreen(
                 }
             ) { selectionMode ->
                 if (!selectionMode || selectedCategory == null) {
-                    CenterAlignedTopAppBar(
-                        title = { Text(stringResource(R.string.groceries)) },
-                        actions = {
-                            IconButton(onClick = { showGroupingDialog = true }) {
-                                Icon(painter = painterResource(id = R.drawable.categories), contentDescription = "Categories")
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(Icons.Outlined.Settings, "Settings")
-                            }
-                        },
-                    )
+                    AnimatedContent(
+                        targetState = isEditingCategories
+                    ) { editingCategories ->
+                        if (!editingCategories) {
+                            CenterAlignedTopAppBar(
+                                title = { Text(stringResource(R.string.groceries)) },
+                                actions = {
+                                    IconButtonWithTooltip(onClick = { showGroupingDialog = true }, tooltipText = stringResource(R.string.group_groceries)) {
+                                        Icon(painter = painterResource(id = R.drawable.group_groceries), contentDescription = stringResource(R.string.group_groceries))
+                                    }
+                                },
+                                navigationIcon = {
+                                    IconButtonWithTooltip (onClick = onOpenSettings, tooltipText = stringResource(R.string.settings)) {
+                                        Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
+                                    }
+                                },
+                            )
+                        } else {
+                            EditScreenTopBar(
+                                title = stringResource(R.string.edit_categories),
+                                backgroundColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+                                onBack = {
+                                    isEditingCategories = false
+                                },
+                                modifier = Modifier.windowInsetsPadding(insets = WindowInsets.statusBars)
+                            )
+                        }
+                    }
                 } else {
                     SelectionTopBar(
                         numberSelected = selectedGroceryItems.size,
                         onClearSelection = {
                             selectedGroceryItems.clear()
                         },
-                        actions = {
-
-                        }
+                        actions = {}
                     )
                 }
             }
@@ -227,7 +216,7 @@ fun GroceryScreen(
             if (groceryViewModel.dataLoaded) {
                 Box(modifier = Modifier.fillMaxWidth()) {
 
-                    AnimatedVisibility(!selectionModeActive, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.Center)) {
+                    AnimatedVisibility(!selectionModeActive && !isEditingCategories, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut(), modifier = Modifier.align(Alignment.Center)) {
                         val elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 6.dp, focusedElevation = 8.dp, hoveredElevation = 8.dp)
                         SplitButtonLayout(
                         modifier = Modifier.align(Alignment.Center),
@@ -277,7 +266,7 @@ fun GroceryScreen(
                                             showAddFromRecipeDialog = true
                                             expanded = false
                                         },
-                                        text = { Text("Add from recipe") },
+                                        text = { Text(stringResource(R.string.add_from_recipe)) },
                                         leadingIcon = { Icon(painterResource(R.drawable.book), contentDescription = null)}
                                     )
                                 }
@@ -320,14 +309,17 @@ fun GroceryScreen(
                     onChangeItemNameDetails = { id, name, details ->
                         groceryViewModel.changeGroceryItem(id, name, details, selectedCategoryId!!)
                     },
-                    onAddCategory = { newCategory ->
+                    onAddNewCategory = { newCategory ->
                         groceryViewModel.addCategory(newCategory)
                     },
-                    onRemoveCategory = { id ->
+                    onDeleteCategory = { id ->
                         groceryViewModel.removeCategory(id)
                     },
                     onChangeCategoryName = { name, id ->
                         groceryViewModel.changeCategoryName(name, id)
+                    },
+                    onReorderCategories = { fromIndex, toIndex ->
+                        groceryViewModel.reorderCategories(fromIndex, toIndex)
                     },
                     onMoveItemsToCategory = { itemIds, fromCategoryId, toCategoryId ->
                         groceryViewModel.moveItemsToCategory(itemIds, fromCategoryId, toCategoryId)
@@ -335,12 +327,18 @@ fun GroceryScreen(
                     groupingOption = selectedGroupingOption,
                     showDeletedItems = showDeletedItems,
                     getRecipeNameFromId = getRecipeNameFromId,
-                    snackbarHostState = snackbarHostState,
                     selectedGroceryItems = selectedGroceryItems,
                     onAddToSelection = { id -> selectedGroceryItems.add(id) },
                     onRemoveFromSelection = { id -> selectedGroceryItems.remove(id) },
                     scaffoldState = scaffoldState,
                     onClearSelection = { selectedGroceryItems.clear() },
+                    isEditingCategories = isEditingCategories,
+                    onChangeIsEditingCategories = {
+                        if (selectionModeActive) {
+                            selectedGroceryItems.clear()
+                        }
+                        isEditingCategories = it
+                    },
                     modifier = modifier
                 )
             } else {
@@ -370,7 +368,6 @@ fun GroceryScreen(
                 )
             },
             allRecipes = allRecipes,
-            activeRecipes = activeRecipes,
             getRecipeNameFromId = getRecipeNameFromId
         )
     }
@@ -394,7 +391,6 @@ fun GroceryScreen(
             onSelectRecipe = { recipeId ->
                 chosenRecipeId = recipeId
                 showAddGroceriesFromRecipeDialog = true
-//                Toast.makeText(context, "Chose recipe ${allRecipes.fastFirst {it.id == recipeId}.name}", Toast.LENGTH_SHORT).show()
             },
             searchFocusRequester = searchRecipesFocusRequester
         )
@@ -451,7 +447,9 @@ fun GroceryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class,
+    ExperimentalSharedTransitionApi::class
+)
 @Composable
 fun GroceryGridScreen(
     allCategories: List<GroceryItemCategory>,
@@ -462,24 +460,23 @@ fun GroceryGridScreen(
     onAddToGroceries: (GroceryItem) -> Unit,
     onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit,
     onMoveItemsToCategory: (items: List<UUID>, fromCategoryId: UUID, toCategoryId: UUID) -> Unit,
-    onAddCategory: (GroceryItemCategory) -> Unit,
-    onRemoveCategory: (id: UUID) -> Unit,
+    onAddNewCategory: (GroceryItemCategory) -> Unit,
+    onDeleteCategory: (id: UUID) -> Unit,
     onChangeCategoryName: (String, id: UUID) -> Unit,
+    onReorderCategories: (fromIndex: Int, toIndex: Int) -> Unit,
     showDeletedItems: Boolean,
     groupingOption: GroceryGroupingOption,
     getRecipeNameFromId: (UUID) -> String,
-    snackbarHostState: SnackbarHostState,
     selectedGroceryItems: List<UUID>,
     onAddToSelection: (UUID) -> Unit,
     onRemoveFromSelection: (UUID) -> Unit,
     onClearSelection: () -> Unit,
     scaffoldState: BottomSheetScaffoldState,
+    isEditingCategories: Boolean,
+    onChangeIsEditingCategories: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-
-    var showCategoriesDialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     val deletedGroceryItems = remember { mutableStateListOf<GroceryItem>() }
 
@@ -488,6 +485,7 @@ fun GroceryGridScreen(
 
     val editGroceryNameState = rememberTextFieldState("")
     val editGroceryDetailState = rememberTextFieldState("")
+
 
     LaunchedEffect(singleSelection) {
         if (singleSelection) {
@@ -503,7 +501,6 @@ fun GroceryGridScreen(
         scaffoldState = scaffoldState,
         sheetContent = {
             EditGroceriesBottomSheetContent(
-                sheetState = scaffoldState.bottomSheetState,
                 category = category,
                 allCategories = allCategories,
                 allRecipes = allRecipes,
@@ -516,20 +513,6 @@ fun GroceryGridScreen(
                 getRecipeNameFromId = getRecipeNameFromId
             )
         }
-//        sheetDragHandle = {
-//            Box(modifier = Modifier.fillMaxWidth()) {
-//                BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
-//                TextButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
-//                    if (singleSelection) {
-//                        onChangeItemNameDetails(selectedGroceryItems[0], editGroceryNameState.text.toString().trim(), editGroceryDetailState.text.toString().trim())
-//                    }
-//                    onClearSelection()
-//                }) {
-//                    Text(stringResource(R.string.done))
-//                }
-//            }
-//        }
-//        sheetPeekHeight = 180.dp + 20.dp,
     ) {
         Column(
             modifier = modifier
@@ -542,15 +525,47 @@ fun GroceryGridScreen(
                     onClearSelection()
                 }
         ) {
-            CategoriesConnectedButtons(
-                allCategories = allCategories,
-                selectedCategory = category,
-                onChangeSelectedCategoryId = onChangeSelectedCategoryId,
-                onEditCategories = { showCategoriesDialog = true },
-                modifier = Modifier
-            )
+            SharedTransitionLayout {
+                CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                    AnimatedContent(
+                        targetState = isEditingCategories,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() }
+                    ) { editingCategories ->
+                        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                            if (!editingCategories) {
+                                Column {
+                                    CategoriesConnectedButtonsCustom(
+                                        allCategories = allCategories,
+                                        selectedCategoryId = category.id,
+                                        onChangeSelectedCategoryId = onChangeSelectedCategoryId,
+                                        modifier = Modifier
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().height(26.dp),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        EditButton(
+                                            text = stringResource(R.string.edit_categories),
+                                            onClick = { onChangeIsEditingCategories(true) }
+                                        )
+                                    }
+                                }
+                            } else {
+                                CategoriesEditScreen(
+                                    allCategories = allCategories,
+                                    onDeleteCategory = onDeleteCategory,
+                                    onChangeCategoryName = onChangeCategoryName,
+                                    onReorderCategories = onReorderCategories,
+                                    onAddNewCategory = onAddNewCategory
+                                )
+                            }
+                        }
+                    }
+                }
+
+            }
             Spacer(modifier = Modifier.height(10.dp))
-            if (category.items.isEmpty() && deletedGroceryItems.isEmpty()) {
+            if (category.items.isEmpty() && (!showDeletedItems || deletedGroceryItems.isEmpty())) {
                 Box(
                     modifier = Modifier
                         .padding(10.dp)
@@ -563,99 +578,106 @@ fun GroceryGridScreen(
                     )
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(100.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp)
+                AnimatedVisibility(
+                    visible = !isEditingCategories,
+                    enter = slideInVertically { it },
+                    exit = slideOutVertically { it }
                 ) {
-                    val allItems = category.items
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(100.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 1000.dp)
+                            .padding(horizontal = 10.dp)
+                    ) {
+                        val allItems = category.items
 
-                    val groupNames: MutableList<String> = mutableListOf()
-                    val groups: MutableList<List<GroceryItem>> = mutableListOf()
-                    when (groupingOption) {
-                        GroceryGroupingOption.None -> {
-                            groupNames.add("")
-                            groups.add(allItems)
+                        val groupNames: MutableList<String> = mutableListOf()
+                        val groups: MutableList<List<GroceryItem>> = mutableListOf()
+                        when (groupingOption) {
+                            GroceryGroupingOption.None -> {
+                                groupNames.add("")
+                                groups.add(allItems)
+                            }
+
+                            GroceryGroupingOption.Recipe -> {
+                                val recipeGroups = allItems.groupBy { it.recipeId }
+                                groupNames.addAll(recipeGroups.keys.map { recipeId ->
+                                    if (recipeId != null) getRecipeNameFromId(recipeId) else context.getString(
+                                        R.string.no_recipe
+                                    )
+                                })
+                                groups.addAll(recipeGroups.values)
+                            }
+
+                            GroceryGroupingOption.Location -> {
+                                groupNames.add("Location A")
+                                groups.add(allItems)
+                            }
                         }
 
-                        GroceryGroupingOption.Recipe -> {
-                            val recipeGroups = allItems.groupBy { it.recipeId }
-                            groupNames.addAll(recipeGroups.keys.map { recipeId ->
-                                if (recipeId != null) getRecipeNameFromId(recipeId) else context.getString(
-                                    R.string.no_recipe
-                                )
-                            })
-                            groups.addAll(recipeGroups.values)
+                        if (showDeletedItems && deletedGroceryItems.isNotEmpty()) {
+                            groupNames.add(context.getString(R.string.deleted))
+                            groups.add(deletedGroceryItems)
                         }
 
-                        GroceryGroupingOption.Location -> {
-                            groupNames.add("Location A")
-                            groups.add(allItems)
-                        }
-                    }
-
-                    if (showDeletedItems) {
-                        groupNames.add(context.getString(R.string.deleted))
-                        groups.add(deletedGroceryItems)
-                    }
-
-                    groups.forEachIndexed { index, groceryItems ->
-                        val isLast = index == groups.size - 1
-                        val isDeletedItems = showDeletedItems && isLast
+                        groups.forEachIndexed { index, groceryItems ->
+                            val isLast = index == groups.size - 1
+                            val isDeletedItems = showDeletedItems && deletedGroceryItems.isNotEmpty() && isLast
 
 //                        val customKey: String = "${groupNames[index]}$index"
 
-                        if (index > 0 || groupingOption != GroceryGroupingOption.None) {
-                            gridGroupTitle(
-                                title = groupNames[index],
-                                key = groupNames[index],
-                                animate = true
-                            )
-                        }
-                        items(
-                            groceryItems,
-                            key = { groceryItem -> groceryItem.id }) { groceryItem ->
-                            GroceryItemDisplay(
-                                item = groceryItem,
-                                onClick = {
-                                    if (selectionModeActive) {
-                                        if (selectedGroceryItems.contains(groceryItem.id))
-                                            onRemoveFromSelection(groceryItem.id)
-                                        else
-                                            onAddToSelection(groceryItem.id)
-                                    } else {
-                                        if (isDeletedItems) {
-                                            deletedGroceryItems.remove(groceryItem)
-                                            onAddToGroceries(groceryItem)
+                            if (index > 0 || groupingOption != GroceryGroupingOption.None) {
+                                gridGroupTitle(
+                                    title = groupNames[index],
+                                    key = "${groupNames[index]}_${isDeletedItems}",
+                                    animate = true
+                                )
+                            }
+                            items(
+                                groceryItems,
+                                key = { groceryItem -> groceryItem.id }) { groceryItem ->
+                                GroceryItemDisplay(
+                                    item = groceryItem,
+                                    onClick = {
+                                        if (selectionModeActive) {
+                                            if (selectedGroceryItems.contains(groceryItem.id))
+                                                onRemoveFromSelection(groceryItem.id)
+                                            else
+                                                onAddToSelection(groceryItem.id)
                                         } else {
-                                            onRemoveFromGroceries(allItems.indexOf(groceryItem))
-                                            deletedGroceryItems.add(groceryItem)
+                                            if (isDeletedItems) {
+                                                deletedGroceryItems.remove(groceryItem)
+                                                onAddToGroceries(groceryItem)
+                                            } else {
+                                                onRemoveFromGroceries(allItems.indexOf(groceryItem))
+                                                deletedGroceryItems.add(groceryItem)
+                                            }
                                         }
-                                    }
-                                },
-                                onLongClick = {
-                                    if (!isDeletedItems && !selectionModeActive) {
-                                        onAddToSelection(groceryItem.id)
-                                    }
-                                },
-                                getRecipeNameFromId = getRecipeNameFromId,
-                                showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
-                                deleted = isDeletedItems,
-                                isSelected = selectedGroceryItems.contains(groceryItem.id),
-                                showSelection = selectionModeActive,
-                                modifier = Modifier.animateItem()
-                            )
-                        }
+                                    },
+                                    onLongClick = {
+                                        if (!isDeletedItems && !selectionModeActive) {
+                                            onAddToSelection(groceryItem.id)
+                                        }
+                                    },
+                                    getRecipeNameFromId = getRecipeNameFromId,
+                                    showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
+                                    deleted = isDeletedItems,
+                                    isSelected = selectedGroceryItems.contains(groceryItem.id),
+                                    showSelection = selectionModeActive,
+                                    modifier = Modifier.animateItem()
+                                )
+                            }
 
-                        if (!isLast) {
-                            gridSpacer(20.dp)
+                            if (!isLast) {
+                                gridSpacer(20.dp)
 //                            item(span = { GridItemSpan(maxLineSpan) }) {
 //                                Spacer(modifier = Modifier.height(20.dp))
 //                            }
+                            }
                         }
                     }
                 }
@@ -663,32 +685,7 @@ fun GroceryGridScreen(
 
         }
     }
-    if (showCategoriesDialog) {
-        CategoriesDialog(
-            allCategories = allCategories,
-            onAddCategory = onAddCategory,
-            onDeleteCategory = { id ->
-                onRemoveCategory(id)
 
-                scope.launch {
-                    val result = snackbarHostState.showSnackbar(
-                        message = context.getString(
-                            R.string.deleted_item,
-                            category.name
-                        ),
-                        actionLabel = context.getString(R.string.undo),
-                        duration = SnackbarDuration.Long
-                    )
-//
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onAddCategory(category)
-                    }
-                }
-            },
-            onDismissRequest = { showCategoriesDialog = false },
-            onChangeCategoryName = onChangeCategoryName
-        )
-    }
 
 //    val editGroceryFocusRequester = remember { FocusRequester() }
 //    if (showEditGroceryDialog) {
