@@ -285,13 +285,15 @@ fun RecipeScreenMain(
                 }
             }
             AnimatedVisibility (!isEditingTags, enter = slideInVertically(initialOffsetY = { it }), exit = slideOutVertically(targetOffsetY = { it })) {
-                Surface(
-                    color = MaterialTheme.colorScheme.background,
-                    shape = RoundedCornerShape(
-                        topStartPercent = 5,
-                        topEndPercent = 5,
-                        bottomStartPercent = 0,
-                        bottomEndPercent = 0
+                Box(
+                    modifier = Modifier.background(
+                        color = MaterialTheme.colorScheme.background,
+                        shape = RoundedCornerShape(
+                            topStartPercent = 5,
+                            topEndPercent = 5,
+                            bottomStartPercent = 0,
+                            bottomEndPercent = 0
+                        )
                     )
                 ) {
                     RecipeGridWithConstrainedHeight(
@@ -452,17 +454,15 @@ fun RecipeScreenPreview() {
     val kaeseTag2 = Tag("Käes2", 4)
     val kaeseTag3 = Tag("Käse3", 4)
 
-    recipeViewModel.addRecipe(name = "Dorade in Salzkruste", tags = listOf(fishTag.id, salzigTag.id, appleTag.id))
-    recipeViewModel.addRecipe(name = "Apfelsalat", tags = listOf(saladTag.id, appleTag.id))
-    recipeViewModel.addRecipe(name = "Pizza", tags = listOf(kaeseTag.id, kaeseTag2.id, kaeseTag3.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
-    recipeViewModel.addRecipe(name = "Caesar's Salad", tags = listOf(kaeseTag.id, saladTag.id))
+//    recipeViewModel.addRecipe(name = "Dorade in Salzkruste", tags = listOf(fishTag.id, salzigTag.id, appleTag.id))
+//    recipeViewModel.addRecipe(name = "Apfelsalat", tags = listOf(saladTag.id, appleTag.id))
+//    recipeViewModel.addRecipe(name = "Pizza", tags = listOf(kaeseTag.id, kaeseTag2.id, kaeseTag3.id))
+    for (i in 0..30) {
+        for (j in 0..2) {
+            recipeViewModel.addRecipe(name = "Caesar's Salad ${i}${j}", tags = listOf(kaeseTag.id, saladTag.id))
+        }
+    }
+
     recipeViewModel.addTags(listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag, kaeseTag2, kaeseTag3))
 
     recipeViewModel.initializeEmpty()
