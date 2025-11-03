@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -153,59 +156,76 @@ fun CategoriesEditScreen(
             items(allCategories, key = { it.id }) { category ->
 
                 val textState = rememberTextFieldState(category.name)
+                val isCategoryNameEmpty = textState.text.isEmpty()
+                val isCategoryNameTooLong = isCategoryNameTooLong(textState.text.toString())
+
                 LaunchedEffect(textState.text) {
-                    onChangeCategoryName(textState.text.trim().toString(), category.id)
+                    if (!isCategoryNameEmpty && !isCategoryNameTooLong)
+                        onChangeCategoryName(textState.text.trim().toString(), category.id)
                 }
 
                 ReorderableItem(
                     state = reorderableListState,
                     key = category.id
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiary,
-                        shape = RoundedCornerShape(20),
-                        modifier = Modifier.sharedElement(
-                            sharedContentState = rememberSharedContentState(category.id),
-                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                        )
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp)
-                            .height(48.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
-                            BasicTextFieldWithBox(
-                                state = textState,
-                                lineLimits = TextFieldLineLimits.SingleLine,
-                                textStyle = ButtonDefaults.textStyleFor(40.dp),
-                                textColor = MaterialTheme.colorScheme.onTertiary,
-                                modifier = Modifier.weight(1f)
+                    Column() {
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            shape = RoundedCornerShape(20),
+                            modifier = Modifier.sharedElement(
+                                sharedContentState = rememberSharedContentState(category.id),
+                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
                             )
-                            IconButtonWithTooltip(
-                                onClick = {},
-                                tooltipText = stringResource(R.string.reorder_categories),
-                                modifier = Modifier.draggableHandle(
-                                    onDragStarted = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
-                                    onDragStopped = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp)
+                                .height(48.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
+                                BasicTextFieldWithBox(
+                                    state = textState,
+                                    lineLimits = TextFieldLineLimits.SingleLine,
+                                    textStyle = ButtonDefaults.textStyleFor(40.dp),
+                                    textColor = MaterialTheme.colorScheme.onTertiary,
+                                    modifier = Modifier.weight(1f).onFocusChanged { focusState ->
+                                        if (!focusState.isFocused && (isCategoryNameEmpty || isCategoryNameTooLong)) {
+                                            textState.setTextAndPlaceCursorAtEnd(category.name)
+                                        }
+                                    }
                                 )
-                            ) {
-                                Icon(painter = painterResource(R.drawable.drag_handle), contentDescription = stringResource(R.string.reorder_categories))
-                            }
-                            FilledIconButtonWithTooltip(
-                                onClick = {
-                                    categoryIdToDelete = category.id
-                                    showConfirmDeleteCategoryDialog = true
-                                },
-                                tooltipText = stringResource(R.string.delete),
-                                enabled = deleteEnabled,
+                                IconButtonWithTooltip(
+                                    onClick = {},
+                                    tooltipText = stringResource(R.string.reorder_categories),
+                                    modifier = Modifier.draggableHandle(
+                                        onDragStarted = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
+                                        onDragStopped = { hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+                                    )
+                                ) {
+                                    Icon(painter = painterResource(R.drawable.drag_handle), contentDescription = stringResource(R.string.reorder_categories))
+                                }
+                                FilledIconButtonWithTooltip(
+                                    onClick = {
+                                        categoryIdToDelete = category.id
+                                        showConfirmDeleteCategoryDialog = true
+                                    },
+                                    tooltipText = stringResource(R.string.delete),
+                                    enabled = deleteEnabled,
 //                                shapes = IconButtonDefaults.shapes(),
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.onError,
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(painter = painterResource(id = R.drawable.delete), contentDescription = stringResource(R.string.delete))
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.onError,
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Icon(painter = painterResource(id = R.drawable.delete), contentDescription = stringResource(R.string.delete))
+                                }
                             }
                         }
+
+                        SheetErrorMessage(
+                            isError = isCategoryNameEmpty || isCategoryNameTooLong,
+                            message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
+                                if (isCategoryNameEmpty) stringResource(R.string.name_empty) else ""
+                        )
                     }
                 }
             }

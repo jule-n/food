@@ -76,7 +76,7 @@ dependencies {
     implementation("sh.calvin.reorderable:reorderable:2.5.1")
 //    implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation(libs.coil.compose)
-    implementation(libs.stfalconimageviewer)
+//    implementation(libs.stfalconimageviewer)
     implementation (libs.picasso)
     implementation(libs.androidx.appcompat)
     implementation(libs.play.services.base)
