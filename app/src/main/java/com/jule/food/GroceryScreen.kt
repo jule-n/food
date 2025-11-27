@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -44,11 +47,13 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +64,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -342,11 +348,7 @@ fun GroceryScreen(
                     modifier = modifier
                 )
             } else {
-                Box(
-                    modifier = modifier.fillMaxSize()
-                ) {
-                    LoadingIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+                LoadingGroceryGridScreen()
             }
         }
     }
@@ -705,6 +707,57 @@ fun GroceryGridScreen(
 //    }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun LoadingGroceryGridScreen(
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(modifier = Modifier.padding(horizontal = 10.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(40.dp)
+                    .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(20))
+            )
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(40.dp)
+                    .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(20))
+            )
+        }
+        Row(modifier = Modifier.height(26.dp).fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Box(
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+                    shape = FilterChipDefaults.shape
+                ).width(100.dp).height(26.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            contentPadding = PaddingValues(horizontal = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item() {
+                Box(
+                    modifier = Modifier.aspectRatio(1.6f)
+                        .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(10))
+                )
+            }
+            item() {
+                Box(
+                    modifier = Modifier.aspectRatio(1.6f)
+                        .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(10))
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun GroceryScreenPreview() {
@@ -727,5 +780,18 @@ fun GroceryScreenPreview() {
 
     FoodTheme {
         GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf())
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun LoadingGroceryScreenPreview() {
+    FoodTheme {
+        Scaffold(
+            topBar = { CenterAlignedTopAppBar(title = { Text("Groceries" )})}
+        ) { innerPadding ->
+            LoadingGroceryGridScreen(modifier = Modifier.padding(innerPadding))
+        }
     }
 }
