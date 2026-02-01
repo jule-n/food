@@ -80,7 +80,7 @@ fun GroceryGrid(
 fun GroceryItemDisplay(
     item: GroceryItem,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     center: Boolean = false,
 //    itemColor: Color = MaterialTheme.colorScheme.primary,
@@ -91,6 +91,7 @@ fun GroceryItemDisplay(
     showSelection: Boolean = false,
     isSelected: Boolean = false,
     deleted: Boolean = false,
+    clickingEnabled: Boolean = true,
     getRecipeNameFromId: ((UUID) -> String)? = null
 ) {
     val itemColor = if (!showSelection) {
@@ -115,6 +116,7 @@ fun GroceryItemDisplay(
             .fillMaxSize()
             .aspectRatio(1.6f)
             .combinedClickable(
+                enabled = clickingEnabled,
                 onClick = onClick,
                 onLongClick = onLongClick
             )

@@ -1,11 +1,7 @@
 package com.jule.food
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,14 +16,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -95,7 +86,7 @@ fun RecipeGridWithConstrainedHeight(
         val rowNumber =
             ceil(recipes.size.toDouble() / recipesPerRow).toInt()
         val maxWidthWithoutSpacing =
-            maxWidth - ((recipesPerRow + 1) * spacingPerRecipe)
+            this@BoxWithConstraints.maxWidth - ((recipesPerRow + 1) * spacingPerRecipe)
         val widthPerRecipe = maxWidthWithoutSpacing / 3
         val heightPerRecipe = widthPerRecipe + 40.dp
         val spacingBetweenRows = (rowNumber - 1) * spacingPerRecipe
@@ -131,15 +122,14 @@ fun RecipeSmallDisplay(
     maxTextSize: TextUnit = 16.sp,
     fallbackBrush: Brush = Brush.linearGradient( listOf(MaterialTheme.colorScheme.secondaryContainer, Color.White) )
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     val image = recipe.images.isNotEmpty() && showImage
     Surface(
         shape = RoundedCornerShape(10),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 4.dp,
         onClick = onClick,
-//        modifier = modifier.clickable(enabled = onClick != null) {
-//            onClick?.invoke()
-//        }
+        modifier = modifier
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
@@ -169,7 +159,10 @@ fun RecipeSmallDisplay(
                             modifier = Modifier
                                 .sharedElement(
                                     rememberSharedContentState(key = if (isRecipeSearch) "${recipe.id}_search" else "${recipe.id}_grid"),
-                                    animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                                    animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!,
+                                    boundsTransform = { _, _ ->
+                                        motionScheme.slowSpatialSpec()
+                                    }
                                 )
                                 .clip(RoundedCornerShape(10))
                                 .fillMaxSize()

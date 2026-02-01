@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -64,7 +65,7 @@ fun SpecificRecipeImages(
 }
 
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RecipeImageGallery(
     recipeId: UUID,
@@ -83,6 +84,7 @@ fun RecipeImageGallery(
         return
 
     val context = LocalContext.current
+    val motionScheme = MaterialTheme.motionScheme
 
     val rowState = rememberLazyListState()
     val reorderableRowState = rememberReorderableLazyListState(lazyListState = rowState, onMove = { from, to ->
@@ -166,7 +168,10 @@ fun RecipeImageGallery(
                                     .conditional(index == 0) {
                                         Modifier.sharedElement(
                                             rememberSharedContentState(key = if (fromRecipeSearch) "${recipeId}_search" else "${recipeId}_grid"),
-                                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                                            animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!,
+                                            boundsTransform = { _, _ ->
+                                                motionScheme.slowSpatialSpec()
+                                            }
                                         )
                                     }
                                     .clip(RoundedCornerShape(10))

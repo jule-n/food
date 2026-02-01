@@ -1,14 +1,19 @@
 package com.jule.food
 
+import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -31,6 +37,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -41,6 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +63,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -62,6 +72,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFirstOrNull
@@ -76,40 +87,75 @@ fun CategoriesConnectedButtonsCustom(
     allCategories: List<GroceryItemCategory>,
     selectedCategoryId: UUID,
     onChangeSelectedCategoryId: (UUID) -> Unit,
+    onEnableEditMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     with (LocalSharedTransitionScope.current!!) {
         LazyRow(
             modifier = modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 10.dp)
+            contentPadding = PaddingValues(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            item {
+                IconButtonWithTooltip(
+                    onClick = onEnableEditMode,
+                    tooltipText = stringResource(R.string.edit_categories),
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        painterResource(R.drawable.edit),
+                        contentDescription = stringResource(R.string.edit_categories),
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
             items(allCategories) { category ->
-                val selected = category.id == selectedCategoryId
-                val color by animateColorAsState(
-                    targetValue = if (selected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant
-                )
-                val textColor by animateColorAsState(
-                    targetValue = if (selected) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                val shapeCornerRadius by animateIntAsState(
-                    targetValue = if (selected) 50 else 20
-                )
-                Button(
+                CategoryButton(
+                    name = category.name,
+                    selected = category.id == selectedCategoryId,
                     onClick = { onChangeSelectedCategoryId(category.id) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = color,
-                        contentColor = textColor
-                    ),
-                    shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(shapeCornerRadius), pressedShape = RoundedCornerShape(10)),
                     modifier = Modifier.sharedElement(
                         sharedContentState = rememberSharedContentState(category.id),
                         animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
-                    ).height(40.dp)
-                ) {
-                    Text(category.name)
-                }
+                    )
+                )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun CategoryButton(
+    modifier: Modifier = Modifier,
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    selectedColor: Color = MaterialTheme.colorScheme.tertiary
+) {
+    val color by animateColorAsState(
+        targetValue = if (selected) selectedColor else MaterialTheme.colorScheme.surfaceVariant
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.contentColorFor(selectedColor) else MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    val shapeCornerRadius by animateIntAsState(
+        targetValue = if (selected) 50 else 20
+    )
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = color,
+            contentColor = textColor
+        ),
+        shapes = ButtonDefaults.shapes(
+            shape = RoundedCornerShape(shapeCornerRadius),
+            pressedShape = RoundedCornerShape(10)
+        ),
+        modifier = modifier.height(40.dp)
+    ) {
+        Text(name)
     }
 }
 
@@ -128,6 +174,7 @@ fun CategoriesEditScreen(
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
+    val motionScheme = MaterialTheme.motionScheme
 
     val deleteEnabled = allCategories.size > 1
     val lazyListState = rememberLazyListState()
@@ -175,7 +222,10 @@ fun CategoriesEditScreen(
                             shape = RoundedCornerShape(20),
                             modifier = Modifier.sharedElement(
                                 sharedContentState = rememberSharedContentState(category.id),
-                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
+                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!,
+                                boundsTransform = { _, _ ->
+                                    motionScheme.slowSpatialSpec()
+                                }
                             )
                                 .fillMaxWidth()
                                 .padding(horizontal = 10.dp)
@@ -340,7 +390,7 @@ fun CategoriesConnectedButtonsCustomPreview() {
         GroceryItemCategory("Deine Oma")
     )}
     var selectedCategoryId by remember { mutableStateOf(categories.first().id) }
-    var editScreen by remember { mutableStateOf(true) }
+    var editScreen by remember { mutableStateOf(false) }
 
 
 
@@ -362,7 +412,8 @@ fun CategoriesConnectedButtonsCustomPreview() {
                                     CategoriesConnectedButtonsCustom(
                                         allCategories = categories,
                                         selectedCategoryId = selectedCategoryId,
-                                        onChangeSelectedCategoryId = { selectedCategoryId = it }
+                                        onChangeSelectedCategoryId = { selectedCategoryId = it },
+                                        onEnableEditMode = { editScreen = true }
                                     )
                                 } else {
                                     CategoriesEditScreen(

@@ -59,7 +59,7 @@ fun AddGroceriesFromRecipeDialog(
             ) {
                 LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     itemsIndexed(groceryCategories!!) { index, category ->
-                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
+                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                         Surface(
                             onClick = { chosenCategoryIndex = index },
                             enabled = true,

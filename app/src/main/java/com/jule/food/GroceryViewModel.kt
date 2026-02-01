@@ -5,9 +5,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.util.fastFirst
 import androidx.lifecycle.ViewModel
 import kotlinx.serialization.Serializable
@@ -22,20 +24,26 @@ val groceryGroupingOptionsDisplay = mapOf(
     GroceryGroupingOption.Recipe to R.string.recipe,
     GroceryGroupingOption.Location to R.string.store_location
 )
+val groceryGroupingOptionsIcons = mapOf(
+    GroceryGroupingOption.None to R.drawable.checkbox,
+    GroceryGroupingOption.Recipe to R.drawable.book,
+    GroceryGroupingOption.Location to R.drawable.location
+)
 
 class GroceryItemCategory(
     name: String,
     var items: SnapshotStateList<GroceryItem> = mutableStateListOf(),
+//    var deletedItems: SnapshotStateList<GroceryItem> = mutableStateListOf(),
     val id: UUID = UUID.randomUUID()
 ) {
     var name by mutableStateOf(name)
-//    val id: UUID = UUID.randomUUID()
 }
 
 @Serializable
 class SaveableGroceryItemCategory(
     val name: String,
     val items: List<SaveableGroceryItem>,
+//    val deletedItems: List<SaveableGroceryItem>,
     @Serializable(with = UUIDSerializer::class)
     val id: UUID = UUID.randomUUID()
 )
@@ -79,6 +87,7 @@ class GroceryViewModel: ViewModel() {
     val dataLoaded: Boolean
         get() = _dataLoaded
 
+
     private var _groceryItemCategories = mutableStateListOf<GroceryItemCategory>()
     val groceryItemCategories: List<GroceryItemCategory>
         get() = _groceryItemCategories
@@ -90,16 +99,34 @@ class GroceryViewModel: ViewModel() {
         _selectedCategoryId = newId
     }
 
+    private val deletedItemsPerCategory: SnapshotStateMap<UUID, MutableList<GroceryItem>> = mutableStateMapOf()
+    val selectedCategoryDeletedItems: List<GroceryItem> get() = deletedItemsPerCategory[selectedCategoryId] ?: listOf()
+    fun addToDeletedItems(item: GroceryItem, categoryId: UUID) {
+        if (deletedItemsPerCategory.containsKey(categoryId)) {
+            deletedItemsPerCategory[categoryId]!!.add(item)
+            deletedItemsPerCategory[categoryId]!!
+        } else {
+            deletedItemsPerCategory.put(categoryId, mutableListOf(item))
+        }
+    }
+    fun removeFromDeletedItems(itemId: UUID, categoryId: UUID) {
+        deletedItemsPerCategory[categoryId]?.removeIf { it.id == itemId }
+    }
+
     private var _selectedGroupingOption by mutableStateOf(GroceryGroupingOption.None)
     val selectedGroupingOption get() = _selectedGroupingOption
     fun changeSelectedGroupingOption (newOption: GroceryGroupingOption) {
         _selectedGroupingOption = newOption
     }
 
-    private var _showDeletedItems by mutableStateOf(false)
-    val showDeletedItems get() = _showDeletedItems
-    fun changeShowDeletedItems (newValue: Boolean) {
-        _showDeletedItems = newValue
+    private var showDeletedItemsPerCategory: MutableMap<UUID, Boolean> = mutableStateMapOf()
+    val selectedCategoryShowDeletedItems get() = showDeletedItemsPerCategory[selectedCategoryId] ?: false
+    fun changeShowDeletedItems (categoryId: UUID, newValue: Boolean) {
+        if (showDeletedItemsPerCategory.containsKey(categoryId)) {
+            showDeletedItemsPerCategory[categoryId] = newValue
+        } else {
+            showDeletedItemsPerCategory.put(categoryId, newValue)
+        }
     }
 
     fun addCategory(name: String): UUID {

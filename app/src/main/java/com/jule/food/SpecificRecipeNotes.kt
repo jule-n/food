@@ -20,6 +20,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -43,31 +45,43 @@ fun SpecificRecipeNotes(
     recipe: Recipe,
     onChangeRecipeNote: (String) -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+
     val textFieldState = rememberTextFieldState(recipe.note)
     var noNote by remember { mutableStateOf(recipe.note == "") }
     val noteTextFocusRequester by remember { mutableStateOf(FocusRequester()) }
 
     val coroutineScope = rememberCoroutineScope()
 
+    var isNoteFocused by remember { mutableStateOf(false) }
+
+
     SpecificRecipeSection(
         icon = R.drawable.text,
         title = stringResource(R.string.notes),
         actionButtons = {
-            AnimatedVisibility (noNote, enter = fadeIn() + expandVertically(expandFrom = Alignment.Top), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)) {
-                FilledExpressiveIconButtonWithTooltip(shapes = IconButtonDefaults.shapes(), tooltipText = stringResource(R.string.add_note), onClick = {
-                    noNote = false
-                    coroutineScope.launch {
-                        delay(100)
-                        noteTextFocusRequester.requestFocus()
+            AnimatedVisibility (noNote || isNoteFocused, enter = fadeIn() + expandVertically(expandFrom = Alignment.Top, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec())) {
+                if (noNote) { // If there is no note, display Plus button
+                    FilledExpressiveIconButtonWithTooltip(shapes = IconButtonDefaults.shapes(), tooltipText = stringResource(R.string.add_note), onClick = {
+                        noNote = false
+                        coroutineScope.launch {
+                            delay(100)
+                            noteTextFocusRequester.requestFocus()
+                        }
+                    }) {
+                        Icon(painterResource(R.drawable.add), contentDescription = stringResource(R.string.add_note))
                     }
-                }) {
-                    Icon(painterResource(R.drawable.add), contentDescription = stringResource(R.string.add_note))
+                } else { // If note is focused, display checkmark button
+                    FilledExpressiveIconButtonWithTooltip(shapes = IconButtonDefaults.shapes(), tooltipText = stringResource(R.string.done), onClick = {
+                        focusManager.clearFocus(true)
+                    }) {
+                        Icon(painterResource(R.drawable.done), contentDescription = stringResource(R.string.done))
+                    }
                 }
             }
         },
     ) {
-        AnimatedVisibility (!noNote) {
-            var wasFocused by remember { mutableStateOf(false) }
+        AnimatedVisibility (!noNote, enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec())) {
             Box(modifier = Modifier.padding(horizontal = 10.dp).background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(10))) {
                 BasicTextField(
                     state = textFieldState,
@@ -75,14 +89,16 @@ fun SpecificRecipeNotes(
                     lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 10),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
                     modifier = Modifier.onFocusChanged { focusState ->
-                        if (!focusState.isFocused && wasFocused) {
+                        if (!focusState.isFocused && isNoteFocused) {
                             val newNote = textFieldState.text.toString()
                             onChangeRecipeNote(newNote)
                             if (newNote == "")
                                 noNote = true
                         }
                         if (focusState.isFocused) {
-                            wasFocused = true
+                            isNoteFocused = true
+                        } else {
+                            isNoteFocused = false
                         }
 
                     }.fillMaxWidth().padding(5.dp).focusRequester(noteTextFocusRequester)

@@ -100,34 +100,32 @@ fun RecipeScreen(
         containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         bottomBar = bottomBar,
         floatingActionButton = {
-            var showNewRecipeDialog by remember { mutableStateOf(false) }
+            var showNewRecipeSheet by remember { mutableStateOf(false) }
             val newRecipeFocusRequester = remember { FocusRequester() }
 
             AnimatedVisibility(!isEditingTags, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
                 ExtendedFloatingActionButton(
-                    onClick = { showNewRecipeDialog = true },
+                    onClick = { showNewRecipeSheet = true },
                     text = { Text(stringResource(R.string.add_recipe)) },
                     icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
                 )
             }
-            LaunchedEffect(showNewRecipeDialog) {
-                if (showNewRecipeDialog) {
+            LaunchedEffect(showNewRecipeSheet) {
+                if (showNewRecipeSheet) {
                     newRecipeFocusRequester.requestFocus()
                 }
             }
-            if (showNewRecipeDialog) {
-                EnterTextDialog(
-                    title = stringResource(R.string.new_recipe),
-                    onDismissRequest = { showNewRecipeDialog = false },
+            if (showNewRecipeSheet) {
+                SimpleAddEditBottomSheet(
+                    onDismissRequest = { showNewRecipeSheet = false },
                     onConfirm = { name ->
-                        val id = recipeViewModel.addRecipe(name = name.trim())
+                        val id = recipeViewModel.addRecipe(name = name)
                         onClickRecipe(id, false)
-                        showNewRecipeDialog = false
+                        showNewRecipeSheet = false
                     },
-                    confirmWithKeyboard = true,
-                    placeholder = { Text(stringResource(id = R.string.name), style = TextStyle.Default) },
-                    isError = { isRecipeError(it) },
-                    focusRequester = newRecipeFocusRequester
+                    focusRequester = newRecipeFocusRequester,
+                    placeholderText = stringResource(R.string.new_recipe),
+                    nameTooLongLimit = 40
                 )
             }
         }
@@ -251,7 +249,7 @@ fun RecipeScreenMain(
         ) {
             Spacer(Modifier.height(SearchBarDefaults.InputFieldHeight + 20.dp))
             AnimatedVisibility (isEditingTags) {
-                Text(text = stringResource(R.string.edit_tag_screen_info), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp))
+                Text(text = stringResource(R.string.edit_tag_screen_info), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp))
             }
             ExpandableTagSelectionFlowRow(
                 tags = tags,
@@ -279,7 +277,7 @@ fun RecipeScreenMain(
             Spacer(Modifier.height(10.dp))
             AnimatedVisibility (isEditingTags) {
                 Button(onClick = { showAddTagSheet = true }, modifier = Modifier.padding(start = 10.dp)) {
-                    Icon(painterResource(R.drawable.add), contentDescription = "Add")
+                    Icon(painterResource(R.drawable.add), contentDescription = null)
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text(stringResource(R.string.new_tag))
                 }
@@ -392,13 +390,15 @@ fun RecipeScreenMain(
 
 @Composable
 fun EditButton(
+    modifier: Modifier = Modifier,
     text: String,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
         shape = FilterChipDefaults.shape,
-        color = Color.Transparent
+        color = Color.Transparent,
+        modifier = modifier
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -431,7 +431,7 @@ fun EditScreenTopBar(
                 .fillMaxWidth()
                 .height(SearchBarDefaults.InputFieldHeight)
         ) {
-            IconButton(onClick = onBack) {
+            IconButtonWithTooltip(onClick = onBack, tooltipText = stringResource(R.string.back)) {
                 Icon(painterResource(R.drawable.arrow_left), contentDescription = "Back")
             }
             Text(text = title, style = MaterialTheme.typography.titleLarge)
@@ -439,6 +439,7 @@ fun EditScreenTopBar(
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable

@@ -4,7 +4,7 @@
     <string name="recipes">Recipes</string>
     <string name="grid">Grid</string>
     <string name="list">List</string>
-    <string name="categories">Categories</string>
+    <string name="categories">Lists</string>
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
     <string name="delete_item">Delete %s?</string>
@@ -28,8 +28,8 @@
     <string name="name">Name</string>
     <string name="edit_images">Edit Images</string>
     <string name="save">Save</string>
-    <string name="new_category">New Category</string>
-    <string name="new_grocery">New Grocery</string>
+    <string name="new_category">New list</string>
+    <string name="new_grocery">New grocery</string>
     <string name="details">Details (200g, 2 bottles, etc.)</string>
     <string name="edit_name">Edit %s</string>
     <string name="delete_name">Delete %s</string>
@@ -41,7 +41,7 @@
     <string name="green">Green</string>
     <string name="yellow">Yellow</string>
     <string name="pink">Pink</string>
-    <string name="dynamic">Dynamic</string>
+    <string name="dynamic">System</string>
     <string name="blue1">Turquoise</string>
     <string name="blue2">Blue</string>
     <string name="red1">Light Red</string>
@@ -66,9 +66,9 @@
     <string name="edit_groceries">Edit Groceries</string>
     <string name="choose_image">Choose Image</string>
     <string name="add_groceries_to_cart">Add to grocery list</string>
-    <string name="choose_category">Choose Category</string>
+    <string name="choose_category">Choose list</string>
     <string name="recipes_with_tag">Recipes tagged \"%s\"</string>
-    <string name="category">Category</string>
+    <string name="category">List</string>
     <string name="search_recipes">Search Recipes</string>
     <string name="background">Background</string>
     <string name="none">None</string>
@@ -94,7 +94,7 @@
     <string name="added_n_groceries">Added %d grocerie(s) to %s</string>
     <string name="select_recipe">Select Recipe</string>
     <string name="n_recipes">%d Recipes</string>
-    <string name="moved_n_groceries_to_category">Moved %d grocerie(s) to category %s</string>
+    <string name="moved_n_groceries_to_category">Moved %d grocerie(s) to list %s</string>
     <string name="select_groceries_from_recipe_info">You may only choose recipes that you have added groceries to.</string>
     <string name="edit_tag_screen_info">Click on a tag to modify it.</string>
     <string name="icon">Icon</string>
@@ -103,11 +103,11 @@
     <string name="delete_images">Delete Images</string>
     <string name="are_you_sure_you_want_to_delete_n_images">Are you sure you want to delete %d image(s)?</string>
     <string name="tag_name">Tag name</string>
-    <string name="delete_category">Delete Category</string>
-    <string name="deleted_category_name">Deleted category \"%s\"</string>
+    <string name="delete_category">Delete List</string>
+    <string name="deleted_category_name">Deleted list \"%s\"</string>
     <string name="are_you_sure_you_want_to_delete_category_name">Are you sure you want to delete \"%s\"?</string>
-    <string name="edit_categories">Edit Categories</string>
-    <string name="reorder_categories">Reorder categories</string>
+    <string name="edit_categories">Edit lists</string>
+    <string name="reorder_categories">Reorder lists</string>
     <string name="back">Back</string>
     <string name="clear_search">Clear search</string>
     <string name="add_images">Add images</string>
@@ -118,4 +118,11 @@
     <string name="share">Share</string>
     <string name="name_too_long">Name has to be &lt;=%d characters</string>
     <string name="name_empty">Name must not be empty</string>
+    <string name="recipe_name">Recipe name</string>
+    <string name="are_you_sure_you_want_to_cancel_editing">Discard changes?</string>
+    <string name="share_groceries">Share groceries</string>
+    <string name="category_or_categories">List(s)</string>
+    <string name="share_as">Share as</string>
+    <string name="text">Text</string>
+    <string name="importable_zip_file">Importable .zip File</string>
 </resources>

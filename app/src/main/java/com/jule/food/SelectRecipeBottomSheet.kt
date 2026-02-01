@@ -24,6 +24,8 @@ fun SelectRecipeBottomSheet(
     ModalBottomSheet(
         modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetGesturesEnabled = false,
+        dragHandle = { },
         onDismissRequest = onDismissRequest
     ) {
         Column(

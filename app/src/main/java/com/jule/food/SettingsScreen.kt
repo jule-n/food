@@ -330,7 +330,8 @@ fun SelectColor(
                         onChangeColor(setting)
                     },
                     selected = currentColorSetting == setting,
-                    description = if (setting == ColorSetting.Dynamic) stringResource(R.string.dynamic_color_description) else null
+                    description = null
+//                    description = if (setting == ColorSetting.Dynamic) stringResource(R.string.dynamic_color_description) else null
                 )
             }
         }

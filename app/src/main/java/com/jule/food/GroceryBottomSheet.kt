@@ -96,6 +96,7 @@ fun AddGroceryBottomSheet(
         sheetState = sheetState,
         onDismissRequest = onDismissRequest,
         dragHandle = null,
+        sheetGesturesEnabled = !showRecipeSelection,
         modifier = modifier
     ) {
         GroceryBottomSheetContentWithRecipeSelection(

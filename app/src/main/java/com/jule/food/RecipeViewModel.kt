@@ -77,10 +77,6 @@ fun getTagFromId(id: UUID, tags: List<Tag>): Tag {
 fun getRecipeFromId(id: UUID, recipes: List<Recipe>): Recipe {
     return recipes[recipes.indexOfFirst { it.id == id} ]
 }
-// Function that checks whether a given recipe name is valid
-fun isRecipeError(name: String): Boolean {
-    return name.isEmpty() || name.length > 40
-}
 // Function that checks whether a given tag name is valid
 fun isTagNameTooLong(name: String): Boolean {
     return name.length > 20

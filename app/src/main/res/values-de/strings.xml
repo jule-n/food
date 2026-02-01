@@ -5,7 +5,7 @@
     <string name="recipes">Rezepte</string>
     <string name="grid">Tabelle</string>
     <string name="list">Liste</string>
-    <string name="categories">Kategorien</string>
+    <string name="categories">Listen</string>
     <string name="confirm">Zustimmen</string>
     <string name="cancel">Abbrechen</string>
     <string name="delete_item">%s löschen?</string>
@@ -27,7 +27,7 @@
     <string name="name">Name</string>
     <string name="edit_images">Bilder bearbeiten</string>
     <string name="save">Speichern</string>
-    <string name="new_category">Neue Kategorie</string>
+    <string name="new_category">Neue Liste</string>
     <string name="new_grocery">Neuer Eintrag</string>
     <string name="details">Details (200g, 2 Flaschen, etc.)</string>
     <string name="edit_name">%s Bearbeiten</string>
@@ -39,7 +39,7 @@
     <string name="add_grocery">Eintrag</string>
     <string name="green">Grün</string>
     <string name="pink">Pink</string>
-    <string name="dynamic">Dynamisch</string>
+    <string name="dynamic">System</string>
     <string name="blue1">Türkis</string>
     <string name="blue2">Blau</string>
     <string name="red2">Lachsrot</string>
@@ -65,9 +65,9 @@
     <string name="edit_groceries">Einkäufe bearbeiten</string>
     <string name="choose_image">Bild wählen</string>
     <string name="add_groceries_to_cart">Zu Einkaufsliste hinzufügen</string>
-    <string name="choose_category">Kategorie wählen</string>
+    <string name="choose_category">Liste wählen</string>
     <string name="recipes_with_tag">Rezepte mit Tag \"%s\"</string>
-    <string name="category">Kategorie</string>
+    <string name="category">Liste</string>
     <string name="search_recipes">Rezepte suchen</string>
     <string name="background">Hintergrund</string>
     <string name="none">Nichts</string>
@@ -93,7 +93,7 @@
     <string name="added_n_groceries">%d Einkäuf(e) zu %s hinzugefügt</string>
     <string name="select_recipe">Rezept auswählen</string>
     <string name="n_recipes">%d Rezepte</string>
-    <string name="moved_n_groceries_to_category">%d Einkäuf(e) nach Kategorie %s bewegt</string>
+    <string name="moved_n_groceries_to_category">%d Einkäuf(e) nach Liste %s bewegt</string>
     <string name="select_groceries_from_recipe_info">Du kannst nur Rezepte auswählen, denen du Einkäufe hinzugefügt hast.</string>
     <string name="edit_tag_screen_info">Auf einen Tag klicken um ihn zu bearbeiten.</string>
     <string name="icon">Icon</string>
@@ -102,11 +102,11 @@
     <string name="delete_images">Bilder löschen</string>
     <string name="are_you_sure_you_want_to_delete_n_images">Möchtest du wirklich %d Bild(er) löschen?</string>
     <string name="tag_name">Tag name</string>
-    <string name="delete_category">Kategorie löschen</string>
-    <string name="deleted_category_name">Kategorie \"%s\" gelöscht</string>
+    <string name="delete_category">Liste löschen</string>
+    <string name="deleted_category_name">Liste \"%s\" gelöscht</string>
     <string name="are_you_sure_you_want_to_delete_category_name">Möchtest du wirklich \"%s\" löschen?</string>
-    <string name="edit_categories">Kategorien bearbeiten</string>
-    <string name="reorder_categories">Kategorien neu anordnen</string>
+    <string name="edit_categories">Listen bearbeiten</string>
+    <string name="reorder_categories">Listen neu anordnen</string>
     <string name="back">Zurück</string>
     <string name="clear_search">Suchfeld leeren</string>
     <string name="add_images">Bilder hinzufügen</string>
@@ -117,4 +117,11 @@
     <string name="share">Teilen</string>
     <string name="name_too_long">Name muss &lt;=%d Zeichen haben</string>
     <string name="name_empty">Name darf nicht leer sein</string>
+    <string name="recipe_name">Rezeptname</string>
+    <string name="are_you_sure_you_want_to_cancel_editing">Änderungen verwerfen?</string>
+    <string name="share_groceries">Lebensmittel teilen</string>
+    <string name="category_or_categories">Liste(n)</string>
+    <string name="share_as">Teilen als</string>
+    <string name="text">Text</string>
+    <string name="importable_zip_file">Importierbare .zip-Datei</string>
 </resources>

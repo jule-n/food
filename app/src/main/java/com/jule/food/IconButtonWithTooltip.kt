@@ -1,5 +1,7 @@
 package com.jule.food
 
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -7,8 +9,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButtonShapes
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonColors
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
@@ -76,3 +83,61 @@ fun FilledExpressiveIconButtonWithTooltip(
         FilledIconButton(onClick = onClick, colors = colors, shapes = shapes, content = icon, enabled = enabled)
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun ToggleButtonWithTooltip(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    tooltipText: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shapes: ToggleButtonShapes = ToggleButtonDefaults.shapes(),
+    colors: ToggleButtonColors = ToggleButtonDefaults.toggleButtonColors(),
+    content: @Composable RowScope.() -> Unit
+) {
+    TooltipBox(
+        modifier = modifier,
+        tooltip = { PlainTooltip { Text(tooltipText) } },
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+        state = rememberTooltipState()
+    ) {
+        ToggleButton(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            shapes = shapes,
+            colors = colors,
+            enabled = enabled,
+            content = content
+        )
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun OutlinedIconButtonWithTooltip(
+    onClick: () -> Unit,
+    tooltipText: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shapes: IconButtonShapes = IconButtonDefaults.shapes(),
+    colors: IconButtonColors = IconButtonDefaults.outlinedIconButtonColors(),
+    content: @Composable () -> Unit
+) {
+    TooltipBox(
+        modifier = modifier,
+        tooltip = { PlainTooltip { Text(tooltipText) } },
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+        state = rememberTooltipState()
+    ) {
+        OutlinedIconButton(
+            onClick = onClick,
+            shapes = shapes,
+            colors = colors,
+            enabled = enabled,
+            content = content
+        )
+    }
+}
+

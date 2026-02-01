@@ -120,6 +120,7 @@ import java.io.File
 import java.util.UUID
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SpecificRecipeScreen(
     bottomBar: @Composable () -> Unit,
@@ -137,7 +138,7 @@ fun SpecificRecipeScreen(
     var showGroceryScreen by remember { mutableStateOf(false) }
     val tags = recipeViewModel.tags
 
-    AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(false), exit = completeSlideOut(true)) {
+    AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(false, MaterialTheme.motionScheme), exit = completeSlideOut(true, MaterialTheme.motionScheme)) {
         SpecificRecipeScreenMain(
             recipe = recipe,
             onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it) },
@@ -170,8 +171,8 @@ fun SpecificRecipeScreen(
     }
     AnimatedVisibility(
         visible = showGroceryScreen,
-        enter = completeSlideIn(true),
-        exit = completeSlideOut(false)
+        enter = completeSlideIn(true, MaterialTheme.motionScheme),
+        exit = completeSlideOut(false, MaterialTheme.motionScheme)
     ) {
         SpecificRecipeEditGroceriesScreen(
             bottomBar = bottomBar,
@@ -395,40 +396,17 @@ fun SpecificRecipeScreenMain(
         }
     }
     if (showEditNameSheet) {
-        val textFieldState by remember { mutableStateOf(TextFieldState(recipe.name)) }
-        DefaultDialog(
-            title = stringResource(R.string.change_recipe_name),
-            buttons = true,
-            onDismissRequest = {
-                if (textFieldState.text.toString() != recipe.name)
-                    showEditNameSheet = false
-                else
-                    focusManager.clearFocus(true)
-            },
-            onConfirm = {
-                onChangeRecipeName(textFieldState.text.toString())
+        SimpleAddEditBottomSheet(
+            onConfirm = { newName ->
+                onChangeRecipeName(newName)
                 showEditNameSheet = false
             },
-            confirmEnabled = !isRecipeError(textFieldState.text.toString()),
-            onCancel = { showEditNameSheet = false },
-            onClickDialogEnabled = true,
-            onClickDialog = { focusManager.clearFocus(true) }
-        ) {
-            focusManager = LocalFocusManager.current
-            OutlinedTextField(
-                state = textFieldState,
-                textStyle = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .width(250.dp)
-                    .focusRequester(editNameFocusRequester),
-                shape = RoundedCornerShape(20),
-                placeholder = { Text(stringResource(id = R.string.name)) },
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                onKeyboardAction = {
-                    focusManager.clearFocus(true)
-                }
-            )
-        }
+            onDismissRequest = { showEditNameSheet = false },
+            initialText = recipe.name,
+            focusRequester = editNameFocusRequester,
+            placeholderText = stringResource(R.string.recipe_name),
+            nameTooLongLimit = 40
+        )
     }
 
     if (showConfirmDeleteRecipeDialog) {

@@ -1,11 +1,15 @@
 package com.jule.food
 
+import android.content.Intent
 import android.util.Log
+import android.widget.ShareActionProvider
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,8 +39,11 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -46,8 +53,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -55,7 +62,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -66,6 +72,7 @@ import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
@@ -80,8 +87,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,6 +99,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
+import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
@@ -107,6 +117,7 @@ fun GroceryScreen(
     allRecipes: List<Recipe>,
     bottomBar: @Composable () -> Unit,
     onOpenSettings: () -> Unit,
+    recipeDataLoaded: Boolean,
 //    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -114,7 +125,7 @@ fun GroceryScreen(
     val context = LocalContext.current
 
     var showAddGroceryDialog by remember { mutableStateOf(false) }
-    var showGroupingDialog by remember { mutableStateOf(false) }
+    var showSharingDialog by remember { mutableStateOf(true) }
     var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -123,7 +134,9 @@ fun GroceryScreen(
     val categories = groceryViewModel.groceryItemCategories
     val selectedCategoryId = groceryViewModel.selectedCategoryId
     val selectedGroupingOption = groceryViewModel.selectedGroupingOption
-    val showDeletedItems = groceryViewModel.showDeletedItems
+
+    val selectedCategoryDeletedItems = groceryViewModel.selectedCategoryDeletedItems
+    val selectedCategoryShowDeletedItems = groceryViewModel.selectedCategoryShowDeletedItems
 
     val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId }
 
@@ -151,7 +164,6 @@ fun GroceryScreen(
     LaunchedEffect(scaffoldState.bottomSheetState.targetValue) {
         if (scaffoldState.bottomSheetState.targetValue == SheetValue.Hidden || scaffoldState.bottomSheetState.targetValue == SheetValue.PartiallyExpanded) {
             selectedGroceryItems.clear()
-            Log.d("GroceryScreen", "Target Value Hidden or Partially Expanded")
         }
     }
 
@@ -171,6 +183,7 @@ fun GroceryScreen(
         bottomBar = {
             AnimatedVisibility(!selectionModeActive, enter = slideInVertically { it }, exit = slideOutVertically { it }) { bottomBar() }
         },
+        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
         topBar = {
             AnimatedContent(
                 targetState = selectionModeActive,
@@ -186,8 +199,8 @@ fun GroceryScreen(
                             CenterAlignedTopAppBar(
                                 title = { Text(stringResource(R.string.groceries)) },
                                 actions = {
-                                    IconButtonWithTooltip(onClick = { showGroupingDialog = true }, tooltipText = stringResource(R.string.group_groceries)) {
-                                        Icon(painter = painterResource(id = R.drawable.group_groceries), contentDescription = stringResource(R.string.group_groceries))
+                                    IconButtonWithTooltip(onClick = { showSharingDialog = true }, tooltipText = stringResource(R.string.share)) {
+                                        Icon(painter = painterResource(id = R.drawable.share), contentDescription = stringResource(R.string.share))
                                     }
                                 },
                                 navigationIcon = {
@@ -195,11 +208,12 @@ fun GroceryScreen(
                                         Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
                                     }
                                 },
+                                colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                             )
                         } else {
                             EditScreenTopBar(
                                 title = stringResource(R.string.edit_categories),
-                                backgroundColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+                                backgroundColor = MaterialTheme.colorScheme.background,
                                 onBack = {
                                     isEditingCategories = false
                                 },
@@ -245,6 +259,7 @@ fun GroceryScreen(
                             trailingButton = {
                                 var expanded by remember { mutableStateOf(false) }
                                 SplitButtonDefaults.TrailingButton(
+                                    enabled = recipeDataLoaded,
                                     checked = expanded,
                                     onCheckedChange = {
                                         expanded = it
@@ -331,11 +346,18 @@ fun GroceryScreen(
                         groceryViewModel.moveItemsToCategory(itemIds, fromCategoryId, toCategoryId)
                     },
                     groupingOption = selectedGroupingOption,
-                    showDeletedItems = showDeletedItems,
+                    onChangeGroupingOption = { newOption ->
+                        groceryViewModel.changeSelectedGroupingOption(newOption)
+                    },
                     getRecipeNameFromId = getRecipeNameFromId,
                     selectedGroceryItems = selectedGroceryItems,
                     onAddToSelection = { id -> selectedGroceryItems.add(id) },
                     onRemoveFromSelection = { id -> selectedGroceryItems.remove(id) },
+                    deletedItems = selectedCategoryDeletedItems,
+                    onAddToDeletedItems = { groceryItem -> groceryViewModel.addToDeletedItems(groceryItem, selectedCategoryId!!) },
+                    onRemoveFromDeletedItems = { id -> groceryViewModel.removeFromDeletedItems(id, selectedCategoryId!!) },
+                    showDeletedItems = selectedCategoryShowDeletedItems,
+                    onChangeShowDeletedItems = { showDeletedItems -> groceryViewModel.changeShowDeletedItems(selectedCategoryId!!, showDeletedItems) },
                     scaffoldState = scaffoldState,
                     onClearSelection = { selectedGroceryItems.clear() },
                     isEditingCategories = isEditingCategories,
@@ -411,42 +433,26 @@ fun GroceryScreen(
         }
     }
 
-//    var tempGroupingOption by remember { mutableStateOf(groceryViewModel.selectedGroupingOption) }
-    if (showGroupingDialog) {
-        ModalBottomSheet(
-            onDismissRequest = {
-//                groceryViewModel.changeSelectedGroupingOption(tempGroupingOption)
-                showGroupingDialog = false
-            },
-            sheetMaxWidth = Dp.Unspecified
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(30.dp),
-                modifier = Modifier.padding(horizontal = 10.dp)
-//                modifier = Modifier.padding(20.dp)
-            ) {
-                Text(stringResource(R.string.group_groceries), style = MaterialTheme.typography.headlineSmall)
-                SettingsScreenCategory(
-                    name = stringResource(R.string.group_by)
-                ) {
-                    ConnectedButtonGroup(
-                        options = groceryGroupingOptionsDisplay.values.toList().map { stringResource(it) },
-                        selectedOptionIndex = GroceryGroupingOption.entries.indexOf(selectedGroupingOption),
-                        onSelectedOptionChange = { index ->
-                            groceryViewModel.changeSelectedGroupingOption(GroceryGroupingOption.entries[index])
-//                    tempGroupingOption = GroceryGroupingOption.entries[index]
-                        },
-                        checkedContainerColor = MaterialTheme.colorScheme.primary
-                    )
+    if (showSharingDialog && selectedCategoryId != null) {
+        ShareGroceriesSheet(
+            onDismissRequest = { showSharingDialog = false },
+            groceryCategories = categories,
+            currentCategoryId = selectedCategoryId,
+            onShare = { shareCategoryIds, shareOption ->
+                if (shareOption == GroceryShareOption.Text) {
+                    val sendIntent: Intent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, "This is my text to send.")
+                        type = "text/plain"
+                    }
+
+                    val shareIntent = Intent.createChooser(sendIntent, null)
+                    context.startActivity(shareIntent)
                 }
-                DialogCheckbox(
-                    checked = showDeletedItems,
-                    onCheckedChange = { groceryViewModel.changeShowDeletedItems(it) },
-                    label = stringResource(R.string.show_deleted_items)
-                )
             }
-        }
+        )
     }
+
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class,
@@ -466,13 +472,18 @@ fun GroceryGridScreen(
     onDeleteCategory: (id: UUID) -> Unit,
     onChangeCategoryName: (String, id: UUID) -> Unit,
     onReorderCategories: (fromIndex: Int, toIndex: Int) -> Unit,
-    showDeletedItems: Boolean,
     groupingOption: GroceryGroupingOption,
+    onChangeGroupingOption: (GroceryGroupingOption) -> Unit,
     getRecipeNameFromId: (UUID) -> String,
     selectedGroceryItems: List<UUID>,
     onAddToSelection: (UUID) -> Unit,
     onRemoveFromSelection: (UUID) -> Unit,
     onClearSelection: () -> Unit,
+    deletedItems: List<GroceryItem>,
+    onAddToDeletedItems: (GroceryItem) -> Unit,
+    onRemoveFromDeletedItems: (UUID) -> Unit,
+    showDeletedItems: Boolean,
+    onChangeShowDeletedItems: (Boolean) -> Unit,
     scaffoldState: BottomSheetScaffoldState,
     isEditingCategories: Boolean,
     onChangeIsEditingCategories: (Boolean) -> Unit,
@@ -480,13 +491,13 @@ fun GroceryGridScreen(
 ) {
     val context = LocalContext.current
 
-    val deletedGroceryItems = remember { mutableStateListOf<GroceryItem>() }
-
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
     val singleSelection = selectedGroceryItems.size == 1
 
     val editGroceryNameState = rememberTextFieldState("")
     val editGroceryDetailState = rememberTextFieldState("")
+
+    var showGroupingSheet by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(singleSelection) {
@@ -514,7 +525,14 @@ fun GroceryGridScreen(
                 groceryDetailState = editGroceryDetailState,
                 getRecipeNameFromId = getRecipeNameFromId
             )
-        }
+        },
+        sheetContainerColor = MaterialTheme.colorScheme.background,
+        sheetDragHandle = {
+            Row(modifier = Modifier.height(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f), modifier = Modifier.width(50.dp).height(5.dp)) {}
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
     ) {
         Column(
             modifier = modifier
@@ -540,16 +558,34 @@ fun GroceryGridScreen(
                                         allCategories = allCategories,
                                         selectedCategoryId = category.id,
                                         onChangeSelectedCategoryId = onChangeSelectedCategoryId,
+                                        onEnableEditMode = { onChangeIsEditingCategories(true) },
                                         modifier = Modifier
                                     )
+                                    Spacer(Modifier.height(5.dp))
                                     Row(
-                                        modifier = Modifier.fillMaxWidth().height(26.dp),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.End
                                     ) {
-                                        EditButton(
-                                            text = stringResource(R.string.edit_categories),
-                                            onClick = { onChangeIsEditingCategories(true) }
-                                        )
+//                                        EditButton(
+//                                            text = stringResource(R.string.edit_categories),
+//                                            onClick = { onChangeIsEditingCategories(true) },
+//                                            modifier = Modifier.height(26.dp)
+//                                        )
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(20.dp),
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                            shape = RoundedCornerShape(20),
+                                            modifier = Modifier.animateContentSize().padding(end = 5.dp, bottom = 5.dp),
+                                            onClick = { showGroupingSheet = true }
+                                        ) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 15.dp, end = 15.dp, bottom = 5.dp, top = 5.dp)) {
+                                                Text(stringResource(R.string.group_by), style = MaterialTheme.typography.labelSmall)
+                                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(painterResource(groceryGroupingOptionsIcons[groupingOption]!!), contentDescription = null, modifier = Modifier.size(20.dp))
+                                                    Text(stringResource(groceryGroupingOptionsDisplay[groupingOption]!!))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             } else {
@@ -566,25 +602,32 @@ fun GroceryGridScreen(
                 }
 
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            if (category.items.isEmpty() && (!showDeletedItems || deletedGroceryItems.isEmpty())) {
-                Box(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .fillMaxSize()
-                ) {
-                    Text(
-                        "No items yet ₍^. .^₎⟆",
-                        modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.displaySmallEmphasized
-                    )
-                }
-            } else {
+//            if (category.items.isNotEmpty()) {
+//                Spacer(modifier = Modifier.height(10.dp))
+//            }
                 AnimatedVisibility(
                     visible = !isEditingCategories,
                     enter = slideInVertically { it },
                     exit = slideOutVertically { it }
                 ) {
+                    if (category.items.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+//                                .padding(10.dp)
+                                .fillMaxSize()
+                        ) {
+                            Text(
+                                "All done!",
+                                modifier = Modifier.align(Alignment.Center),
+                                style = MaterialTheme.typography.displaySmallEmphasized
+                            )
+                        }
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5)
+                    ) {
+                        val spacerHeight by animateDpAsState(if (category.items.isEmpty()) 0.dp else 10.dp)
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(100.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -593,7 +636,7 @@ fun GroceryGridScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 1000.dp)
-                            .padding(horizontal = 10.dp)
+                            .padding(start = 10.dp, end = 10.dp, top = spacerHeight)
                     ) {
                         val allItems = category.items
 
@@ -612,6 +655,7 @@ fun GroceryGridScreen(
                                         R.string.no_recipe
                                     )
                                 })
+                                groupNames.sort()
                                 groups.addAll(recipeGroups.values)
                             }
 
@@ -621,90 +665,215 @@ fun GroceryGridScreen(
                             }
                         }
 
-                        if (showDeletedItems && deletedGroceryItems.isNotEmpty()) {
-                            groupNames.add(context.getString(R.string.deleted))
-                            groups.add(deletedGroceryItems)
-                        }
+//                        if (showDeletedItems && deletedGroceryItems.isNotEmpty()) {
+//                            groupNames.add(context.getString(R.string.deleted))
+//                            groups.add(deletedGroceryItems)
+//                        }
+                        if (!(groupNames.count() == 1 && groups[0].isEmpty())) {
+                            groups.forEachIndexed { index, groceryItems ->
+                                val isLast = index == groups.size - 1
 
-                        groups.forEachIndexed { index, groceryItems ->
-                            val isLast = index == groups.size - 1
-                            val isDeletedItems = showDeletedItems && deletedGroceryItems.isNotEmpty() && isLast
+                                if (index > 0 || groupingOption != GroceryGroupingOption.None) {
+                                    gridGroupTitle(
+                                        title = groupNames[index],
+                                        key = groupNames[index],
+                                        animate = true
+                                    )
+                                }
+                                items(
+                                    groceryItems,
+                                    key = { groceryItem -> groceryItem.id }
+                                ) { groceryItem ->
+                                    GroceryItemDisplay(
+                                        item = groceryItem,
+                                        onClick = {
+                                            if (selectionModeActive) {
+                                                if (selectedGroceryItems.contains(groceryItem.id))
+                                                    onRemoveFromSelection(groceryItem.id)
+                                                else
+                                                    onAddToSelection(groceryItem.id)
+                                            } else {
+                                                onRemoveFromGroceries(allItems.indexOf(groceryItem))
+                                                onAddToDeletedItems(groceryItem)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (!selectionModeActive) {
+                                                onAddToSelection(groceryItem.id)
+                                            }
+                                        },
+                                        getRecipeNameFromId = getRecipeNameFromId,
+                                        showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
+                                        deleted = false,
+                                        isSelected = selectedGroceryItems.contains(groceryItem.id),
+                                        showSelection = selectionModeActive,
+                                        modifier = Modifier.animateItem()
+                                    )
+                                }
 
-//                        val customKey: String = "${groupNames[index]}$index"
-
-                            if (index > 0 || groupingOption != GroceryGroupingOption.None) {
-                                gridGroupTitle(
-                                    title = groupNames[index],
-                                    key = "${groupNames[index]}_${isDeletedItems}",
-                                    animate = true
-                                )
+                                gridSpacer(20.dp)
                             }
+                        }
+                        item(
+                            key = 5092038540945087,
+                            span = { GridItemSpan(maxLineSpan) }
+                        ) {
+                            val alphaText by animateFloatAsState(if (deletedItems.isEmpty() || !showDeletedItems) 0.5f else 0.8f)
+                            val alphaBackground by animateFloatAsState(if (deletedItems.isEmpty() || !showDeletedItems) 0.1f else 0.2f)
+                            Box(modifier = Modifier.animateItem()) {
+                            Surface(
+                                onClick = { onChangeShowDeletedItems(!showDeletedItems) },
+                                shape = RoundedCornerShape(20),
+                                enabled = deletedItems.isNotEmpty(),
+                                color = Color.Transparent
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 8.dp)) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaBackground),
+                                        modifier = Modifier.size(20.dp)
+                                    ) {
+                                        Box {
+                                            Text(
+                                                deletedItems.count().toString(),
+                                                modifier = Modifier.align(Alignment.Center),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText)
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Text(
+                                        stringResource(R.string.deleted),
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Icon(
+                                        painterResource(R.drawable.delete),
+                                        contentDescription = stringResource(R.string.show_deleted_items),
+                                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText)
+                                    )
+                                }}
+                            }
+                        }
+                        if (showDeletedItems) {
                             items(
-                                groceryItems,
-                                key = { groceryItem -> groceryItem.id }) { groceryItem ->
+                                deletedItems.reversed(),
+                                key = { it.id }
+                            ) { groceryItem ->
                                 GroceryItemDisplay(
                                     item = groceryItem,
                                     onClick = {
-                                        if (selectionModeActive) {
-                                            if (selectedGroceryItems.contains(groceryItem.id))
-                                                onRemoveFromSelection(groceryItem.id)
-                                            else
-                                                onAddToSelection(groceryItem.id)
-                                        } else {
-                                            if (isDeletedItems) {
-                                                deletedGroceryItems.remove(groceryItem)
-                                                onAddToGroceries(groceryItem)
-                                            } else {
-                                                onRemoveFromGroceries(allItems.indexOf(groceryItem))
-                                                deletedGroceryItems.add(groceryItem)
-                                            }
+                                        if (!selectionModeActive) {
+                                            onRemoveFromDeletedItems(groceryItem.id)
+                                            onAddToGroceries(groceryItem)
                                         }
                                     },
-                                    onLongClick = {
-                                        if (!isDeletedItems && !selectionModeActive) {
-                                            onAddToSelection(groceryItem.id)
-                                        }
-                                    },
+                                    onLongClick = null,
                                     getRecipeNameFromId = getRecipeNameFromId,
-                                    showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
-                                    deleted = isDeletedItems,
-                                    isSelected = selectedGroceryItems.contains(groceryItem.id),
-                                    showSelection = selectionModeActive,
+                                    showRecipeName = true,
+                                    deleted = true,
+                                    isSelected = false,
+                                    showSelection = false,
                                     modifier = Modifier.animateItem()
+//                                        .scale(scaleX = scale, scaleY = scale)
                                 )
                             }
+                        } else {
+                            if (deletedItems.isNotEmpty()) {
+                                item(
+                                    key = deletedItems.last().id
+                                ) {
+                                    var loadedItem by remember { mutableStateOf(false) }
+                                    val alpha by animateFloatAsState(targetValue = if (loadedItem) 0f else 1f)
+                                    LaunchedEffect(Unit) {
+                                        loadedItem = true
+                                    }
+                                    val groceryItem = deletedItems.last()
+                                    GroceryItemDisplay(
+                                        item = groceryItem,
+                                        onClick = { },
+                                        onLongClick = null,
+                                        clickingEnabled = false,
+                                        getRecipeNameFromId = getRecipeNameFromId,
+                                        showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
+                                        deleted = true,
+                                        isSelected = false,
+                                        showSelection = false,
+                                        modifier = Modifier.animateItem().alpha(alpha)
+                                    )
+                                }
 
-                            if (!isLast) {
-                                gridSpacer(20.dp)
-//                            item(span = { GridItemSpan(maxLineSpan) }) {
-//                                Spacer(modifier = Modifier.height(20.dp))
-//                            }
                             }
                         }
                     }
                 }
             }
-
+        }
+        
+        if (showGroupingSheet) {
+            SettingDialog(
+                title = stringResource(R.string.group_by),
+                onDismissRequest = {
+                    showGroupingSheet = false
+                }
+            ) {
+                GroceryGroupingOption.entries.forEachIndexed { index, option ->
+                    val selected = groupingOption == option
+                    SettingDialogElement(
+                        title = stringResource(groceryGroupingOptionsDisplay[option]!!),
+                        selected = selected,
+                        onClick = {
+                            onChangeGroupingOption(option)
+                            showGroupingSheet = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painterResource(groceryGroupingOptionsIcons[option]!!),
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
+            }
+//            ModalBottomSheet(
+//                onDismissRequest = {
+//                    showGroupingSheet = false
+//                },
+//                sheetMaxWidth = Dp.Unspecified
+//            ) {
+//                Column(
+//                    modifier = Modifier.padding(horizontal = 10.dp)
+////                    modifier = Modifier.padding(horizontal = 10.dp)
+////                modifier = Modifier.padding(20.dp)
+//                ) {
+//                    Text(stringResource(R.string.group_by), style = MaterialTheme.typography.headlineSmall)
+////                    Spacer(Modifier.height(10.dp))
+//                    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 10.dp)) {
+//                        GroceryGroupingOption.entries.forEachIndexed { index, option ->
+//                            val selected = groupingOption == option
+//                            SettingDialogElement(
+//                                title = stringResource(groceryGroupingOptionsDisplay[option]!!),
+//                                selected = selected,
+//                                onClick = {
+//                                    onChangeGroupingOption(option)
+//                                    showGroupingSheet = false
+//                                },
+//                                leadingIcon = {
+//                                    Icon(
+//                                        painterResource(groceryGroupingOptionsIcons[option]!!),
+//                                        contentDescription = null
+//                                    )
+//                                },
+//                                modifier = Modifier.fillMaxWidth()
+//                            )
+//                        }
+//                    }
+//                }
+//            }
         }
     }
-
-
-//    val editGroceryFocusRequester = remember { FocusRequester() }
-//    if (showEditGroceryDialog) {
-//        AddGroceryDialog(
-//            title = stringResource(R.string.edit_grocery),
-//            onDismissRequest = { showEditGroceryDialog = false },
-//            onConfirm = { newItem ->
-//                onRemoveFromGroceries(editingItemIndex!!)
-//                onAddToGroceries(newItem)
-//                showEditGroceryDialog = false
-//            },
-//            imeActionDone = true,
-//            focusRequester = editGroceryFocusRequester,
-//            startValue = category.items[editingItemIndex!!].name,
-//            startDetails = category.items[editingItemIndex!!].details,
-//        )
-//    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -766,8 +935,8 @@ fun GroceryScreenPreview() {
 
     if (groceryViewModel.groceryItemCategories.isEmpty()) {
         val defaultId = groceryViewModel.addCategory("Default")
-        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g"), defaultId)
-        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), defaultId)
+//        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g"), defaultId)
+//        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), defaultId)
 
         val default2Id = groceryViewModel.addCategory("Default 2")
         groceryViewModel.addToGroceries(GroceryItem("Dosentomaten",""), default2Id)
@@ -779,7 +948,7 @@ fun GroceryScreenPreview() {
 
 
     FoodTheme {
-        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf())
+        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf(), recipeDataLoaded = true)
     }
 }
 

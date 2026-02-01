@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -57,7 +58,7 @@ fun SelectRecipeGrid(
     val searchState = rememberTextFieldState()
 
     Column(
-        modifier = modifier.padding(bottom = 500.dp),
+        modifier = modifier.padding(bottom = 100.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
@@ -89,7 +90,7 @@ fun SelectRecipeGrid(
             modifier = Modifier.focusRequester(searchFocusRequester)
         )
         BoxWithConstraints (modifier = Modifier.padding(10.dp)){
-            val itemSize = (maxWidth - 30.dp - 10.dp) / 4
+            val itemSize = (this@BoxWithConstraints.maxWidth - 30.dp - 10.dp) / 4
             FlowRow(
                 maxItemsInEachRow = 4,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

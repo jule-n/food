@@ -4,6 +4,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideOut
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MotionScheme
 import androidx.compose.ui.unit.IntOffset
 
 //Int to Enum
@@ -25,10 +27,18 @@ fun <T> MutableList<T>.addAllWithoutDuplicates(list: List<T>) {
     }
 }
 // Custom animation for a complete slide in
-fun completeSlideIn(left: Boolean): EnterTransition {
-    return slideIn(initialOffset = { fullSize -> IntOffset((if (left) 1 else -1) * fullSize.width, 0) })
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+fun completeSlideIn(left: Boolean, motionScheme: MotionScheme): EnterTransition {
+    return slideIn(
+        animationSpec = motionScheme.slowSpatialSpec(),
+        initialOffset = { fullSize -> IntOffset((if (left) 1 else -1) * fullSize.width, 0) }
+    )
 }
 // Custom animation for a complete slide out
-fun completeSlideOut(left: Boolean): ExitTransition {
-    return slideOut(targetOffset = { fullSize -> IntOffset((if (left) -1 else 1) * fullSize.width, 0) })
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+fun completeSlideOut(left: Boolean, motionScheme: MotionScheme): ExitTransition {
+    return slideOut(
+        animationSpec = motionScheme.slowSpatialSpec(),
+        targetOffset = { fullSize -> IntOffset((if (left) -1 else 1) * fullSize.width, 0) }
+    )
 }

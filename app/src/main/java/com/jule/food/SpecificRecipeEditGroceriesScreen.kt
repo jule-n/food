@@ -66,18 +66,26 @@ fun SpecificRecipeEditGroceriesScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showCancelDialog by remember { mutableStateOf(false) }
+
     val temporaryGroceries = remember { recipe.groceries.toMutableStateList() }
+    val groceriesChanged = recipe.groceries.toList() != temporaryGroceries.toList()
 
     val deletedGroceries = remember { mutableStateListOf<GroceryItem>() }
     var showAddGrocerySheet by remember { mutableStateOf(false) }
     var showEditGrocerySheet by remember { mutableStateOf(false) }
     var editGroceryId: UUID? by remember { mutableStateOf(null) }
 
+    val onCancelRequest = {
+        if (groceriesChanged)
+            showCancelDialog = true
+        else
+            onCancel()
+    }
+
 
     BackHandler(
-        onBack = {
-            onConfirm(temporaryGroceries)
-        }
+        onBack = onCancelRequest
     )
 
     Scaffold(
@@ -92,7 +100,7 @@ fun SpecificRecipeEditGroceriesScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButtonWithTooltip(onClick = onCancel, tooltipText = stringResource(R.string.cancel)) {
+                    IconButtonWithTooltip(onClick = onCancelRequest, tooltipText = stringResource(R.string.cancel)) {
                         Icon(painterResource(R.drawable.clear), contentDescription = stringResource(R.string.cancel))
                     }
                 },
@@ -102,11 +110,6 @@ fun SpecificRecipeEditGroceriesScreen(
                     ) {
                         Text(stringResource(R.string.save))
                     }
-//                    Button(
-//                        onClick = { onConfirm(temporaryGroceries) }
-//                    ) {
-//                        Text(stringResource(R.string.save))
-//                    }
                 }
             )
         },
@@ -258,6 +261,17 @@ fun SpecificRecipeEditGroceriesScreen(
                     }
                 )
             }
+        }
+    }
+
+    if (showCancelDialog) {
+        DefaultDialog(
+            stringResource(R.string.cancel),
+            onDismissRequest = { showCancelDialog = false },
+            onConfirm = { onCancel() },
+            buttons = true,
+        ) {
+            Text(stringResource(R.string.are_you_sure_you_want_to_cancel_editing))
         }
     }
 }

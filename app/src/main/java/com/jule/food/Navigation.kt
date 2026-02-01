@@ -155,6 +155,7 @@ fun NavigationHost(
                         },
                         getRecipeNameFromId = { id -> recipeViewModel.getRecipeNameFromId(id) },
                         allRecipes = recipeViewModel.recipes,
+                        recipeDataLoaded = recipeViewModel.dataLoaded,
 //                        onShare = onShare,
                         bottomBar = bottomBar
                     )
