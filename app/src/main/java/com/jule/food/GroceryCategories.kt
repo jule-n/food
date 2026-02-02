@@ -17,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -132,7 +133,8 @@ fun CategoryButton(
     name: String,
     selected: Boolean,
     onClick: () -> Unit,
-    selectedColor: Color = MaterialTheme.colorScheme.tertiary
+    selectedColor: Color = MaterialTheme.colorScheme.tertiary,
+    selectCheckbox: Boolean = false
 ) {
     val color by animateColorAsState(
         targetValue = if (selected) selectedColor else MaterialTheme.colorScheme.surfaceVariant
@@ -143,19 +145,29 @@ fun CategoryButton(
     val shapeCornerRadius by animateIntAsState(
         targetValue = if (selected) 50 else 20
     )
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = color,
-            contentColor = textColor
-        ),
-        shapes = ButtonDefaults.shapes(
-            shape = RoundedCornerShape(shapeCornerRadius),
-            pressedShape = RoundedCornerShape(10)
-        ),
-        modifier = modifier.height(40.dp)
-    ) {
-        Text(name)
+    Box (modifier = modifier) {
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = color,
+                contentColor = textColor
+            ),
+            shapes = ButtonDefaults.shapes(
+                shape = RoundedCornerShape(shapeCornerRadius),
+                pressedShape = RoundedCornerShape(10)
+            ),
+            modifier = Modifier.height(40.dp)
+        ) {
+            Text(name)
+        }
+
+        if (selectCheckbox) {
+            CustomCheckbox(
+                selectionOption = if (selected) SelectedOption.Yes else SelectedOption.No,
+                topStartRadius = 50,
+                selectedTopStartRadius = 100
+            )
+        }
     }
 }
 

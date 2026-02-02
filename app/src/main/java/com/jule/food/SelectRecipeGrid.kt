@@ -137,18 +137,10 @@ fun RecipeTinyDisplay(
             autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp)
         )
         if (selected != null) {
-            Box(modifier = Modifier.size(20.dp)) {
-                Surface(
-                    color = Color.Black.copy(alpha = if (selected) 0.3f else 0f),
-//                    shape = RoundedCornerShape(60),
-                    shape = RoundedCornerShape(topStartPercent = 60, topEndPercent = 20, bottomStartPercent = 20, bottomEndPercent = 20),
-                    border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f)),
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    if (selected)
-                        Icon(painter = painterResource(R.drawable.done), tint = Color.White, contentDescription = null, modifier = Modifier.size(20.dp))
-                }
-            }
+            CustomCheckbox(
+                selectionOption = if (selected) SelectedOption.Yes else SelectedOption.No,
+                topStartRadius = 60
+            )
         }
     }
 }

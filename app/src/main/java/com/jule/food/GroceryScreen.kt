@@ -125,7 +125,7 @@ fun GroceryScreen(
     val context = LocalContext.current
 
     var showAddGroceryDialog by remember { mutableStateOf(false) }
-    var showSharingDialog by remember { mutableStateOf(true) }
+    var showSharingDialog by remember { mutableStateOf(false) }
     var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -439,10 +439,13 @@ fun GroceryScreen(
             groceryCategories = categories,
             currentCategoryId = selectedCategoryId,
             onShare = { shareCategoryIds, shareOption ->
+                val shareCategories = shareCategoryIds.map { id -> categories.fastFirstOrNull { it.id == id } }.requireNoNulls()
                 if (shareOption == GroceryShareOption.Text) {
+                    val text = getShareTextFromCategories(shareCategories)
+                    
                     val sendIntent: Intent = Intent().apply {
                         action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, "This is my text to send.")
+                        putExtra(Intent.EXTRA_TEXT, text)
                         type = "text/plain"
                     }
 

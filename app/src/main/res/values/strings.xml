@@ -125,4 +125,6 @@
     <string name="share_as">Share as</string>
     <string name="text">Text</string>
     <string name="importable_zip_file">Importable .zip File</string>
+    <string name="text_share_description">Sharable with anyone by message or Email</string>
+    <string name="importable_zip_file_share_description">Sharable only to other users of the App</string>
 </resources>

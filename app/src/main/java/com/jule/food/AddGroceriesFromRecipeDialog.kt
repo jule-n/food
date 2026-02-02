@@ -2,6 +2,7 @@ package com.jule.food
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
@@ -38,14 +40,14 @@ fun AddGroceriesFromRecipeDialog(
     onConfirm: (List<GroceryItem>, UUID?) -> Unit,
 ) {
     val selectedItems = remember { recipe.groceries.toMutableStateList() }
-    var chosenCategoryIndex: Int by remember { mutableIntStateOf(0) }
+    var chosenCategoryId: UUID? by remember { mutableStateOf(groceryCategories?.get(0)?.id) }
 
     DefaultDialog(
         title = stringResource(R.string.add_groceries_to_cart),
         onDismissRequest = onDismissRequest,
         buttons = true,
         onConfirm = {
-            onConfirm(selectedItems, if (includeCategoryChoice) groceryCategories!![chosenCategoryIndex].id else null)
+            onConfirm(selectedItems, if (includeCategoryChoice) chosenCategoryId!! else null)
         },
         modifier = modifier
     ) {
@@ -57,34 +59,48 @@ fun AddGroceriesFromRecipeDialog(
                 name = stringResource(R.string.category),
                 textStartPadding = 0.dp
             ) {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    itemsIndexed(groceryCategories!!) { index, category ->
-                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
-                        Surface(
-                            onClick = { chosenCategoryIndex = index },
-                            enabled = true,
-                            color = color,
-//                            color = if (chosenCategoryIndex == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(20)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(
-                                    start = 10.dp,
-                                    top = 5.dp,
-                                    bottom = 5.dp
-                                ).fillMaxWidth().height(40.dp)
-                            ) {
-                                Text(
-                                    text = category.name,
-                                    textAlign = TextAlign.Left,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    groceryCategories!!.forEach { category ->
+                        val selected = chosenCategoryId == category.id
+                        CategoryButton(
+                            name = category.name,
+                            selected = selected,
+                            selectedColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            onClick = { chosenCategoryId = category.id }
+                        )
                     }
                 }
+//                LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+//                    itemsIndexed(groceryCategories!!) { index, category ->
+//                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
+//                        Surface(
+//                            onClick = { chosenCategoryIndex = index },
+//                            enabled = true,
+//                            color = color,
+////                            color = if (chosenCategoryIndex == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
+//                            shape = RoundedCornerShape(20)
+//                        ) {
+//                            Row(
+//                                verticalAlignment = Alignment.CenterVertically,
+//                                modifier = Modifier.padding(
+//                                    start = 10.dp,
+//                                    top = 5.dp,
+//                                    bottom = 5.dp
+//                                ).fillMaxWidth().height(40.dp)
+//                            ) {
+//                                Text(
+//                                    text = category.name,
+//                                    textAlign = TextAlign.Left,
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    modifier = Modifier.weight(1f)
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
             }
         }
         SettingsScreenCategory(
