@@ -56,7 +56,7 @@ fun SpecificRecipeGroceries(
             }
         }
     ) {
-        if (recipe.groceries.size > 0) {
+        if (recipe.groceries.isNotEmpty()) {
             LazyHorizontalGrid(
                 rows = GridCells.FixedSize(60.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

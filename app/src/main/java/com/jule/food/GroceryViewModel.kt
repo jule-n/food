@@ -286,20 +286,35 @@ class GroceryViewModel: ViewModel() {
         _dataLoaded = true
     }
 
-    fun import(categories: SaveableGroceryItemCategories) {
+
+    fun import(saveableCategories: SaveableGroceryItemCategories) {
         _groceryItemCategories.clear()
 
-        categories.categories.forEach { category ->
-            addCategory(category.name, category.id)
-            category.items.forEach { item ->
-                addToGroceries(GroceryItem(item.name, item.details, item.recipeId), category.id)
-            }
+
+        val categories = getCategoriesFromSaveable(saveableCategories)
+
+        categories.forEach { category ->
+            addCategory(category)
         }
 
-        _selectedCategoryId = if (_groceryItemCategories.firstOrNull { it.id == categories.selectedId } != null) {
-            categories.selectedId
+        _selectedCategoryId = if (_groceryItemCategories.firstOrNull { it.id == saveableCategories.selectedId } != null) {
+            saveableCategories.selectedId
         } else {
             _groceryItemCategories.first().id
         }
     }
+}
+
+fun getCategoriesFromSaveable(saveableCategories: SaveableGroceryItemCategories): List<GroceryItemCategory> {
+    val categories = mutableListOf<GroceryItemCategory>()
+
+    saveableCategories.categories.forEach { saveableCategory ->
+        val category = GroceryItemCategory(saveableCategory.name, mutableStateListOf(), saveableCategory.id)
+        saveableCategory.items.forEach { item ->
+            category.items.add(GroceryItem(item.name, item.details, item.recipeId))
+        }
+        categories.add(category)
+    }
+
+    return categories
 }

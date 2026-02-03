@@ -43,15 +43,18 @@ fun getStringFromFile(context: Context, filename: String): String? {
 inline fun <reified T> getJsonFromFile(context: Context, fileName: String, ignoreKeys: Boolean = false) : T? {
     val str = getStringFromFile(context, fileName) ?: return null
     Log.d("getJsonFromFile", str)
+    return getJsonFromString(context, str, ignoreKeys)
+}
 
+inline fun <reified T> getJsonFromString(context: Context, string: String, ignoreKeys: Boolean = false) : T? {
     val json = Json {
         ignoreUnknownKeys = ignoreKeys
     }
 
     return try {
-       json.decodeFromString<T>(str)
+        json.decodeFromString<T>(string)
     } catch (e: Exception) {
-        Log.e("getJsonFromFile", e.toString())
+        Log.e("getJsonFromString", e.toString())
         null
     }
 }

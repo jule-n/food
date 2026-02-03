@@ -1,6 +1,7 @@
 package com.jule.food
 
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -19,11 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -130,10 +133,19 @@ fun NavigationHost(
     onStartImport: (ImportSetting) -> Unit,
     addToGroceries: (List<GroceryItem>, categoryId: UUID, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
+    importJsonContent: String?,
+    onHandledJsonImport: () -> Unit,
 //    onShare: () -> Unit,
     groceryViewModel: GroceryViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel()
 ) {
+    if (importJsonContent != null) {
+        LaunchedEffect(Unit) {
+            navController.navigate(Groceries.route) {
+                launchSingleTop = true
+            }
+        }
+    }
     // Contained in SharedTransitionLayout to enable shared element transitions between destinations
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
@@ -157,7 +169,9 @@ fun NavigationHost(
                         allRecipes = recipeViewModel.recipes,
                         recipeDataLoaded = recipeViewModel.dataLoaded,
 //                        onShare = onShare,
-                        bottomBar = bottomBar
+                        bottomBar = bottomBar,
+                        importJsonContent = importJsonContent,
+                        onHandledJsonImport = onHandledJsonImport
                     )
                 }
                 composable(Recipes.route) {

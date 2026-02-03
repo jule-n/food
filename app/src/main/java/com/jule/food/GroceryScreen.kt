@@ -1,8 +1,7 @@
 package com.jule.food
 
-import android.content.Intent
 import android.util.Log
-import android.widget.ShareActionProvider
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -42,7 +41,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -53,7 +51,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
@@ -63,7 +60,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
@@ -95,16 +91,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
-import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import java.io.File
 import java.util.UUID
 
 
@@ -118,7 +114,8 @@ fun GroceryScreen(
     bottomBar: @Composable () -> Unit,
     onOpenSettings: () -> Unit,
     recipeDataLoaded: Boolean,
-//    onShare: () -> Unit,
+    importJsonContent: String?,
+    onHandledJsonImport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -442,17 +439,36 @@ fun GroceryScreen(
                 val shareCategories = shareCategoryIds.map { id -> categories.fastFirstOrNull { it.id == id } }.requireNoNulls()
                 if (shareOption == GroceryShareOption.Text) {
                     val text = getShareTextFromCategories(shareCategories)
-                    
-                    val sendIntent: Intent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, text)
-                        type = "text/plain"
+                    shareText(context, text)
+                    showSharingDialog = false
+                } else if (shareOption == GroceryShareOption.Json) {
+                    val downloadsDir = getDownloadsDir(context)
+                    if (downloadsDir == null) {
+                        Toast.makeText(context, "Something went wrong", Toast.LENGTH_SHORT).show()
+                        return@ShareGroceriesSheet
                     }
-
-                    val shareIntent = Intent.createChooser(sendIntent, null)
-                    context.startActivity(shareIntent)
+                    val groceriesJson = File(downloadsDir, "${context.getString(R.string.groceries_json)}.json").apply { writeText(groceryViewModel.getJson())}
+                    shareFile(context, groceriesJson)
                 }
             }
+        )
+    }
+
+    if (importJsonContent != null) {
+        val importSaveableCategories: SaveableGroceryItemCategories? = getJsonFromString<SaveableGroceryItemCategories>(context, importJsonContent)
+        if (importSaveableCategories == null) {
+            Toast.makeText(context, "Could not read Groceries file", Toast.LENGTH_SHORT).show()
+            onHandledJsonImport()
+            return
+        }
+
+        val importCategories = getCategoriesFromSaveable(importSaveableCategories)
+
+
+        ImportGroceriesSheet(
+            onDismissRequest = { onHandledJsonImport() },
+            groceryCategories = categories,
+            importCategories = importCategories
         )
     }
 
@@ -613,23 +629,24 @@ fun GroceryGridScreen(
                     enter = slideInVertically { it },
                     exit = slideOutVertically { it }
                 ) {
-                    if (category.items.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-//                                .padding(10.dp)
-                                .fillMaxSize()
-                        ) {
-                            Text(
-                                "All done!",
-                                modifier = Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.displaySmallEmphasized
-                            )
-                        }
-                    }
                     Surface(
                         color = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5)
                     ) {
+                        if (category.items.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+//                                .padding(10.dp)
+                                    .fillMaxSize()
+                            ) {
+                                Text(
+                                    "All done!",
+                                    modifier = Modifier.align(Alignment.Center),
+                                    style = MaterialTheme.typography.displaySmallEmphasized
+                                )
+                            }
+                        }
+
                         val spacerHeight by animateDpAsState(if (category.items.isEmpty()) 0.dp else 10.dp)
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(100.dp),
@@ -951,7 +968,7 @@ fun GroceryScreenPreview() {
 
 
     FoodTheme {
-        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf(), recipeDataLoaded = true)
+        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf(), recipeDataLoaded = true, importJsonContent = null, onHandledJsonImport = {})
     }
 }
 

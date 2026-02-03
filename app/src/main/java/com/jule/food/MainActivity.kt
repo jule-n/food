@@ -26,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
@@ -127,6 +126,9 @@ class MainActivity : AppCompatActivity() {
 //        startActivity(shareIntent, null)
 //    }
 
+    var jsonContent: String? by mutableStateOf(null)
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -136,6 +138,9 @@ class MainActivity : AppCompatActivity() {
         // Get the current locale for the system
         val currentLocaleStr = AppCompatDelegate.getApplicationLocales().toLanguageTags()
         val currentLocaleEnum = if (currentLocaleStr.startsWith("de")) Languages.German else Languages.English
+
+//        var jsonContent by mutableStateOf( handleJsonIntent(this, intent) )
+        jsonContent = handleJsonIntent(this, intent)
 
         setContent {
             val context = this
@@ -187,9 +192,19 @@ class MainActivity : AppCompatActivity() {
                         addToGroceries = { groceries, categoryId, recipeId ->
                             groceryViewModel.addToGroceries(groceries, categoryId, recipeId, context)
                         },
-//                        onShare = { shareZipFile() }
+                        importJsonContent = jsonContent,
+                        onHandledJsonImport = { jsonContent = null }
                     )
             }
+        }
+    }
+    // This gets called if the activity is already running
+    // and a new intent arrives
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.let {
+            jsonContent = handleJsonIntent(this, it)
+            // Update your UI with the new content
         }
     }
 }
@@ -227,9 +242,9 @@ fun showImportResult(context: Context, importResult: ImportResult) {
         if (!groceries && !recipes) {
             context.getString(R.string.import_error)
         } else if (groceries && !recipes) {
-            context.getString(R.string.import_groceries, importResult.groceries)
+            context.getString(R.string.imported_groceries, importResult.groceries)
         } else if (!groceries) {
-            context.getString(R.string.import_recipes, importResult.recipes)
+            context.getString(R.string.imported_recipes, importResult.recipes)
         } else {
             context.getString(R.string.import_groceries_and_recipes, importResult.groceries, importResult.recipes)
         }
@@ -256,7 +271,7 @@ fun AppPreview() {
     groceryViewModel.initializeEmpty()
 
     FoodTheme(darkTheme = darkTheme) {
-        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), groceryViewModel = groceryViewModel)
+        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), groceryViewModel = groceryViewModel, importJsonContent = null, onHandledJsonImport = { })
     }
 }
 

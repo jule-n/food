@@ -54,8 +54,8 @@
     <string name="import_data">Import from file</string>
     <string name="dynamic_color_description">From wallpaper</string>
     <string name="import_error">The file doesn\'t have the correct format</string>
-    <string name="import_groceries">Imported %d grocerie(s)</string>
-    <string name="import_recipes">Imported %d recipe(s)</string>
+    <string name="imported_groceries">Imported %d grocerie(s)</string>
+    <string name="imported_recipes">Imported %d recipe(s)</string>
     <string name="import_groceries_and_recipes">Imported %d grocerie(s) and %d recipe(s)</string>
     <string name="filter_recipes">Filter recipes</string>
     <string name="favorite_tags">Favorite Tags</string>
@@ -124,7 +124,12 @@
     <string name="category_or_categories">List(s)</string>
     <string name="share_as">Share as</string>
     <string name="text">Text</string>
-    <string name="importable_zip_file">Importable .zip File</string>
-    <string name="text_share_description">Sharable with anyone by message or Email</string>
-    <string name="importable_zip_file_share_description">Sharable only to other users of the App</string>
+    <string name="text_share_description">Sharable with anyone by message or email</string>
+    <string name="importable_json_file_share_description">Sharable only to other users of the App</string>
+    <string name="groceries_json">groceries</string>
+    <string name="importable_json_file">Importable .json file</string>
+    <string name="merge">Merge</string>
+    <string name="add_new">Add New</string>
+    <string name="replace">Replace</string>
+    <string name="import_groceries">Import groceries</string>
 </resources>

@@ -53,8 +53,8 @@
     <string name="import_data">Aus Datei importieren</string>
     <string name="dynamic_color_description">Aus dem Hintergrundbild</string>
     <string name="import_error">Die Datei hat nicht das korrekte Format</string>
-    <string name="import_groceries">%d Einkäufe importiert</string>
-    <string name="import_recipes">%d Rezept(e) importiert</string>
+    <string name="imported_groceries">%d Einkäufe importiert</string>
+    <string name="imported_recipes">%d Rezept(e) importiert</string>
     <string name="import_groceries_and_recipes">%d Einkäufe und %d Rezept(e) importiert</string>
     <string name="filter_recipes">Rezepte filtern</string>
     <string name="favorite_tags">Favorisierte Tags</string>
@@ -119,9 +119,12 @@
     <string name="name_empty">Name darf nicht leer sein</string>
     <string name="recipe_name">Rezeptname</string>
     <string name="are_you_sure_you_want_to_cancel_editing">Änderungen verwerfen?</string>
-    <string name="share_groceries">Lebensmittel teilen</string>
+    <string name="share_groceries">Einkäufe teilen</string>
     <string name="category_or_categories">Liste(n)</string>
     <string name="share_as">Teilen als</string>
     <string name="text">Text</string>
-    <string name="importable_zip_file">Importierbare .zip-Datei</string>
+    <string name="text_share_description">Teilbar mit jedem als Nachricht oder E-Mail</string>
+    <string name="importable_json_file_share_description">Teilbar nur mit anderen App-Nutzern</string>
+    <string name="groceries_json">einkäufe</string>
+    <string name="importable_json_file">Importierbare .json-Datei</string>
 </resources>

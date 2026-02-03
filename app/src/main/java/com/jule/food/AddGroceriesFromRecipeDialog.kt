@@ -47,60 +47,24 @@ fun AddGroceriesFromRecipeDialog(
         onDismissRequest = onDismissRequest,
         buttons = true,
         onConfirm = {
-            onConfirm(selectedItems, if (includeCategoryChoice) chosenCategoryId!! else null)
+            onConfirm(selectedItems, if (includeCategoryChoice && groceryCategories != null) chosenCategoryId!! else null)
         },
         modifier = modifier
     ) {
         SettingsScreenCategory(name = stringResource(R.string.recipe), modifier = Modifier.fillMaxWidth(), textStartPadding = 0.dp) {
             Text(recipe.name, style = MaterialTheme.typography.titleMedium)
         }
-        if (includeCategoryChoice) {
+        if (includeCategoryChoice && groceryCategories != null) {
             SettingsScreenCategory(
                 name = stringResource(R.string.category),
                 textStartPadding = 0.dp
             ) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    groceryCategories!!.forEach { category ->
-                        val selected = chosenCategoryId == category.id
-                        CategoryButton(
-                            name = category.name,
-                            selected = selected,
-                            selectedColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            onClick = { chosenCategoryId = category.id }
-                        )
-                    }
-                }
-//                LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-//                    itemsIndexed(groceryCategories!!) { index, category ->
-//                        val color by animateColorAsState(if (chosenCategoryIndex == index) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
-//                        Surface(
-//                            onClick = { chosenCategoryIndex = index },
-//                            enabled = true,
-//                            color = color,
-////                            color = if (chosenCategoryIndex == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
-//                            shape = RoundedCornerShape(20)
-//                        ) {
-//                            Row(
-//                                verticalAlignment = Alignment.CenterVertically,
-//                                modifier = Modifier.padding(
-//                                    start = 10.dp,
-//                                    top = 5.dp,
-//                                    bottom = 5.dp
-//                                ).fillMaxWidth().height(40.dp)
-//                            ) {
-//                                Text(
-//                                    text = category.name,
-//                                    textAlign = TextAlign.Left,
-//                                    style = MaterialTheme.typography.bodyMedium,
-//                                    modifier = Modifier.weight(1f)
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
+                CategorySelectionButtons(
+                    groceryCategories = groceryCategories,
+                    selectedCategoryId = chosenCategoryId!!,
+                    onChangeSelectedCategoryId = { chosenCategoryId = it },
+                    showBadge = false
+                )
             }
         }
         SettingsScreenCategory(
