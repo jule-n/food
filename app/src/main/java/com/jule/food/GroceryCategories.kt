@@ -208,7 +208,7 @@ fun CategoriesEditScreen(
                 val textState = rememberTextFieldState(category.name)
                 val isCategoryNameEmpty = textState.text.isEmpty()
                 val isCategoryNameTooLong = isCategoryNameTooLong(textState.text.toString())
-                val isCategoryNameSame = allCategories.any { it.name == textState.text.trim().toString() }
+                val isCategoryNameSame = allCategories.filter { it.id != category.id }.any { it.name == textState.text.trim().toString() }
 
                 LaunchedEffect(textState.text) {
                     if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame)
@@ -418,12 +418,20 @@ fun CategoriesConnectedButtonsCustomPreview() {
                                     Text("Toggle Edit Screen")
                                 }
                                 if (!onEditScreen) {
-                                    CategoriesConnectedButtonsCustom(
+                                    GroceryScreenTop(
                                         allCategories = categories,
-                                        selectedCategoryId = selectedCategoryId,
-                                        onChangeSelectedCategoryId = { selectedCategoryId = it },
-                                        onEnableEditMode = { editScreen = true }
+                                        category = categories[0],
+                                        onChangeSelectedCategoryId = { },
+                                        onChangeIsEditingCategories = { editScreen = true },
+                                        onChangeShowGroupingSheet = { },
+                                        groupingOption = GroceryGroupingOption.None
                                     )
+//                                    CategoriesConnectedButtonsCustom(
+//                                        allCategories = categories,
+//                                        selectedCategoryId = selectedCategoryId,
+//                                        onChangeSelectedCategoryId = { selectedCategoryId = it },
+//                                        onEnableEditMode = { editScreen = true }
+//                                    )
                                 } else {
                                     CategoriesEditScreen(
                                         allCategories = categories,

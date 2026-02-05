@@ -9,8 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.DocumentsContract
-import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -31,49 +29,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
 import java.io.File
-import androidx.core.net.toUri
 
 class MainActivity : AppCompatActivity() {
 // Import
     private var importingFileName = "Test"
     private var importingFileUri: Uri = Uri.EMPTY
     private var isImportingFile by mutableStateOf(false)
+
     // Activity for importing a file
     private val requestFileLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
+            if (result.resultCode == RESULT_OK) {
                 result.data?.data?.let { uri ->
                     isImportingFile = true
                     importingFileUri = uri
-                    importingFileName = getFileNameFromUri(uri)
+                    importingFileName = getFileNameFromUri(uri, this)
                 }
             }
         }
 
-    private fun openSpecificFolder() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/zip"  // Set the type to specifically check for .zip files
-            val uri = "content://com.android.externalstorage.documents/document/primary".toUri()
-            putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
-        }
-
-        requestFileLauncher.launch(intent)
-    }
-// Get the file name of the imported file to display to user
-    private fun getFileNameFromUri(uri: Uri): String {
-        val cursor = contentResolver.query(uri, null, null, null, null)
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                val displayName = it.getString(if (index >= 0) index else 0)
-                Log.d("Selected File", displayName)
-
-                return displayName
-            }
-        }
-        return ""
-    }
 
 //  Export
     private lateinit var exportUri: Uri
@@ -140,7 +114,13 @@ class MainActivity : AppCompatActivity() {
         val currentLocaleEnum = if (currentLocaleStr.startsWith("de")) Languages.German else Languages.English
 
 //        var jsonContent by mutableStateOf( handleJsonIntent(this, intent) )
-        jsonContent = handleJsonIntent(this, intent)
+        val fileUri = handleJsonIntent(intent)
+        if (fileUri != null) {
+            isImportingFile = true
+            importingFileUri = fileUri
+            importingFileName = getFileNameFromUri(importingFileUri, this)
+        }
+
 
         setContent {
             val context = this
@@ -178,22 +158,36 @@ class MainActivity : AppCompatActivity() {
                         onChangeLanguage = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(localeOptions[it])) },
                         groceryViewModel = groceryViewModel,
                         recipeViewModel = recipeViewModel,
-                        onPickFile = { openSpecificFolder() },
+                        onPickZipFile = { openFolder("application/zip", requestFileLauncher) },
+                        onPickJsonFile = { openFolder("application/json", requestFileLauncher) },
                         onExport = { createFileLauncher.launch("export_food.zip") },
                         bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = recipeViewModel) },
                         importingFile = if (isImportingFile) importingFileName else null,
                         onCancelImport = { isImportingFile = false },
-                        onStartImport = { importSetting ->
+                        onStartDataImport = { importSetting ->
                             isImportingFile = false
                             val importResult = importFromZipFile(context, importingFileUri, groceryViewModel, recipeViewModel, importSetting)
                             showImportResult(context, importResult)
                         },
+                        onStartJsonImport = {
+                            Log.d("onStartJsonImport", "Starting Json import of file: $importingFileName")
+                            val json = readJsonFromUri(context, importingFileUri)
+                            if (json != null) {
+                                jsonContent = json
+                            } else {
+                                Toast.makeText(this, "Something went wrong", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+//                        importingJsonFile = if (importingJsonFile) importingJsonFileName else null,
                         groceryCategories = groceryViewModel.groceryItemCategories,
                         addToGroceries = { groceries, categoryId, recipeId ->
                             groceryViewModel.addToGroceries(groceries, categoryId, recipeId, context)
                         },
                         importJsonContent = jsonContent,
-                        onHandledJsonImport = { jsonContent = null }
+                        onHandledJsonImport = {
+                            jsonContent = null
+                            isImportingFile = false
+                        }
                     )
             }
         }
@@ -203,8 +197,12 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.let {
-            jsonContent = handleJsonIntent(this, it)
-            // Update your UI with the new content
+            val fileUri = handleJsonIntent(intent)
+            if (fileUri != null) {
+                isImportingFile = true
+                importingFileUri = fileUri
+                importingFileName = getFileNameFromUri(importingFileUri, this)
+            }
         }
     }
 }
@@ -271,7 +269,35 @@ fun AppPreview() {
     groceryViewModel.initializeEmpty()
 
     FoodTheme(darkTheme = darkTheme) {
-        NavigationHost(navController = navController, onPickFile = {}, onExport = {}, darkTheme = darkTheme, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, currentTheme = themeSetting, onChangeTheme = {themeSetting = it}, currentColor = colorSetting, onChangeColor = { colorSetting = it }, language = language, onChangeLanguage = {language = it}, importingFile = null, onCancelImport = {}, onStartImport = {}, addToGroceries = { _, _, _ ->}, groceryCategories = listOf(), groceryViewModel = groceryViewModel, importJsonContent = null, onHandledJsonImport = { })
+        NavigationHost(
+            navController = navController,
+            onExport = {},
+            darkTheme = darkTheme,
+            bottomBar = {
+                BottomNavigationBar(
+                    navController = navController,
+                    recipeViewModel = viewModel()
+                )
+            },
+            currentTheme = themeSetting,
+            onChangeTheme = { themeSetting = it },
+            currentColor = colorSetting,
+            onChangeColor = { colorSetting = it },
+            language = language,
+            onChangeLanguage = { language = it },
+            importingFile = null,
+            onCancelImport = {},
+            onStartDataImport = {},
+            addToGroceries = { _, _, _ -> },
+            groceryCategories = listOf(),
+            groceryViewModel = groceryViewModel,
+            importJsonContent = null,
+            onHandledJsonImport = { },
+            onPickZipFile = { },
+            onPickJsonFile = { },
+            onStartJsonImport =  {},
+            recipeViewModel = viewModel()
+        )
     }
 }
 

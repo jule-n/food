@@ -133,4 +133,14 @@
     <string name="replace">Replace</string>
     <string name="import_groceries">Import groceries</string>
     <string name="name_already_exists">Name already exists</string>
+    <string name="old">Old</string>
+    <string name="new_">New</string>
+    <string name="import_">Import</string>
+    <string name="from_file">From file</string>
+    <string name="current">Current</string>
+    <string name="this_list_already_exists">This list already exists.</string>
+    <string name="lists_to_import">Lists to import:</string>
+    <string name="clear_selection">Clear selection</string>
+    <string name="more">More</string>
+    <string name="from_json_file">From .json file</string>
 </resources>

@@ -88,6 +88,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -99,7 +100,6 @@ import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.theme.FoodTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
 
@@ -116,10 +116,15 @@ fun GroceryScreen(
     recipeDataLoaded: Boolean,
     importJsonContent: String?,
     onHandledJsonImport: () -> Unit,
+    onPickJsonFile: () -> Unit,
+    onStartJsonImport: () -> Unit,
+    importingFile: String?,
+    onCancelImport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     var showAddGroceryDialog by remember { mutableStateOf(false) }
     var showSharingDialog by remember { mutableStateOf(false) }
@@ -172,6 +177,13 @@ fun GroceryScreen(
         }
     }
 
+    LaunchedEffect(importingFile) {
+        if (importingFile != null) {
+            Log.d("LaunchedEffect", "Importing File: $importingFile")
+            onStartJsonImport()
+        }
+    }
+
 
 
     Scaffold(
@@ -196,8 +208,30 @@ fun GroceryScreen(
                             CenterAlignedTopAppBar(
                                 title = { Text(stringResource(R.string.groceries)) },
                                 actions = {
-                                    IconButtonWithTooltip(onClick = { showSharingDialog = true }, tooltipText = stringResource(R.string.share)) {
-                                        Icon(painter = painterResource(id = R.drawable.share), contentDescription = stringResource(R.string.share))
+                                    var menuExpanded by remember { mutableStateOf(false) }
+                                    IconButtonWithTooltip(onClick = { menuExpanded = true }, tooltipText = stringResource(R.string.more)) {
+                                        Icon(painter = painterResource(R.drawable.more_vert), contentDescription = stringResource(R.string.more))
+                                    }
+                                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.share_groceries)) },
+                                            leadingIcon = { Icon(painter = painterResource(id = R.drawable.share), contentDescription = null) },
+                                            onClick = {
+                                                showSharingDialog = true
+                                                menuExpanded = false
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Column {
+                                                Text(stringResource(R.string.import_groceries))
+                                                Text(stringResource(R.string.from_json_file), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f))
+                                            } },
+                                            leadingIcon = { Icon(painter = painterResource(id = R.drawable.import_data), contentDescription = null) },
+                                            onClick = {
+                                                onPickJsonFile()
+                                                menuExpanded = false
+                                            }
+                                        )
                                     }
                                 },
                                 navigationIcon = {
@@ -219,13 +253,31 @@ fun GroceryScreen(
                         }
                     }
                 } else {
-                    SelectionTopBar(
-                        numberSelected = selectedGroceryItems.size,
-                        onClearSelection = {
-                            selectedGroceryItems.clear()
-                        },
-                        actions = {}
-                    )
+                    Box(modifier = Modifier.height(TopAppBarDefaults.MediumAppBarCollapsedHeight)){
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.background,
+                            shape = CircleShape,
+                            modifier = Modifier.height(TopAppBarDefaults.MediumAppBarCollapsedHeight).padding(12.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(end = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                                IconButtonWithTooltip(
+                                    onClick = { selectedGroceryItems.clear() },
+                                    tooltipText = stringResource(R.string.clear_selection)
+                                ) {
+                                    Icon(painterResource(R.drawable.clear), contentDescription = stringResource(R.string.clear_selection))
+                                }
+                                Text(selectedGroceryItems.size.toString())
+                            }
+                        }
+                    }
+//                    SelectionTopBar(
+//                        numberSelected = selectedGroceryItems.size,
+//                        onClearSelection = {
+//                            selectedGroceryItems.clear()
+//                        },
+//                        actions = {}
+//                    )
                 }
             }
         },
@@ -290,12 +342,6 @@ fun GroceryScreen(
                                 }
                             }
                         )
-//                        FloatingActionButton()
-//                    ExtendedFloatingActionButton(
-//                        onClick = { },
-//                        text = { Text(stringResource(R.string.add_grocery)) },
-//                        icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
-//                    )
                     }
                 }
             }
@@ -309,7 +355,7 @@ fun GroceryScreen(
             modifier = Modifier.padding(innerPadding)
         ) { dataLoaded ->
             if (dataLoaded) {
-                GroceryGridScreen(
+                GroceryScreenContent(
                     allCategories = categories,
                     category = selectedCategory!!,
                     allRecipes = allRecipes,
@@ -436,20 +482,21 @@ fun GroceryScreen(
             groceryCategories = categories,
             currentCategoryId = selectedCategoryId,
             onShare = { shareCategoryIds, shareOption ->
-                val shareCategories = shareCategoryIds.map { id -> categories.fastFirstOrNull { it.id == id } }.requireNoNulls()
+                val shareCategories = categories.filter { shareCategoryIds.contains(it.id) }
                 if (shareOption == GroceryShareOption.Text) {
                     val text = getShareTextFromCategories(shareCategories)
                     shareText(context, text)
-                    showSharingDialog = false
                 } else if (shareOption == GroceryShareOption.Json) {
                     val downloadsDir = getDownloadsDir(context)
                     if (downloadsDir == null) {
                         Toast.makeText(context, "Something went wrong", Toast.LENGTH_SHORT).show()
                         return@ShareGroceriesSheet
                     }
-                    val groceriesJson = File(downloadsDir, "${context.getString(R.string.groceries_json)}.json").apply { writeText(groceryViewModel.getJson())}
-                    shareFile(context, groceriesJson)
+                    val groceriesJson = groceryViewModel.getJson(shareCategories)
+                    val groceriesJsonFile = File(downloadsDir, "${resources.getString(R.string.groceries_json)}.json").apply { writeText(groceriesJson)}
+                    shareFile(context, groceriesJsonFile)
                 }
+                showSharingDialog = false
             }
         )
     }
@@ -466,9 +513,42 @@ fun GroceryScreen(
 
 
         ImportGroceriesSheet(
-            onDismissRequest = { onHandledJsonImport() },
+            onDismissRequest = {
+                onHandledJsonImport()
+            },
             groceryCategories = categories,
-            importCategories = importCategories
+            importCategories = importCategories,
+            onImport = { chosenImportCategoriesIds, chosenImportOptions ->
+                chosenImportCategoriesIds.forEachIndexed { index, importCategoryId ->
+                    val importCategory = importCategories.fastFirstOrNull { it.id == importCategoryId }
+                    if (importCategory == null) {
+                        return@forEachIndexed
+                    }
+                    val categoryWithSameName = categories.fastFirstOrNull { it.name == importCategory.name }
+                    // Has same name -> check option for conflict resolution
+                    if (categoryWithSameName != null) {
+                        val chosenOption = chosenImportOptions[index]
+                        Log.d("onImport", "Name \"${importCategory.name}\" already exists. Chosen option: $chosenOption")
+                        when (chosenOption) {
+                            ImportGroceryCategoryOption.Merge -> {
+                                groceryViewModel.addToGroceries(items = importCategory.items, categoryId = categoryWithSameName.id)
+                            }
+                            ImportGroceryCategoryOption.Replace -> {
+                                groceryViewModel.removeCategory(categoryWithSameName.id)
+                                groceryViewModel.addCategory(importCategory)
+                            }
+                            ImportGroceryCategoryOption.AddNew -> {
+                                groceryViewModel.addCategory(importCategory)
+                            }
+                        }
+                    } else {
+                        Log.d("onImport", "Name \"${importCategory.name}\" doesn't exist yet. Adding as new category.")
+                        groceryViewModel.addCategory(importCategory)
+                    }
+                }
+                onHandledJsonImport()
+            },
+            importingFileName = importingFile
         )
     }
 
@@ -478,7 +558,7 @@ fun GroceryScreen(
     ExperimentalSharedTransitionApi::class
 )
 @Composable
-fun GroceryGridScreen(
+fun GroceryScreenContent(
     allCategories: List<GroceryItemCategory>,
     category: GroceryItemCategory,
     allRecipes: List<Recipe>,
@@ -508,8 +588,6 @@ fun GroceryGridScreen(
     onChangeIsEditingCategories: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
     val singleSelection = selectedGroceryItems.size == 1
 
@@ -572,41 +650,14 @@ fun GroceryGridScreen(
                     ) { editingCategories ->
                         CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
                             if (!editingCategories) {
-                                Column {
-                                    CategoriesConnectedButtonsCustom(
-                                        allCategories = allCategories,
-                                        selectedCategoryId = category.id,
-                                        onChangeSelectedCategoryId = onChangeSelectedCategoryId,
-                                        onEnableEditMode = { onChangeIsEditingCategories(true) },
-                                        modifier = Modifier
-                                    )
-                                    Spacer(Modifier.height(5.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
-                                    ) {
-//                                        EditButton(
-//                                            text = stringResource(R.string.edit_categories),
-//                                            onClick = { onChangeIsEditingCategories(true) },
-//                                            modifier = Modifier.height(26.dp)
-//                                        )
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(20.dp),
-                                            contentColor = MaterialTheme.colorScheme.onSurface,
-                                            shape = RoundedCornerShape(20),
-                                            modifier = Modifier.animateContentSize().padding(end = 5.dp, bottom = 5.dp),
-                                            onClick = { showGroupingSheet = true }
-                                        ) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 15.dp, end = 15.dp, bottom = 5.dp, top = 5.dp)) {
-                                                Text(stringResource(R.string.group_by), style = MaterialTheme.typography.labelSmall)
-                                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                    Icon(painterResource(groceryGroupingOptionsIcons[groupingOption]!!), contentDescription = null, modifier = Modifier.size(20.dp))
-                                                    Text(stringResource(groceryGroupingOptionsDisplay[groupingOption]!!))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                GroceryScreenTop(
+                                    allCategories = allCategories,
+                                    category = category,
+                                    onChangeSelectedCategoryId = onChangeSelectedCategoryId,
+                                    onChangeIsEditingCategories = onChangeIsEditingCategories,
+                                    groupingOption = groupingOption,
+                                    onChangeShowGroupingSheet = { showGroupingSheet = true },
+                                )
                             } else {
                                 CategoriesEditScreen(
                                     allCategories = allCategories,
@@ -619,216 +670,28 @@ fun GroceryGridScreen(
                         }
                     }
                 }
-
             }
-//            if (category.items.isNotEmpty()) {
-//                Spacer(modifier = Modifier.height(10.dp))
-//            }
-                AnimatedVisibility(
-                    visible = !isEditingCategories,
-                    enter = slideInVertically { it },
-                    exit = slideOutVertically { it }
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5)
-                    ) {
-                        if (category.items.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-//                                .padding(10.dp)
-                                    .fillMaxSize()
-                            ) {
-                                Text(
-                                    "All done!",
-                                    modifier = Modifier.align(Alignment.Center),
-                                    style = MaterialTheme.typography.displaySmallEmphasized
-                                )
-                            }
-                        }
-
-                        val spacerHeight by animateDpAsState(if (category.items.isEmpty()) 0.dp else 10.dp)
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(100.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 1000.dp)
-                            .padding(start = 10.dp, end = 10.dp, top = spacerHeight)
-                    ) {
-                        val allItems = category.items
-
-                        val groupNames: MutableList<String> = mutableListOf()
-                        val groups: MutableList<List<GroceryItem>> = mutableListOf()
-                        when (groupingOption) {
-                            GroceryGroupingOption.None -> {
-                                groupNames.add("")
-                                groups.add(allItems)
-                            }
-
-                            GroceryGroupingOption.Recipe -> {
-                                val recipeGroups = allItems.groupBy { it.recipeId }
-                                groupNames.addAll(recipeGroups.keys.map { recipeId ->
-                                    if (recipeId != null) getRecipeNameFromId(recipeId) else context.getString(
-                                        R.string.no_recipe
-                                    )
-                                })
-                                groupNames.sort()
-                                groups.addAll(recipeGroups.values)
-                            }
-
-                            GroceryGroupingOption.Location -> {
-                                groupNames.add("Location A")
-                                groups.add(allItems)
-                            }
-                        }
-
-//                        if (showDeletedItems && deletedGroceryItems.isNotEmpty()) {
-//                            groupNames.add(context.getString(R.string.deleted))
-//                            groups.add(deletedGroceryItems)
-//                        }
-                        if (!(groupNames.count() == 1 && groups[0].isEmpty())) {
-                            groups.forEachIndexed { index, groceryItems ->
-                                val isLast = index == groups.size - 1
-
-                                if (index > 0 || groupingOption != GroceryGroupingOption.None) {
-                                    gridGroupTitle(
-                                        title = groupNames[index],
-                                        key = groupNames[index],
-                                        animate = true
-                                    )
-                                }
-                                items(
-                                    groceryItems,
-                                    key = { groceryItem -> groceryItem.id }
-                                ) { groceryItem ->
-                                    GroceryItemDisplay(
-                                        item = groceryItem,
-                                        onClick = {
-                                            if (selectionModeActive) {
-                                                if (selectedGroceryItems.contains(groceryItem.id))
-                                                    onRemoveFromSelection(groceryItem.id)
-                                                else
-                                                    onAddToSelection(groceryItem.id)
-                                            } else {
-                                                onRemoveFromGroceries(allItems.indexOf(groceryItem))
-                                                onAddToDeletedItems(groceryItem)
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (!selectionModeActive) {
-                                                onAddToSelection(groceryItem.id)
-                                            }
-                                        },
-                                        getRecipeNameFromId = getRecipeNameFromId,
-                                        showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
-                                        deleted = false,
-                                        isSelected = selectedGroceryItems.contains(groceryItem.id),
-                                        showSelection = selectionModeActive,
-                                        modifier = Modifier.animateItem()
-                                    )
-                                }
-
-                                gridSpacer(20.dp)
-                            }
-                        }
-                        item(
-                            key = 5092038540945087,
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            val alphaText by animateFloatAsState(if (deletedItems.isEmpty() || !showDeletedItems) 0.5f else 0.8f)
-                            val alphaBackground by animateFloatAsState(if (deletedItems.isEmpty() || !showDeletedItems) 0.1f else 0.2f)
-                            Box(modifier = Modifier.animateItem()) {
-                            Surface(
-                                onClick = { onChangeShowDeletedItems(!showDeletedItems) },
-                                shape = RoundedCornerShape(20),
-                                enabled = deletedItems.isNotEmpty(),
-                                color = Color.Transparent
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 8.dp)) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaBackground),
-                                        modifier = Modifier.size(20.dp)
-                                    ) {
-                                        Box {
-                                            Text(
-                                                deletedItems.count().toString(),
-                                                modifier = Modifier.align(Alignment.Center),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText)
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text(
-                                        stringResource(R.string.deleted),
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText),
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Icon(
-                                        painterResource(R.drawable.delete),
-                                        contentDescription = stringResource(R.string.show_deleted_items),
-                                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = alphaText)
-                                    )
-                                }}
-                            }
-                        }
-                        if (showDeletedItems) {
-                            items(
-                                deletedItems.reversed(),
-                                key = { it.id }
-                            ) { groceryItem ->
-                                GroceryItemDisplay(
-                                    item = groceryItem,
-                                    onClick = {
-                                        if (!selectionModeActive) {
-                                            onRemoveFromDeletedItems(groceryItem.id)
-                                            onAddToGroceries(groceryItem)
-                                        }
-                                    },
-                                    onLongClick = null,
-                                    getRecipeNameFromId = getRecipeNameFromId,
-                                    showRecipeName = true,
-                                    deleted = true,
-                                    isSelected = false,
-                                    showSelection = false,
-                                    modifier = Modifier.animateItem()
-//                                        .scale(scaleX = scale, scaleY = scale)
-                                )
-                            }
-                        } else {
-                            if (deletedItems.isNotEmpty()) {
-                                item(
-                                    key = deletedItems.last().id
-                                ) {
-                                    var loadedItem by remember { mutableStateOf(false) }
-                                    val alpha by animateFloatAsState(targetValue = if (loadedItem) 0f else 1f)
-                                    LaunchedEffect(Unit) {
-                                        loadedItem = true
-                                    }
-                                    val groceryItem = deletedItems.last()
-                                    GroceryItemDisplay(
-                                        item = groceryItem,
-                                        onClick = { },
-                                        onLongClick = null,
-                                        clickingEnabled = false,
-                                        getRecipeNameFromId = getRecipeNameFromId,
-                                        showRecipeName = groupingOption != GroceryGroupingOption.Recipe,
-                                        deleted = true,
-                                        isSelected = false,
-                                        showSelection = false,
-                                        modifier = Modifier.animateItem().alpha(alpha)
-                                    )
-                                }
-
-                            }
-                        }
-                    }
-                }
+            AnimatedVisibility(
+                visible = !isEditingCategories,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it }
+            ) {
+                GroceryGridScreen(
+                    category = category,
+                    groupingOption = groupingOption,
+                    onRemoveFromGroceries = onRemoveFromGroceries,
+                    onAddToGroceries = onAddToGroceries,
+                    getRecipeNameFromId = getRecipeNameFromId,
+                    selectionModeActive = selectionModeActive,
+                    selectedGroceryItems = selectedGroceryItems,
+                    onAddToSelection = onAddToSelection,
+                    onRemoveFromSelection = onRemoveFromSelection,
+                    deletedItems = deletedItems,
+                    onAddToDeletedItems = onAddToDeletedItems,
+                    onRemoveFromDeletedItems = onRemoveFromDeletedItems,
+                    showDeletedItems = showDeletedItems,
+                    onChangeShowDeletedItems = onChangeShowDeletedItems
+                )
             }
         }
         
@@ -857,41 +720,6 @@ fun GroceryGridScreen(
                     )
                 }
             }
-//            ModalBottomSheet(
-//                onDismissRequest = {
-//                    showGroupingSheet = false
-//                },
-//                sheetMaxWidth = Dp.Unspecified
-//            ) {
-//                Column(
-//                    modifier = Modifier.padding(horizontal = 10.dp)
-////                    modifier = Modifier.padding(horizontal = 10.dp)
-////                modifier = Modifier.padding(20.dp)
-//                ) {
-//                    Text(stringResource(R.string.group_by), style = MaterialTheme.typography.headlineSmall)
-////                    Spacer(Modifier.height(10.dp))
-//                    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 10.dp)) {
-//                        GroceryGroupingOption.entries.forEachIndexed { index, option ->
-//                            val selected = groupingOption == option
-//                            SettingDialogElement(
-//                                title = stringResource(groceryGroupingOptionsDisplay[option]!!),
-//                                selected = selected,
-//                                onClick = {
-//                                    onChangeGroupingOption(option)
-//                                    showGroupingSheet = false
-//                                },
-//                                leadingIcon = {
-//                                    Icon(
-//                                        painterResource(groceryGroupingOptionsIcons[option]!!),
-//                                        contentDescription = null
-//                                    )
-//                                },
-//                                modifier = Modifier.fillMaxWidth()
-//                            )
-//                        }
-//                    }
-//                }
-//            }
         }
     }
 }
@@ -953,10 +781,24 @@ fun GroceryScreenPreview() {
     val navController = rememberNavController()
     val groceryViewModel: GroceryViewModel = viewModel()
 
+    val recipe1Id = UUID.randomUUID()
+    val recipe2Id = UUID.randomUUID()
+
+    fun getRecipeName(id: UUID): String {
+        if (id == recipe1Id) {
+            return "Gemüse"
+        }
+        if (id == recipe2Id) {
+            return "Saturn"
+        }
+        return "AAAA"
+    }
+
     if (groceryViewModel.groceryItemCategories.isEmpty()) {
         val defaultId = groceryViewModel.addCategory("Default")
-//        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g"), defaultId)
-//        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), defaultId)
+        groceryViewModel.addToGroceries(GroceryItem("Mehl", "500g", recipeId = recipe1Id), defaultId)
+        groceryViewModel.addToGroceries(GroceryItem("Mehl", "100g", recipeId = recipe2Id), defaultId)
+        groceryViewModel.addToGroceries(GroceryItem("Spaghetti", ""), defaultId)
 
         val default2Id = groceryViewModel.addCategory("Default 2")
         groceryViewModel.addToGroceries(GroceryItem("Dosentomaten",""), default2Id)
@@ -966,9 +808,29 @@ fun GroceryScreenPreview() {
         groceryViewModel.changeSelectedCategoryId(defaultId)
     }
 
+    groceryViewModel.changeSelectedGroupingOption(GroceryGroupingOption.Recipe)
+
 
     FoodTheme {
-        GroceryScreen(groceryViewModel = groceryViewModel, bottomBar = { BottomNavigationBar(navController = navController, recipeViewModel = viewModel()) }, onOpenSettings = {}, getRecipeNameFromId = { it.toString() }, allRecipes = listOf(), recipeDataLoaded = true, importJsonContent = null, onHandledJsonImport = {})
+        GroceryScreen(
+            groceryViewModel = groceryViewModel,
+            bottomBar = {
+                BottomNavigationBar(
+                    navController = navController,
+                    recipeViewModel = viewModel()
+                )
+            },
+            onOpenSettings = {},
+            getRecipeNameFromId = { getRecipeName(it) },
+            allRecipes = listOf(),
+            recipeDataLoaded = true,
+            importJsonContent = null,
+            onHandledJsonImport = {},
+            onPickJsonFile = { },
+            onStartJsonImport = { },
+            importingFile = null,
+            onCancelImport = { }
+        )
     }
 }
 

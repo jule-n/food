@@ -25,7 +25,7 @@ fun SelectionTopBar(
         title = { Text(stringResource(R.string.n_selected_images, numberSelected)) },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
-                Icon(painterResource(R.drawable.clear), contentDescription = "Clear Selection")
+                Icon(painterResource(R.drawable.clear), contentDescription = stringResource(R.string.clear_selection))
             }
         },
         actions = actions,

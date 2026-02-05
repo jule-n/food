@@ -6,19 +6,17 @@ import android.net.Uri
 
 
 // Handle incoming Json Intent
-fun handleJsonIntent(context: Context, intent: Intent): String? {
+fun handleJsonIntent(intent: Intent): Uri? {
     // Check if this intent is for viewing a file
     return when (intent.action) {
         Intent.ACTION_VIEW -> {
             // intent.data contains the URI of the file to open
-            intent.data?.let { uri ->
-                readJsonFromUri(context, uri)
-            }
+            intent.data
         }
         else -> null
     }
 }
-private fun readJsonFromUri(context: Context, uri: Uri): String? {
+fun readJsonFromUri(context: Context, uri: Uri): String? {
     return try {
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
             inputStream.bufferedReader().readText()

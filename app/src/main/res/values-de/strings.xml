@@ -127,4 +127,19 @@
     <string name="importable_json_file_share_description">Teilbar nur mit anderen App-Nutzern</string>
     <string name="groceries_json">einkäufe</string>
     <string name="importable_json_file">Importierbare .json-Datei</string>
+    <string name="merge">Zusammenlegen</string>
+    <string name="add_new">Neu hinzufügen</string>
+    <string name="replace">Ersetzen</string>
+    <string name="import_groceries">Einkäufe importieren</string>
+    <string name="name_already_exists">Name existiert bereits</string>
+    <string name="old">Alt</string>
+    <string name="new_">Neu</string>
+    <string name="import_">Importieren</string>
+    <string name="from_file">Aus Datei</string>
+    <string name="current">Aktuell</string>
+    <string name="this_list_already_exists">Diese Liste existiert bereits.</string>
+    <string name="lists_to_import">Listen zum importieren:</string>
+    <string name="clear_selection">Selektion aufheben</string>
+    <string name="more">Mehr</string>
+    <string name="from_json_file">Aus .json-Datei</string>
 </resources>

@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.util.fastFirst
+import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -52,7 +53,8 @@ class SaveableGroceryItemCategory(
 class SaveableGroceryItemCategories(
     val categories: List<SaveableGroceryItemCategory>,
     @Serializable(with = UUIDSerializer::class)
-    val selectedId: UUID? = null
+    val selectedId: UUID? = null,
+    val groupingOption: GroceryGroupingOption? = null
 )
 
 @Serializable
@@ -106,7 +108,7 @@ class GroceryViewModel: ViewModel() {
             deletedItemsPerCategory[categoryId]!!.add(item)
             deletedItemsPerCategory[categoryId]!!
         } else {
-            deletedItemsPerCategory.put(categoryId, mutableListOf(item))
+            deletedItemsPerCategory[categoryId] = mutableListOf(item)
         }
     }
     fun removeFromDeletedItems(itemId: UUID, categoryId: UUID) {
@@ -125,7 +127,7 @@ class GroceryViewModel: ViewModel() {
         if (showDeletedItemsPerCategory.containsKey(categoryId)) {
             showDeletedItemsPerCategory[categoryId] = newValue
         } else {
-            showDeletedItemsPerCategory.put(categoryId, newValue)
+            showDeletedItemsPerCategory[categoryId] = newValue
         }
     }
 
@@ -140,12 +142,13 @@ class GroceryViewModel: ViewModel() {
     }
 
     fun addCategory(category: GroceryItemCategory) {
-        if (_groceryItemCategories.any { it.id == category.id || it.name == category.name }) {
-            Log.e("addCategory", "Tried to add category \"${category.name}\", but name or ID already exists.")
-            return
+        var categoryName = category.name
+        var index = 2
+        while (_groceryItemCategories.any { it.name == categoryName } && index < 100) {
+            categoryName = category.name + index.toString()
+            index++
         }
-        _groceryItemCategories.add(category)
-//        _groceryItemCategories.sortBy { it.name }
+        _groceryItemCategories.add(GroceryItemCategory(categoryName, category.items))
     }
     fun removeCategory(id: UUID) {
         _groceryItemCategories.removeIf { it.id == id }
@@ -163,46 +166,40 @@ class GroceryViewModel: ViewModel() {
         Log.d("GroceryViewModel", "Attempting to move category from $fromIndex to $toIndex.")
     }
     fun addToGroceries(item: GroceryItem, categoryId: UUID) {
-        val category = _groceryItemCategories.fastFirst { it.id == categoryId }
-        category.items.add(item)
+        val category = _groceryItemCategories.fastFirstOrNull { it.id == categoryId }
+        if (category == null) {
+            Log.e("addToGroceries", "Category with ID ${categoryId}, doesn't exist.")
+            return
+        }
+        // If the ID already exists, create a new item with a different ID
+        if (category.items.any { it.id == item.id }) {
+            category.items.add(item.copy())
+        } else {
+            category.items.add(item)
+        }
+
+        category.items.sortBy { it.name }
+    }
+    fun addToGroceries(items: List<GroceryItem>, categoryId: UUID) {
+        val category = _groceryItemCategories.fastFirstOrNull { it.id == categoryId }
+        if (category == null) {
+            Log.e("addToGroceries", "Category with ID ${categoryId}, doesn't exist.")
+            return
+        }
+        items.forEach { item ->
+            val newItem = item.copy()
+            category.items.add(newItem)
+        }
+
         category.items.sortBy { it.name }
     }
     fun addToGroceries(items: List<GroceryItem>, categoryId: UUID, recipeId: UUID, context: Context) {
-        val category = _groceryItemCategories.fastFirst { it.id == categoryId }
+        val category = _groceryItemCategories.fastFirstOrNull { it.id == categoryId }
+        if (category == null) {
+            Log.e("addToGroceries", "Category with ID ${categoryId}, doesn't exist.")
+            return
+        }
         items.forEach { item ->
-//            Log.d("AddToGroceries", "Adding ${newItem.name}")
-//            val indexSameItem = category.items.indexOfFirst { item -> item.name.lowercase() == newItem.name.lowercase() }
-//            if (indexSameItem != -1) {
-//                Log.d("AddToGroceries", "Match found")
-//                // There is an item of the same name
-//                val oldItem = category.items[indexSameItem]
-//                val regex = Regex("""\d+\D+""")
-//                if (oldItem.details.matches(regex) && newItem.details.matches(regex)) {
-//                    Log.d("AddToGroceries", "Match satisfies Regex")
-//                    val regexUnit = Regex("""\D+""")
-//                    val oldUnit = regexUnit.find(oldItem.details)?.value
-//                    val newUnit = regexUnit.find(newItem.details)?.value
-//                    Log.d("AddToGroceries", "Old Unit: $oldUnit, New Unit: $newUnit")
-//                    if (oldUnit == newUnit) {
-//                        Log.d("AddToGroceries", "Units match")
-//                        // Same unit, meaning we can add numbers together
-//                        val regexNumber = Regex("""\d+""")
-//                        val oldNumber = regexNumber.find(oldItem.details)?.value?.toInt()
-//                        val newNumber = regexNumber.find(newItem.details)?.value?.toInt()
-//                        val number = if (oldNumber != null && newNumber != null) oldNumber + newNumber else 39
-//
-//                        Log.d("AddToGroceries", "Old Number: $oldNumber, New Number: $newNumber, the sum is $number")
-//                        category.items.removeAt(indexSameItem)
-//                        category.items.add(GroceryItem(oldItem.name, "$number$oldUnit"))
-//                        Log.d("AddToGroceries", "Item Updated: $number$oldUnit")
-//                        return@forEach
-//                    } else {
-//                        Log.d("AddToGroceries", "Units don't match")
-//                    }
-//                } else {
-//                    Log.d("AddToGroceries", "Match doesn't satisfy Regex")
-//                }
-//            }
             val newItem = item.copy()
             newItem.recipeId = recipeId
             category.items.add(newItem)
@@ -232,20 +229,24 @@ class GroceryViewModel: ViewModel() {
         toCategory.items.sortBy { it.name }
     }
 
-    private fun getSaveable(): SaveableGroceryItemCategories {
+    private fun getSaveable(categories: List<GroceryItemCategory> = groceryItemCategories): SaveableGroceryItemCategories {
         val output = mutableListOf<SaveableGroceryItemCategory>()
-        groceryItemCategories.forEach { category ->
+        categories.forEach { category ->
             val outputItems = mutableListOf<SaveableGroceryItem>()
             category.items.forEach { item ->
                 outputItems.add(SaveableGroceryItem(item.name, item.details, item.recipeId))
             }
             output.add(SaveableGroceryItemCategory(category.name, outputItems, category.id))
         }
-        return SaveableGroceryItemCategories(output, selectedCategoryId)
+        return SaveableGroceryItemCategories(output, selectedCategoryId, selectedGroupingOption)
     }
 
     fun getJson(): String {
         return Json.encodeToString(getSaveable())
+    }
+
+    fun getJson(categories: List<GroceryItemCategory>): String {
+        return Json.encodeToString(getSaveable(categories))
     }
 
     fun saveToFile(context: Context) {
@@ -305,6 +306,8 @@ class GroceryViewModel: ViewModel() {
         } else {
             _groceryItemCategories.first().id
         }
+
+        _selectedGroupingOption = saveableCategories.groupingOption ?: GroceryGroupingOption.None
     }
 }
 

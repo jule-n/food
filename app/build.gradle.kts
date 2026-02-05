@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.play.services.base)
     implementation(libs.androidx.animation.graphics.android)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

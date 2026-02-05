@@ -76,9 +76,14 @@ fun ShareGroceriesSheet(
     currentCategoryId: UUID,
     onShare: (categoryIds: List<UUID>, shareOption: GroceryShareOption) -> Unit
 ) {
-    val selectedCategoriesIds = remember { mutableStateListOf(currentCategoryId) }
+    val nonEmptyCategories = groceryCategories.filter { it.items.isNotEmpty() }
+    val noCategories = nonEmptyCategories.isEmpty()
+    val selectedCategoriesIds = remember {
+        if (nonEmptyCategories.any { it.id == currentCategoryId }) mutableStateListOf(currentCategoryId) else
+            if (!noCategories) mutableStateListOf(nonEmptyCategories[0].id) else mutableStateListOf()
+    }
 
-    val selectionOption = if (selectedCategoriesIds.count() == groceryCategories.count()) SelectionOption.Yes else (
+    val selectionOption = if (selectedCategoriesIds.count() == nonEmptyCategories.count()) SelectionOption.Yes else (
         if (selectedCategoriesIds.isEmpty()) SelectionOption.No else SelectionOption.Half
     )
 
@@ -116,23 +121,30 @@ fun ShareGroceriesSheet(
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
                     )
-                    CustomCheckbox(
-                        selectionOption = selectionOption,
-                        topStartRadius = 20,
-                        selectedBackgroundColor = MaterialTheme.colorScheme.tertiary,
-                        iconTint = MaterialTheme.colorScheme.onTertiary,
-                        modifier = Modifier.clickable {
-                            if (selectedCategoriesIds.isEmpty())
-                                selectedCategoriesIds.addAll(groceryCategories.map { it.id })
-                            else {
-                                selectedCategoriesIds.clear()
+                    if (!noCategories) {
+                        CustomCheckbox(
+                            selectionOption = selectionOption,
+                            topStartRadius = 20,
+                            selectedBackgroundColor = MaterialTheme.colorScheme.tertiary,
+                            iconTint = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.clickable {
+                                if (selectedCategoriesIds.isEmpty())
+                                    selectedCategoriesIds.addAll(nonEmptyCategories.map { it.id })
+                                else {
+                                    selectedCategoriesIds.clear()
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
+                if (noCategories) {
+                    Text("No lists with items.", style = MaterialTheme.typography.bodySmall)
+                    return@Column
+                }
+                Text("You can only share lists with items.", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(5.dp))
                 CategorySelectionButtons(
-                    groceryCategories = groceryCategories,
+                    groceryCategories = nonEmptyCategories,
                     selectedCategoriesIds = selectedCategoriesIds,
                     onClickCategory = { categoryId ->
                         if (selectedCategoriesIds.contains(categoryId))

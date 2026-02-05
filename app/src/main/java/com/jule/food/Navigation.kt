@@ -1,7 +1,6 @@
 package com.jule.food
 
 import android.util.Log
-import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -26,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -126,16 +124,17 @@ fun NavigationHost(
     onChangeLanguage: (Languages) -> Unit,
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit,
-    onPickFile: () -> Unit,
+    onPickZipFile: () -> Unit,
+    onPickJsonFile: () -> Unit,
     onExport: () -> Unit,
     importingFile: String?,
     onCancelImport: () -> Unit,
-    onStartImport: (ImportSetting) -> Unit,
+    onStartDataImport: (ImportSetting) -> Unit,
+    onStartJsonImport: () -> Unit,
     addToGroceries: (List<GroceryItem>, categoryId: UUID, recipeId: UUID) -> Unit,
     groceryCategories: List<GroceryItemCategory>,
     importJsonContent: String?,
     onHandledJsonImport: () -> Unit,
-//    onShare: () -> Unit,
     groceryViewModel: GroceryViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel()
 ) {
@@ -171,7 +170,11 @@ fun NavigationHost(
 //                        onShare = onShare,
                         bottomBar = bottomBar,
                         importJsonContent = importJsonContent,
-                        onHandledJsonImport = onHandledJsonImport
+                        onHandledJsonImport = onHandledJsonImport,
+                        onPickJsonFile = onPickJsonFile,
+                        onStartJsonImport = onStartJsonImport,
+                        importingFile = importingFile,
+                        onCancelImport = onCancelImport
                     )
                 }
                 composable(Recipes.route) {
@@ -287,11 +290,11 @@ fun NavigationHost(
                         onBack = {
                             navController.popBackStack()
                         },
-                        onPickFile = onPickFile,
+                        onPickFile = onPickZipFile,
                         onExport = onExport,
                         importingFile = importingFile,
                         onCancelImport = onCancelImport,
-                        onStartImport = onStartImport
+                        onStartImport = onStartDataImport
                     )
                 }
             }

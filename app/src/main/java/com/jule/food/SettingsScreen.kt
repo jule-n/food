@@ -128,7 +128,7 @@ fun SettingsScreen(
                     Row(modifier = Modifier.padding(5.dp)) {
                         Icon(painter = painterResource(id = R.drawable.zip_folder), contentDescription = null)
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(importingFile ?: "")
+                        Text(importingFile)
                     }
                 }
                 Column {

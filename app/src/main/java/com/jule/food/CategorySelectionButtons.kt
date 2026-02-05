@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 
@@ -91,6 +93,7 @@ fun CategorySelectionButton(
     showBadge: Boolean = false,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     backgroundColorSelected: Color = MaterialTheme.colorScheme.tertiary,
+    details: String? = null,
     shape: Shape = RoundedCornerShape(20)
 ) {
     val backgroundColor by animateColorAsState(
@@ -110,20 +113,32 @@ fun CategorySelectionButton(
                 topStartRadius = 50
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(10.dp)
-        ) {
-            Text(
-                category.name,
-                color = textColor
-            )
-            if (showBadge) {
-                CustomBadge(
-                    number = category.items.count(),
-                    backgroundColor = textColor.copy(alpha = 0.2f),
-                    textColor = textColor.copy(alpha = 0.8f)
+        Column {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Text(
+                    category.name,
+                    color = textColor
+                )
+                if (showBadge) {
+                    CustomBadge(
+                        number = category.items.count(),
+                        backgroundColor = textColor.copy(alpha = 0.2f),
+                        textColor = textColor.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            if (details != null) {
+                Text(
+                    details,
+                    color = textColor.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 10.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1
                 )
             }
         }
