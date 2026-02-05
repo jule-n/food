@@ -208,9 +208,10 @@ fun CategoriesEditScreen(
                 val textState = rememberTextFieldState(category.name)
                 val isCategoryNameEmpty = textState.text.isEmpty()
                 val isCategoryNameTooLong = isCategoryNameTooLong(textState.text.toString())
+                val isCategoryNameSame = allCategories.any { it.name == textState.text.trim().toString() }
 
                 LaunchedEffect(textState.text) {
-                    if (!isCategoryNameEmpty && !isCategoryNameTooLong)
+                    if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame)
                         onChangeCategoryName(textState.text.trim().toString(), category.id)
                 }
 
@@ -275,9 +276,10 @@ fun CategoriesEditScreen(
                         }
 
                         SheetErrorMessage(
-                            isError = isCategoryNameEmpty || isCategoryNameTooLong,
+                            isError = isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame,
                             message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
-                                if (isCategoryNameEmpty) stringResource(R.string.name_empty) else ""
+                                if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
+                            if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
                         )
                     }
                 }
@@ -313,6 +315,7 @@ fun CategoriesEditScreen(
             var showEmptyCategoryError by remember { mutableStateOf(false) }
             val isCategoryNameEmpty = textFieldState.text.isEmpty()
             val isCategoryNameTooLong = isCategoryNameTooLong(textFieldState.text.toString())
+            val isCategoryNameSame = allCategories.any { it.name == textFieldState.text.trim().toString() }
 
             if (!showEmptyCategoryError) {
                 LaunchedEffect(textFieldState.text) {
@@ -333,15 +336,18 @@ fun CategoriesEditScreen(
                 contentPadding = PaddingValues(15.dp),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 onKeyboardAction = {
-                    val name = textFieldState.text.trim().toString()
-                    onAddNewCategory(GroceryItemCategory(name))
-                    showAddCategorySheet = false
+                    if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame) {
+                        val name = textFieldState.text.trim().toString()
+                        onAddNewCategory(GroceryItemCategory(name))
+                        showAddCategorySheet = false
+                    }
                 }
             )
             SheetErrorMessage(
-                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong,
+                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong || isCategoryNameSame,
                 message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
-                        if (isCategoryNameEmpty) stringResource(R.string.name_empty) else ""
+                        if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
+                    if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
             )
             Row(
                 horizontalArrangement = Arrangement.End,

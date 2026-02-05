@@ -130,17 +130,20 @@ class GroceryViewModel: ViewModel() {
     }
 
     fun addCategory(name: String): UUID {
+        if (_groceryItemCategories.any { it.name == name }) {
+            Log.e("addCategory", "Tried to add category \"$name\", but name already exists.")
+            return UUID.randomUUID()
+        }
         val newCategory = GroceryItemCategory(name = name)
         _groceryItemCategories.add(newCategory)
         return newCategory.id
     }
 
-    private fun addCategory(name: String, id: UUID) {
-        val newCategory = GroceryItemCategory(name = name, id = id)
-        _groceryItemCategories.add(newCategory)
-    }
-
     fun addCategory(category: GroceryItemCategory) {
+        if (_groceryItemCategories.any { it.id == category.id || it.name == category.name }) {
+            Log.e("addCategory", "Tried to add category \"${category.name}\", but name or ID already exists.")
+            return
+        }
         _groceryItemCategories.add(category)
 //        _groceryItemCategories.sortBy { it.name }
     }

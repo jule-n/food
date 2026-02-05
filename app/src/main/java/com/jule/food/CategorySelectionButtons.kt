@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 
@@ -87,19 +88,21 @@ fun CategorySelectionButton(
     selected: Boolean,
     onClick: () -> Unit,
     showCheckbox: Boolean = false,
-    showBadge: Boolean = false
+    showBadge: Boolean = false,
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    backgroundColorSelected: Color = MaterialTheme.colorScheme.tertiary,
+    shape: Shape = RoundedCornerShape(20)
 ) {
     val backgroundColor by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant
+        if (selected) backgroundColorSelected else backgroundColor
     )
     val textColor = MaterialTheme.colorScheme.contentColorFor(backgroundColor)
 
     Surface(
         modifier = modifier,
         color = backgroundColor,
-        enabled = true,
         onClick = onClick,
-        shape = RoundedCornerShape(20)
+        shape = shape
     ) {
         if (showCheckbox) {
             CustomCheckbox(

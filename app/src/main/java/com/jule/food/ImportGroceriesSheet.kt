@@ -2,6 +2,7 @@ package com.jule.food
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -28,12 +30,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +65,7 @@ fun ImportGroceriesSheet(
     val chosenImportCategoriesIds = remember { importCategories.map { it.id }.toMutableStateList() }
 
     ModalBottomSheet(
+        modifier = modifier,
         onDismissRequest = onDismissRequest,
         dragHandle = { }
     ) {
@@ -81,111 +88,116 @@ fun ImportGroceriesSheet(
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 importCategories.forEach { importCategory ->
                     val selected = chosenImportCategoriesIds.contains(importCategory.id)
+                    val categoriesWithSameName = groceryCategories.filter { it.name == importCategory.name }
+                    val hasSameName = categoriesWithSameName.isNotEmpty()
+
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (hasSameName) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else Color.Transparent,
+//                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
                         shape = RoundedCornerShape(10),
-                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
-                        onClick = { if (selected) chosenImportCategoriesIds.remove(importCategory.id) else chosenImportCategoriesIds.add(importCategory.id)}
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column() {
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiary,
-                                shape = RoundedCornerShape(10)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(5.dp)) {
-                                    Text(importCategory.name)
-                                    Spacer(Modifier.width(5.dp))
-                                    CustomBadge(number = importCategory.items.count(),
-                                        backgroundColor = MaterialTheme.colorScheme.background.copy(alpha = 0.2f),
-                                        textColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f)
+                            Row {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    if (hasSameName) {
+                                        Surface(
+                                            color = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = RoundedCornerShape(50)
+                                        ) {
+                                            Text(
+                                                "New",
+                                                modifier = Modifier.padding(horizontal = 10.dp)
+                                            )
+                                        }
+                                    }
+                                    CategorySelectionButton(
+                                        category = importCategory,
+                                        selected = selected,
+                                        onClick = {
+                                            if (selected) chosenImportCategoriesIds.remove(
+                                                importCategory.id
+                                            ) else chosenImportCategoriesIds.add(importCategory.id)
+                                        },
+                                        showBadge = true,
+                                        showCheckbox = true,
+                                        modifier = if (!hasSameName) Modifier.fillMaxWidth() else Modifier
                                     )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    CustomCheckbox(
-                                        selectionOption = if (selected) SelectionOption.Yes else SelectionOption.No,
-                                        selectedBackgroundColor = MaterialTheme.colorScheme.tertiary
-                                    )
+                                }
+                                Spacer(Modifier.weight(1f))
+                                if (hasSameName) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Surface(
+                                            color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = RoundedCornerShape(50)
+                                        ) {
+                                            Text(
+                                                "New",
+                                                modifier = Modifier.padding(horizontal = 10.dp)
+                                            )
+                                        }
+                                        CategorySelectionButton(
+                                            category = importCategory,
+                                            selected = false,
+                                            onClick = {},
+                                            showBadge = true,
+                                            showCheckbox = true,
+                                            backgroundColor = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
                                 }
                             }
                             AnimatedVisibility(selected) {
                                 Column {
-                                    val hasSameName: Boolean = groceryCategories.any { it.name == importCategory.name }
                                     if (hasSameName) {
-                                        var resolveConflictOption =
-                                            ImportGroceryCategoryOption.Merge
+                                        var resolveConflictOption by remember { mutableStateOf(ImportGroceryCategoryOption.Merge) }
 
-                                        Surface (
-                                            color = Color(red = 0.7f, green = 0.4f, blue = 0.1f, alpha = 0.5f),
-                                            shape = RoundedCornerShape(10),
-                                            modifier = Modifier.fillMaxWidth().padding(5.dp)
-                                        ){
-                                            Column(modifier = Modifier.fillMaxWidth().padding(5.dp)) {
-                                                Text(
-                                                    "List already exists. How do you want to proceed?",
-                                                    textAlign = TextAlign.Center,
-                                                    modifier = Modifier.padding(horizontal = 5.dp)
-                                                )
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                ) {
-                                                    ImportGroceryCategoryOption.entries.drop(1)
-                                                        .forEachIndexed { index, option ->
-                                                            val cornerLeft =
-                                                                if (index == 0) 30 else 10
-                                                            val cornerRight =
-                                                                if (index == ImportGroceryCategoryOption.entries.count() - 2) 30 else 10
-                                                            Surface(
-                                                                shape = RoundedCornerShape(
-                                                                    cornerLeft,
-                                                                    cornerRight,
-                                                                    cornerRight,
-                                                                    cornerLeft
-                                                                ),
-                                                                onClick = {
-                                                                    resolveConflictOption = option
-                                                                },
-                                                                color = MaterialTheme.colorScheme.surfaceColorAtElevation(
-                                                                    4.dp
-                                                                ),
-                                                                modifier = Modifier.weight(1f)
-                                                            ) {
-                                                                Row(
-                                                                    modifier = Modifier.padding(5.dp),
-                                                                    verticalAlignment = Alignment.CenterVertically,
-                                                                ) {
-                                                                    RadioButton(
-                                                                        selected = resolveConflictOption == option,
-                                                                        onClick = null
-                                                                    )
-                                                                    Text(
-                                                                        stringResource(
-                                                                            importGroceryCategoryOptionLabels[option]!!
-                                                                        )
-                                                                    )
-                                                                }
-                                                            }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            ImportGroceryCategoryOption.entries.drop(1)
+                                                .forEachIndexed { index, option ->
+                                                    val cornerLeft =
+                                                        if (index == 0) 30 else 10
+                                                    val cornerRight =
+                                                        if (index == ImportGroceryCategoryOption.entries.count() - 2) 30 else 10
+                                                    Surface(
+                                                        shape = RoundedCornerShape(
+                                                            cornerLeft,
+                                                            cornerRight,
+                                                            cornerRight,
+                                                            cornerLeft
+                                                        ),
+                                                        onClick = {
+                                                            resolveConflictOption = option
+                                                        },
+                                                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(
+                                                            4.dp
+                                                        ),
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(5.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                        ) {
+                                                            RadioButton(
+                                                                selected = resolveConflictOption == option,
+                                                                onClick = null
+                                                            )
+                                                            Text(
+                                                                stringResource(
+                                                                    importGroceryCategoryOptionLabels[option]!!
+                                                                )
+                                                            )
                                                         }
+                                                    }
                                                 }
-                                            }
                                         }
                                     }
-                                    LazyRow(
-                                        modifier = Modifier.height(50.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 5.dp)
-                                    ) {
-                                        items(importCategory.items) { item ->
-                                            GroceryItemDisplay(
-                                                item,
-                                                onClick = { },
-                                                onLongClick = null,
-                                                clickingEnabled = false
-                                            )
-                                        }
-                                    }
-
                                 }
                             }
+
                         }
                     }
                 }
