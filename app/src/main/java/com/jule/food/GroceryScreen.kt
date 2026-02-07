@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -68,6 +69,7 @@ import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -144,6 +146,7 @@ fun GroceryScreen(
 
     val selectedGroceryItems = remember { mutableStateListOf<UUID>() }
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
+    val selectedCategoryGridState = groceryViewModel.getGridStateForSelectedCategory()
 
     var isEditingCategories by remember { mutableStateOf(false) }
 
@@ -253,31 +256,26 @@ fun GroceryScreen(
                         }
                     }
                 } else {
-                    Box(modifier = Modifier.height(TopAppBarDefaults.MediumAppBarCollapsedHeight)){
-
-                        Surface(
-                            color = MaterialTheme.colorScheme.background,
-                            shape = CircleShape,
-                            modifier = Modifier.height(TopAppBarDefaults.MediumAppBarCollapsedHeight).padding(12.dp)
-                        ) {
-                            Row(modifier = Modifier.padding(end = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-                                IconButtonWithTooltip(
-                                    onClick = { selectedGroceryItems.clear() },
-                                    tooltipText = stringResource(R.string.clear_selection)
-                                ) {
-                                    Icon(painterResource(R.drawable.clear), contentDescription = stringResource(R.string.clear_selection))
+                    TopAppBar(
+                        title = {
+                            Surface(
+                                color = MaterialTheme.colorScheme.background,
+                                shape = CircleShape,
+                                modifier = Modifier.height(64.dp).padding(vertical = 12.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(end = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    IconButtonWithTooltip(
+                                        onClick = { selectedGroceryItems.clear() },
+                                        tooltipText = stringResource(R.string.clear_selection)
+                                    ) {
+                                        Icon(painterResource(R.drawable.clear), contentDescription = stringResource(R.string.clear_selection))
+                                    }
+                                    Text(selectedGroceryItems.size.toString(), style = MaterialTheme.typography.bodyLarge)
                                 }
-                                Text(selectedGroceryItems.size.toString())
                             }
-                        }
-                    }
-//                    SelectionTopBar(
-//                        numberSelected = selectedGroceryItems.size,
-//                        onClearSelection = {
-//                            selectedGroceryItems.clear()
-//                        },
-//                        actions = {}
-//                    )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
+                    )
                 }
             }
         },
@@ -358,6 +356,7 @@ fun GroceryScreen(
                 GroceryScreenContent(
                     allCategories = categories,
                     category = selectedCategory!!,
+                    gridState = selectedCategoryGridState!!,
                     allRecipes = allRecipes,
                     onChangeSelectedCategoryId = { newId ->
                         if (selectionModeActive)
@@ -409,6 +408,11 @@ fun GroceryScreen(
                             selectedGroceryItems.clear()
                         }
                         isEditingCategories = it
+                    },
+                    onChangeRecipeIdGroceries = { itemIds, recipeId ->
+                        selectedCategory.items.filter { itemIds.contains(it.id) }.forEach {
+                            it.recipeId = recipeId
+                        }
                     },
                     modifier = modifier
                 )
@@ -518,34 +522,24 @@ fun GroceryScreen(
             },
             groceryCategories = categories,
             importCategories = importCategories,
-            onImport = { chosenImportCategoriesIds, chosenImportOptions ->
+            onImport = { chosenImportCategoriesIds, chosenImportOptions, chosenAddCategoryIds ->
+                var numberOfGroceries = 0
                 chosenImportCategoriesIds.forEachIndexed { index, importCategoryId ->
                     val importCategory = importCategories.fastFirstOrNull { it.id == importCategoryId }
                     if (importCategory == null) {
                         return@forEachIndexed
                     }
-                    val categoryWithSameName = categories.fastFirstOrNull { it.name == importCategory.name }
-                    // Has same name -> check option for conflict resolution
-                    if (categoryWithSameName != null) {
-                        val chosenOption = chosenImportOptions[index]
-                        Log.d("onImport", "Name \"${importCategory.name}\" already exists. Chosen option: $chosenOption")
-                        when (chosenOption) {
-                            ImportGroceryCategoryOption.Merge -> {
-                                groceryViewModel.addToGroceries(items = importCategory.items, categoryId = categoryWithSameName.id)
-                            }
-                            ImportGroceryCategoryOption.Replace -> {
-                                groceryViewModel.removeCategory(categoryWithSameName.id)
-                                groceryViewModel.addCategory(importCategory)
-                            }
-                            ImportGroceryCategoryOption.AddNew -> {
-                                groceryViewModel.addCategory(importCategory)
-                            }
-                        }
-                    } else {
-                        Log.d("onImport", "Name \"${importCategory.name}\" doesn't exist yet. Adding as new category.")
-                        groceryViewModel.addCategory(importCategory)
+                    val importOption = chosenImportOptions[index]
+                    val addCategoryId = chosenAddCategoryIds[index]
+
+                    when (importOption) {
+                        ImportGroceryOption.AddToList -> groceryViewModel.addToGroceries(importCategory.items, addCategoryId)
+                        ImportGroceryOption.New -> groceryViewModel.addCategory(importCategory)
                     }
+                    
+                    numberOfGroceries += importCategory.items.count()
                 }
+                Toast.makeText(context, resources.getString(R.string.imported_groceries, numberOfGroceries), Toast.LENGTH_SHORT).show()
                 onHandledJsonImport()
             },
             importingFileName = importingFile
@@ -561,6 +555,7 @@ fun GroceryScreen(
 fun GroceryScreenContent(
     allCategories: List<GroceryItemCategory>,
     category: GroceryItemCategory,
+    gridState: LazyGridState,
     allRecipes: List<Recipe>,
     onChangeSelectedCategoryId: (UUID) -> Unit,
     onRemoveFromGroceries: (itemIndex: Int) -> Unit,
@@ -586,6 +581,7 @@ fun GroceryScreenContent(
     scaffoldState: BottomSheetScaffoldState,
     isEditingCategories: Boolean,
     onChangeIsEditingCategories: (Boolean) -> Unit,
+    onChangeRecipeIdGroceries: (List<UUID>, UUID?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val selectionModeActive = selectedGroceryItems.isNotEmpty()
@@ -595,6 +591,8 @@ fun GroceryScreenContent(
     val editGroceryDetailState = rememberTextFieldState("")
 
     var showGroupingSheet by remember { mutableStateOf(false) }
+    
+    var isSelectingRecipeInBottomSheet: Boolean by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(singleSelection) {
@@ -620,9 +618,12 @@ fun GroceryScreenContent(
                 onChangeItemNameDetails = onChangeItemNameDetails,
                 groceryNameState = editGroceryNameState,
                 groceryDetailState = editGroceryDetailState,
-                getRecipeNameFromId = getRecipeNameFromId
+                getRecipeNameFromId = getRecipeNameFromId,
+                showRecipeSelection = isSelectingRecipeInBottomSheet,
+                onChangeShowRecipeSelection = { isSelectingRecipeInBottomSheet = it }
             )
         },
+        sheetSwipeEnabled = !isSelectingRecipeInBottomSheet,
         sheetContainerColor = MaterialTheme.colorScheme.background,
         sheetDragHandle = {
             Row(modifier = Modifier.height(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -678,6 +679,7 @@ fun GroceryScreenContent(
             ) {
                 GroceryGridScreen(
                     category = category,
+                    gridState = gridState,
                     groupingOption = groupingOption,
                     onRemoveFromGroceries = onRemoveFromGroceries,
                     onAddToGroceries = onAddToGroceries,
@@ -690,7 +692,8 @@ fun GroceryScreenContent(
                     onAddToDeletedItems = onAddToDeletedItems,
                     onRemoveFromDeletedItems = onRemoveFromDeletedItems,
                     showDeletedItems = showDeletedItems,
-                    onChangeShowDeletedItems = onChangeShowDeletedItems
+                    onChangeShowDeletedItems = onChangeShowDeletedItems,
+                    onChangeRecipeIdGroceries = onChangeRecipeIdGroceries
                 )
             }
         }

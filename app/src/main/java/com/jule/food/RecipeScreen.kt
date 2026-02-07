@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -88,6 +89,7 @@ fun RecipeScreen(
     onClickRecipe: (recipeId: UUID, fromSearch: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
 
     val recipes = recipeViewModel.recipes
     val tags = recipeViewModel.tags
@@ -119,7 +121,7 @@ fun RecipeScreen(
                 SimpleAddEditBottomSheet(
                     onDismissRequest = { showNewRecipeSheet = false },
                     onConfirm = { name ->
-                        val id = recipeViewModel.addRecipe(name = name)
+                        val id = recipeViewModel.addRecipe(name = name, context = context)
                         onClickRecipe(id, false)
                         showNewRecipeSheet = false
                     },
@@ -143,26 +145,28 @@ fun RecipeScreen(
                 recipes = recipes,
                 recentRecipeIds = recipeViewModel.recentRecipeIds,
                 tags = tags,
-                onDeleteTagId = { tagId -> recipeViewModel.deleteTagId(tagId) },
+                onDeleteTagId = { tagId -> recipeViewModel.deleteTagId(tagId, context) },
                 onAddTag = { tag, recipeIds ->
-                    recipeViewModel.addTag(tag)
-                    recipeViewModel.changeTagRecipes(tag.id, recipeIds)
+                    recipeViewModel.addTag(tag, context)
+                    recipeViewModel.changeTagRecipes(tag.id, recipeIds, context)
                 },
                 onChangeTagName = { tagId, newName ->
                     recipeViewModel.changeTagName(
                         tagId,
-                        newName
+                        newName,
+                        context
                     )
                 },
                 onChangeTagIconIndex = { tagId, newIndex ->
                     recipeViewModel.changeTagIconIndex(
                         tagId,
-                        newIndex
+                        newIndex,
+                        context
                     )
                 },
                 onClickRecipe = onClickRecipe,
                 onChangeTagRecipeIds = { tagId, newRecipeIds ->
-                    recipeViewModel.changeTagRecipes(tagId, newRecipeIds)
+                    recipeViewModel.changeTagRecipes(tagId, newRecipeIds, context)
                 },
                 recipeGridState = recipeGridState,
                 searchBarExpanded = recipeViewModel.isSearchBarExpanded,
@@ -460,11 +464,11 @@ fun RecipeScreenPreview() {
 //    recipeViewModel.addRecipe(name = "Pizza", tags = listOf(kaeseTag.id, kaeseTag2.id, kaeseTag3.id))
     for (i in 0..30) {
         for (j in 0..2) {
-            recipeViewModel.addRecipe(name = "Caesar's Salad ${i}${j}", tags = listOf(kaeseTag.id, saladTag.id))
+            recipeViewModel.addRecipe(name = "Caesar's Salad ${i}${j}", tags = listOf(kaeseTag.id, saladTag.id), id = UUID.randomUUID())
         }
     }
 
-    recipeViewModel.addTags(listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag, kaeseTag2, kaeseTag3))
+    recipeViewModel.addTags(listOf(fishTag, salzigTag, saladTag, appleTag, kaeseTag, kaeseTag2, kaeseTag3), LocalContext.current)
 
     recipeViewModel.initializeEmpty()
 

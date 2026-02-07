@@ -221,95 +221,186 @@ class RecipeViewModel : ViewModel() {
     }
 
     // Add a new recipe with a name, and optionally, images, groceries, tags and notes. Returns the ID
-    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "") : UUID {
+    fun addRecipe(name: String, context: Context, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "") : UUID {
         val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableStateList(), note = note)
 
         _recipes.add(newRecipe)
         _recipes.sortBy { it.name }
+
+        Log.d("addRecipe", "Added new recipe \"$name\"")
+
+        saveToFile(context)
+
         return newRecipe.id
     }
     // Add a new recipe with a name and id, and optionally, images, groceries, tags and notes
-    private fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "", id: UUID) {
+    fun addRecipe(name: String, images: List<String> = listOf(), groceries: List<GroceryItem> = listOf(), tags: List<UUID> = listOf(), note: String = "", id: UUID) {
         val newRecipe = Recipe(name = name, groceries = groceries.toMutableStateList(), images = images.toMutableStateList(), tags = tags.toMutableStateList(), note = note, id = id)
 
         _recipes.add(newRecipe)
         _recipes.sortBy { it.name }
+
+        Log.d("addRecipe", "Added new recipe \"$name\"")
     }
 
     // Add image paths to a recipe
-    fun addImagesToRecipe(id: UUID, images: List<String>) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].images.addAll(images)
+    fun addImagesToRecipe(id: UUID, images: List<String>, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("addImagesToRecipe", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.images.addAll(images)
+
+        saveToFile(context)
     }
     // Change a recipe name
-    fun changeRecipeName(id: UUID, newName: String) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].name = newName
+    fun changeRecipeName(id: UUID, newName: String, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("changeRecipeName", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.name = newName
         _recipes.sortBy { it.name }
+
+        saveToFile(context)
     }
     // Change the tags of a recipe
-    fun changeRecipeTags(id: UUID, newTags: List<UUID>) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].tags.clear()
-        _recipes[index].tags.addAll(newTags)
+    fun changeRecipeTags(id: UUID, newTags: List<UUID>, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("changeRecipeTags", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.tags.clear()
+        recipe.tags.addAll(newTags)
+
+        saveToFile(context)
     }
     // Change the images of a recipe
-    fun changeRecipeImages(id: UUID, newImages: List<String>) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].images.clear()
-        _recipes[index].images.addAll(newImages)
+    fun changeRecipeImages(id: UUID, newImages: List<String>, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("changeRecipeImages", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.images.clear()
+        recipe.images.addAll(newImages)
+
+        saveToFile(context)
     }
     // Change the groceries of a recipe
-    fun changeRecipeGroceries(id: UUID, newGroceries: List<GroceryItem>) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].groceries.clear()
-        _recipes[index].groceries.addAll(newGroceries)
+    fun changeRecipeGroceries(id: UUID, newGroceries: List<GroceryItem>, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("changeRecipeGroceries", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.groceries.clear()
+        recipe.groceries.addAll(newGroceries)
+
+        saveToFile(context)
     }
     // Delete an image from a recipe
-    fun deleteRecipeImage(id: UUID, imagePath: String) {
-        val index = _recipes.indexOfFirst { it.id == id }
-        _recipes[index].images.remove(imagePath)
+    fun deleteRecipeImage(id: UUID, imagePath: String, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("deleteRecipeImage", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.images.remove(imagePath)
         // Delete the image file
         deleteFile(imagePath)
+
+        saveToFile(context)
+    }
+    // Delete an image from a recipe
+    fun deleteRecipeImages(id: UUID, imagePaths: List<String>, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("deleteRecipeImage", "Recipe with ID \"$id\" not found")
+            return
+        }
+        recipe.images.removeAll(imagePaths)
+        // Delete the image file
+        deleteFiles(imagePaths)
+
+        saveToFile(context)
     }
     // Change the note of a recipe
-    fun changeRecipeNote(id: UUID, newNote: String) {
-        val recipe = _recipes.firstOrNull { it.id == id } ?: return
+    fun changeRecipeNote(id: UUID, newNote: String, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("changeRecipeNote", "Recipe with ID \"$id\" not found")
+            return
+        }
         recipe.note = newNote
+
+        saveToFile(context)
     }
 
     // Delete a recipe
-    fun removeRecipe(id: UUID) {
-        val index = _recipes.indexOfFirst { it.id == id }
+    fun removeRecipe(id: UUID, context: Context) {
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("removeRecipe", "Recipe with ID \"$id\" not found")
+            return
+        }
+        Log.d("removeRecipe", "Deleting recipe \"${recipe.name}\"")
         // Delete all image files from this recipe
-        deleteFiles(_recipes[index].images)
-        _recipes.removeAt(index)
+        deleteFiles(recipe.images)
+        _recipes.remove(recipe)
+
+        _recentRecipeIds.remove(id)
+
+        saveToFile(context)
 
 //        if (selectedRecipeId == id) {}
     }
     // Add a new tag
-    fun addTag(tag: Tag) {
+    fun addTag(tag: Tag, context: Context) {
+        _tags.add(tag)
+        _tags.sortBy { it.name }
+
+        saveToFile(context)
+    }
+    fun addTagWithoutSaving(tag: Tag) {
         _tags.add(tag)
         _tags.sortBy { it.name }
     }
     // Add multiple tags
-    fun addTags(tags: List<Tag>) {
+    fun addTags(tags: List<Tag>, context: Context) {
         _tags.addAll(tags)
         _tags.sortBy { it.name }
+
+        saveToFile(context)
     }
     // Change the name of a tag
-    fun changeTagName(id: UUID, newName: String) {
-        val index = tags.indexOfFirst { it.id == id }
-        _tags[index].name = newName
+    fun changeTagName(id: UUID, newName: String, context: Context) {
+        val tag = tags.firstOrNull { it.id == id }
+        if (tag == null) {
+            Log.e("changeTagName", "Tag with ID \"$id\" not found")
+            return
+        }
+        tag.name = newName
         _tags.sortBy { it.name }
+
+        saveToFile(context)
     }
     // Change the icon of a tag
-    fun changeTagIconIndex(id: UUID, newIndex: Int) {
-        val index = tags.indexOfFirst { it.id == id }
-        _tags[index].iconIndex = newIndex
+    fun changeTagIconIndex(id: UUID, newIndex: Int, context: Context) {
+        val tag = tags.firstOrNull { it.id == id }
+        if (tag == null) {
+            Log.e("changeTagIconIndex", "Tag with ID \"$id\" not found")
+            return
+        }
+        tag.iconIndex = newIndex
+
+        saveToFile(context)
     }
     // Change the recipes that have this tag
-    fun changeTagRecipes(id: UUID, newRecipeIds: List<UUID>) {
+    fun changeTagRecipes(id: UUID, newRecipeIds: List<UUID>, context: Context) {
         recipes.forEach { recipe ->
             // Loop through all recipes, remove the tag from it if it is there
             recipe.tags.removeIf { tagId -> tagId == id }
@@ -317,22 +408,32 @@ class RecipeViewModel : ViewModel() {
             if (newRecipeIds.contains(recipe.id))
                 recipe.tags.add(id)
         }
+
+        saveToFile(context)
     }
     // Delete a tag
-    fun deleteTagId(id: UUID) {
+    fun deleteTagId(id: UUID, context: Context) {
         recipes.forEach { recipe ->
             recipe.tags.removeIf { tagId -> tagId == id }
         }
 
-        val index = tags.indexOfFirst { it.id == id }
-        _tags.removeAt(index)
+        val tag = tags.firstOrNull { it.id == id }
+        if (tag == null) {
+            Log.e("deleteTagId", "Tag with ID \"$id\" not found")
+            return
+        }
+        _tags.remove(tag)
+
+        saveToFile(context)
     }
     // Get a recipe name from its UUID
     fun getRecipeNameFromId(id: UUID): String {
-        val index = recipes.indexOfFirst { it.id == id }
-        if (index == -1)
-            return "NO RECIPE"
-        return recipes[index].name
+        val recipe = _recipes.firstOrNull { it.id == id }
+        if (recipe == null) {
+            Log.e("getRecipeNameFromId", "Recipe with ID \"$id\" not found")
+            return "NULL"
+        }
+        return recipe.name
     }
 
     // Get all image paths from all recipes
@@ -383,7 +484,7 @@ class RecipeViewModel : ViewModel() {
 
     fun initializeEmpty() {
         if (recipes.isEmpty()) {
-            addRecipe("Default")
+            addRecipe("Default", id = UUID.randomUUID())
         }
         _dataLoaded = true
     }
@@ -397,7 +498,7 @@ class RecipeViewModel : ViewModel() {
             addRecipe(recipe.name, recipe.images, groceries, recipe.tags, recipe.note, recipe.id)
         }
         recipes.tags.forEach { tag ->
-            addTag(Tag(tag.name, tag.iconIndex, tag.id))
+            addTagWithoutSaving(Tag(tag.name, tag.iconIndex, tag.id))
         }
 
         _recentRecipeIds.clear()

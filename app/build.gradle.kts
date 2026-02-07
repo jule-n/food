@@ -55,6 +55,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+//            excludes += "META-INF/androidx.compose.material3_material3.version"
         }
     }
 }
@@ -64,12 +65,13 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
+//    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation("androidx.compose.material3:material3-android:1.4.0-alpha15")
+//    implementation(libs.androidx.material3)
+//    implementation("androidx.compose.material3:material3-android:1.4.0-alpha15")
+    implementation("androidx.compose.material3:material3:1.4.0-alpha15")
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.navigation.compose)
 //    implementation("androidx.navigation:navigation-compose:2.9.0")
@@ -83,10 +85,13 @@ dependencies {
     implementation(libs.androidx.animation.graphics.android)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.ui)
+//    implementation(libs.androidx.compose.material3)
+//    implementation(libs.compose.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
+//    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

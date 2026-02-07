@@ -106,7 +106,8 @@ fun SpecificRecipeEditGroceriesScreen(
                 },
                 actions = {
                     TextButton(
-                        { onConfirm(temporaryGroceries) }
+                        { onConfirm(temporaryGroceries) },
+                        enabled = groceriesChanged
                     ) {
                         Text(stringResource(R.string.save))
                     }

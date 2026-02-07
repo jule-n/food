@@ -143,4 +143,6 @@
     <string name="clear_selection">Clear selection</string>
     <string name="more">More</string>
     <string name="from_json_file">From .json file</string>
+    <string name="move_here">Move here</string>
+    <string name="add_to_list">Add to list</string>
 </resources>

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +42,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jule.food.gridGroupTitle
 import com.jule.food.gridSpacer
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.time.delay
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -49,6 +52,8 @@ fun GroceryGridScreen(
     modifier: Modifier = Modifier,
     category: GroceryItemCategory,
     groupingOption: GroceryGroupingOption,
+    gridState: LazyGridState,
+    onChangeRecipeIdGroceries: (List<UUID>, UUID?) -> Unit,
     onRemoveFromGroceries: (itemIndex: Int) -> Unit,
     onAddToGroceries: (GroceryItem) -> Unit,
     getRecipeNameFromId: (UUID) -> String,
@@ -63,6 +68,15 @@ fun GroceryGridScreen(
     onChangeShowDeletedItems: (Boolean) -> Unit
 ) {
     val resources = LocalResources.current
+    var lastDeletedItemAlpha: Float? by remember { mutableStateOf(null) }
+
+    // Prevent flashing of last deleted item when changing categories
+    LaunchedEffect(category) {
+        lastDeletedItemAlpha = 0f
+        delay(1000)
+        lastDeletedItemAlpha = null
+    }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5),
@@ -82,21 +96,23 @@ fun GroceryGridScreen(
             }
         }
 
-        val spacerHeight by animateDpAsState(if (category.items.isEmpty()) 0.dp else 10.dp)
+        val spacerHeight = if (category.items.isEmpty()) 0.dp else 10.dp
         LazyVerticalGrid(
             columns = GridCells.Adaptive(100.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 100.dp),
+            contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = spacerHeight),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 1000.dp)
-                .padding(start = 10.dp, end = 10.dp, top = spacerHeight)
+                .heightIn(min = 1000.dp),
+            state = gridState
         ) {
             val allItems = category.items
 
             val groupNames: MutableList<String> = mutableListOf()
             val groups: MutableList<List<GroceryItem>> = mutableListOf()
+            var recipeIds: List<UUID?> = listOf()
+
             when (groupingOption) {
                 GroceryGroupingOption.None -> {
                     groupNames.add("")
@@ -108,6 +124,7 @@ fun GroceryGridScreen(
                     groupNames.addAll(recipeGroups.keys.map { recipeId ->
                         if (recipeId != null) getRecipeNameFromId(recipeId) else resources.getString(R.string.no_recipe)
                     })
+                    recipeIds = recipeGroups.keys.toList()
                     groups.addAll(recipeGroups.values)
                 }
 
@@ -123,13 +140,17 @@ fun GroceryGridScreen(
 //                        }
             if (!(groupNames.count() == 1 && groups[0].isEmpty())) {
                 groups.forEachIndexed { index, groceryItems ->
-                    val isLast = index == groups.size - 1
-
                     if (index > 0 || groupingOption != GroceryGroupingOption.None) {
                         gridGroupTitle(
                             title = groupNames[index],
                             key = groupNames[index],
-                            animate = true
+                            animate = true,
+                            showMoveHereButton = selectionModeActive && !selectedGroceryItems.any { selectedItem -> groceryItems.any { it.id == selectedItem }},
+                            onMoveHere = {
+                                if (groupingOption == GroceryGroupingOption.Recipe) {
+                                    onChangeRecipeIdGroceries(selectedGroceryItems, recipeIds[index])
+                                }
+                            }
                         )
                     }
                     items(
@@ -253,7 +274,7 @@ fun GroceryGridScreen(
                             deleted = true,
                             isSelected = false,
                             showSelection = false,
-                            modifier = Modifier.animateItem().alpha(alpha)
+                            modifier = Modifier.animateItem().alpha(lastDeletedItemAlpha ?: alpha)
                         )
                     }
 

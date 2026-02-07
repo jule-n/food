@@ -93,6 +93,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -134,6 +135,7 @@ fun SpecificRecipeScreen(
     fromRecipeSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
 //    var expanded by remember { mutableStateOf(false) }
     var showGroceryScreen by remember { mutableStateOf(false) }
     val tags = recipeViewModel.tags
@@ -141,15 +143,15 @@ fun SpecificRecipeScreen(
     AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(false, MaterialTheme.motionScheme), exit = completeSlideOut(true, MaterialTheme.motionScheme)) {
         SpecificRecipeScreenMain(
             recipe = recipe,
-            onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it) },
+            onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it, context) },
             allTags = tags,
-            onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it) },
-            onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it) },
+            onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it, context) },
+            onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it, context) },
             addToGroceries = { groceries, categoryId -> addToGroceries(groceries, categoryId, recipe.id) },
             groceryCategories = groceryCategories,
             onBack = onBack,
             onDelete = onDeleteRecipe,
-            onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it) },
+            onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it, context) },
             bottomBar = bottomBar,
             onOpenGroceryScreen = { showGroceryScreen = true },
             onDisplayImage = { onDisplayImage(it) },
@@ -157,12 +159,11 @@ fun SpecificRecipeScreen(
                 val newImages = recipe.images.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
-                recipeViewModel.changeRecipeImages(recipe.id, newImages)
+                recipeViewModel.changeRecipeImages(recipe.id, newImages, context)
             },
             onDeleteImages = { indizesToDelete ->
-                for (index in indizesToDelete) {
-                    recipeViewModel.deleteRecipeImage(recipe.id, recipe.images[index])
-                }
+                val paths = indizesToDelete.map { recipe.images[it] }
+                recipeViewModel.deleteRecipeImages(recipe.id, paths, context)
 
             },
             fromRecipeSearch = fromRecipeSearch,
@@ -179,7 +180,7 @@ fun SpecificRecipeScreen(
             recipe = recipe,
             onConfirm = { newGroceries ->
                 showGroceryScreen = false
-                recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries)
+                recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries, context)
             },
             onCancel = {
                 showGroceryScreen = false
@@ -223,6 +224,7 @@ fun SpecificRecipeScreenMain(
     var focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -433,7 +435,7 @@ fun SpecificRecipeScreenMain(
                 anyImageSelected = false
 
                 coroutineScope.launch {
-                    Toast.makeText(context, context.getString(R.string.deleted_n_images, imageCount), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, resources.getString(R.string.deleted_n_images, imageCount), Toast.LENGTH_SHORT).show()
 //                    snackbarHostState.showSnackbar(message = context.getString(R.string.deleted_n_images, imageCount), actionLabel = context.getString(R.string.undo), duration = SnackbarDuration.Short)
                 }
             }
@@ -538,7 +540,10 @@ fun SpecificRecipeScreenPreview() {
     val recipe = Recipe(name = "Dorade in Salzkruste", tags = remember { mutableStateListOf(fishTag.id, salzigTag.id, appleTag.id) }, groceries = remember {groceries.toMutableStateList() }, note = "NOTES")
 
     val recipeViewModel: RecipeViewModel = viewModel()
-    recipeViewModel.addTags(tags)
+    tags.forEach {
+        recipeViewModel.addTagWithoutSaving(it)
+    }
+
 
     FoodTheme {
         AnimatedVisibility(true) {

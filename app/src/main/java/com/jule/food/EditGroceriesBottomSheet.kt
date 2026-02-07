@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,15 +59,17 @@ fun EditGroceriesBottomSheetContent(
     onFinishAction: () -> Unit,
     onChangeItemNameDetails: (id: UUID, name: String, details: String) -> Unit,
     getRecipeNameFromId: (UUID) -> String,
+    showRecipeSelection: Boolean,
+    onChangeShowRecipeSelection: (Boolean) -> Unit,
 ) {
-    val singleItem = editingGroceryItems.size == 1
     val context = LocalContext.current
-    var showRecipeSelection by remember { mutableStateOf(false) }
-    var selectCategoryDialogActive by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val resources = LocalResources.current
 
     val focusRequester = remember { FocusRequester() }
 
-    val focusManager = LocalFocusManager.current
+    val singleItem = editingGroceryItems.size == 1
+    var selectCategoryDialogActive by remember { mutableStateOf(false) }
 
     val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
@@ -82,14 +85,14 @@ fun EditGroceriesBottomSheetContent(
     GroceryBottomSheetContentWithRecipeSelection(
         modifier = modifier,
         showRecipeSelection = showRecipeSelection,
-        onExitRecipeSelection = { showRecipeSelection = false },
+        onExitRecipeSelection = { onChangeShowRecipeSelection(false) },
         onSelectRecipe = { recipeId ->
             category.items.forEach { item ->
                 if (editingGroceryItems.contains(item.id)) {
                     item.recipeId = recipeId
                 }
             }
-            showRecipeSelection = false
+            onChangeShowRecipeSelection(false)
 //            onFinishAction()
         },
         allRecipes = allRecipes
@@ -145,7 +148,7 @@ fun EditGroceriesBottomSheetContent(
                     icon = R.drawable.book,
                     isActive = displayNames != null,
                     inactiveColor = placeholderColor,
-                    onClick = { showRecipeSelection = true },
+                    onClick = { onChangeShowRecipeSelection(true) },
                     onClear = {
                         editingGroceryItems.forEach { itemId ->
                             category.items.fastFirstOrNull { it.id == itemId }?.recipeId = null
@@ -182,7 +185,7 @@ fun EditGroceriesBottomSheetContent(
 
                     Toast.makeText(
                         context,
-                        context.getString(
+                        resources.getString(
                             R.string.moved_n_groceries_to_category,
                             editingGroceryItems.size,
                             allCategories.fastFirstOrNull { it.id == categoryId }?.name ?: "NULL"
@@ -284,7 +287,9 @@ fun EditGroceriesBottomSheetPreview() {
                 onChangeItemNameDetails = { _, _, _ -> },
                 groceryNameState = rememberTextFieldState(item.name),
                 groceryDetailState = rememberTextFieldState(item.details),
-                getRecipeNameFromId = { it.toString() }
+                getRecipeNameFromId = { it.toString() },
+                showRecipeSelection = false,
+                onChangeShowRecipeSelection = {}
             ) },
             modifier = Modifier.padding(innerPadding)
         ) {

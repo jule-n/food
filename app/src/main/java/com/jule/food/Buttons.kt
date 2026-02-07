@@ -1,5 +1,6 @@
 package com.jule.food
 
+import android.widget.ToggleButton
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +63,12 @@ fun ConnectedButtonGroup(
 //                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
 //                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
 //                },
-                colors = ToggleButtonDefaults.toggleButtonColors().copy(checkedContainerColor = checkedContainerColor, checkedContentColor = MaterialTheme.colorScheme.contentColorFor(checkedContainerColor)),
+                colors = ToggleButtonDefaults.toggleButtonColors().copy(
+                    checkedContainerColor = checkedContainerColor,
+                    checkedContentColor = MaterialTheme.colorScheme.contentColorFor(
+                        checkedContainerColor
+                    )
+                ),
             ) {
                 Text(label)
             }
