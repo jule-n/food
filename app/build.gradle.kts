@@ -89,9 +89,10 @@ dependencies {
 //    implementation(libs.androidx.compose.material3)
 //    implementation(libs.compose.material3)
     testImplementation(libs.junit)
+    implementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-//    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -101,4 +102,9 @@ dependencies {
     implementation("me.saket.telephoto:zoomable:0.14.0")
     implementation("me.saket.telephoto:zoomable-image-coil3:0.16.0")
     implementation("io.github.aghajari:LazyFlowLayout:1.1.0")
+}
+configurations.all {
+    resolutionStrategy {
+        force("androidx.compose:compose-bom:2024.04.01")
+    }
 }

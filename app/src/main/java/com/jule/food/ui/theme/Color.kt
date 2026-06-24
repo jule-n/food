@@ -3,7 +3,7 @@ package com.jule.food.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.jule.food.ColorSetting
+import com.jule.food.data.ColorSetting
 
 
 val Green = Color(0xFF55efc4)
