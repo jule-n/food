@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -55,6 +56,7 @@ fun SelectRecipeGrid(
     searchFocusRequester: FocusRequester,
     onClickRecipe: (UUID) -> Unit,
     onCancel: () -> Unit,
+    isBottomSheet: Boolean,
     subtitle: String? = null,
     activeRecipeIds: List<UUID>? = null,
     selectedRecipeId: UUID? = null
@@ -62,15 +64,17 @@ fun SelectRecipeGrid(
     val searchState = rememberTextFieldState()
 
     Column(
-        modifier = modifier.padding(bottom = 100.dp),
+        modifier = modifier.imePadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 10.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
+            Spacer(Modifier.width(48.dp))
             Text(text = stringResource(R.string.select_recipe), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.weight(1f))
+//            Spacer(Modifier.weight(1f))
             IconButton(onClick = onCancel) {
                 Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
             }
@@ -78,7 +82,7 @@ fun SelectRecipeGrid(
         if (subtitle != null) {
             Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp, bottom = 10.dp))
         }
-        if (activeRecipeIds != null && activeRecipeIds.isNotEmpty()) {
+        if (!activeRecipeIds.isNullOrEmpty()) {
             Text(stringResource(R.string.active_recipes), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp))
             BoxWithConstraints (modifier = Modifier.padding(10.dp)){
                 val itemSize = (this@BoxWithConstraints.maxWidth - 30.dp - 10.dp) / 4
@@ -202,7 +206,8 @@ fun SelectRecipeGridPreview() {
             onClickRecipe = {},
             onCancel = { },
             searchFocusRequester = remember { FocusRequester() },
-            subtitle = "Subtitle"
+            subtitle = "Subtitle",
+            isBottomSheet = false
         )
     }
 

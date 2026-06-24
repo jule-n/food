@@ -227,7 +227,7 @@ class GroceryViewModel: ViewModel() {
         _groceryItemCategories.add(newCategory)
         return newCategory.id
     }
-
+    // Adds new grocery category
     fun addCategory(category: GroceryItemCategory) {
         var categoryName = category.name
         var index = 2
@@ -360,6 +360,7 @@ class GroceryViewModel: ViewModel() {
     }
 
     fun saveToFile(context: Context) {
+        Log.d("saveToFile", "Called. dataLoaded=$_dataLoaded, categoriesEmpty=${groceryItemCategories.isEmpty()}")
         if (groceryItemCategories.isEmpty())
             return
 

@@ -2,27 +2,41 @@ package com.jule.food.ui.groceries
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -34,15 +48,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFirstOrNull
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jule.food.data.GroceryItem
 import com.jule.food.data.GroceryItemCategory
@@ -50,9 +69,12 @@ import com.jule.food.data.GroceryLocation
 import com.jule.food.data.GroceryViewModel
 import com.jule.food.R
 import com.jule.food.data.Recipe
+import com.jule.food.ui.groceries_recipes.SelectEditLocationButtons
+import com.jule.food.utils.DefaultDialog
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditGroceriesBottomSheetContent(
     modifier: Modifier = Modifier,
@@ -104,27 +126,23 @@ fun EditGroceriesBottomSheetContent(
 
 
     val itemsRecipeIds = if (singleItem) {
-        val id = category.items.fastFirstOrNull { it.id == editingGroceryItemsLocal[0] }?.recipeId
-        if (id != null)
-            listOf(id)
-        else
-            listOf()
+        listOf(category.items.fastFirstOrNull { it.id == editingGroceryItemsLocal[0] }?.recipeId)
     } else {
         category.items.filter { editingGroceryItemsLocal.contains(it.id) }
-            .mapNotNull { it.recipeId }
+            .map { it.recipeId }
     }
-    val selectedRecipeId = if (itemsRecipeIds.toSet().size == 1) itemsRecipeIds[0] else null
+    val distinctRecipeIds = itemsRecipeIds.toSet()
+    val anyRecipeIds = itemsRecipeIds.any { it != null }
+//    val selectedRecipeId = if (itemsRecipeIds.toSet().size == 1) itemsRecipeIds[0] else null
 
     val itemsLocationIds = if (singleItem) {
-        val id = category.items.fastFirstOrNull { it.id == editingGroceryItemsLocal[0] }?.locationId
-        if (id != null)
-            listOf(id)
-        else
-            listOf()
+        listOf(category.items.fastFirstOrNull { it.id == editingGroceryItemsLocal[0] }?.locationId)
     } else {
-        category.items.filter { editingGroceryItemsLocal.contains(it.id) }.mapNotNull { it.locationId }
+        category.items.filter { editingGroceryItemsLocal.contains(it.id) }.map { it.locationId }
     }
-    val selectedLocationId = if (itemsLocationIds.toSet().size == 1) itemsLocationIds[0] else null
+    val distinctLocationIds = itemsLocationIds.toSet()
+    val anyLocationIds = itemsLocationIds.any { it != null }
+//    val selectedLocationId = if (itemsLocationIds.toSet().size == 1) itemsLocationIds[0] else null
 
     LaunchedEffect(groceryNameState.text, groceryDetailState.text) {
         if (editingGroceryItemsLocal.isNotEmpty())
@@ -134,86 +152,98 @@ fun EditGroceriesBottomSheetContent(
                 groceryDetailState.text.toString().trim()
             )
     }
-
-    GroceryBottomSheetContentWithRecipeSelection(
-        modifier = modifier,
-        showRecipeSelection = showRecipeSelection,
-        onExitRecipeSelection = { onChangeShowRecipeSelection(false) },
-        onSelectRecipe = { recipeId ->
-            category.items.forEach { item ->
-                if (editingGroceryItemsLocal.contains(item.id)) {
-                    item.recipeId = recipeId
-                }
-            }
-            onChangeShowRecipeSelection(false)
-//            onFinishAction()
-        },
-        allRecipes = allRecipes,
-        activeRecipeIds = activeRecipeIds,
-        showLocationSelection = showLocationSelection,
-        onExitLocationSelection = {
-            onChangeShowLocationSelection(false)
-        },
-        onSelectLocation = { locationId ->
-            category.items.forEach { item ->
-                if (editingGroceryItemsLocal.contains(item.id)) {
-                    item.locationId = locationId
-                }
-            }
-            onChangeShowLocationSelection(false)
-            editingGroceryItemsLocal.forEach { itemId ->
-                val itemName = category.items.firstOrNull { it.id == itemId }?.name
-                if (itemName != null)
-                    onAddGroceryToLocation(itemName, locationId)
-            }
-        },
-        onAddNewLocation = onAddGroceryLocation,
-        onRemoveLocation = onRemoveGroceryLocation,
-        allLocations = groceryLocations,
-        onChangeLocationName = onChangeLocationName,
-        onReorderLocations = onReorderLocations,
-        selectedLocationId = selectedLocationId,
-        selectedRecipeId = selectedRecipeId
-    ) {
+//
+//    GroceryBottomSheetContentWithRecipeSelection(
+//        modifier = modifier,
+//        showRecipeSelection = showRecipeSelection,
+//        onExitRecipeSelection = { onChangeShowRecipeSelection(false) },
+//        onSelectRecipe = { recipeId ->
+//            category.items.forEach { item ->
+//                if (editingGroceryItemsLocal.contains(item.id)) {
+//                    item.recipeId = recipeId
+//                }
+//            }
+//            onChangeShowRecipeSelection(false)
+////            onFinishAction()
+//        },
+//        allRecipes = allRecipes,
+//        activeRecipeIds = activeRecipeIds,
+//        showLocationSelection = showLocationSelection,
+//        onExitLocationSelection = {
+//            onChangeShowLocationSelection(false)
+//        },
+//        onSelectLocation = { locationId ->
+//            category.items.forEach { item ->
+//                if (editingGroceryItemsLocal.contains(item.id)) {
+//                    item.locationId = locationId
+//                }
+//            }
+//            onChangeShowLocationSelection(false)
+//            editingGroceryItemsLocal.forEach { itemId ->
+//                val itemName = category.items.firstOrNull { it.id == itemId }?.name
+//                if (itemName != null)
+//                    onAddGroceryToLocation(itemName, locationId)
+//            }
+//        },
+//        onAddNewLocation = onAddGroceryLocation,
+//        onRemoveLocation = onRemoveGroceryLocation,
+//        allLocations = groceryLocations,
+//        onChangeLocationName = onChangeLocationName,
+//        onReorderLocations = onReorderLocations,
+//        selectedLocationId = selectedLocationId,
+//        selectedRecipeId = selectedRecipeId
+//    ) {
         Column(
             verticalArrangement = Arrangement.Center
         ) {
-            AnimatedVisibility(
-                singleItem || editingGroceryItemsLocal.isEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column {
-                    GroceryBottomSheetInputs(
-                        groceryNameState = groceryNameState,
-                        groceryDetailState = groceryDetailState,
-                        focusRequester = focusRequester,
-                        onConfirm = {
-                            if (singleItem) {
-                                focusManager.clearFocus(true)
+            AnimatedContent(
+                targetState = singleItem || editingGroceryItemsLocal.isEmpty(),
+                transitionSpec = {
+                    fadeIn() + expandVertically() togetherWith fadeOut() + shrinkVertically() }
+            ) { single ->
+                if (single) {
+                    Column {
+                        GroceryBottomSheetInputs(
+                            groceryNameState = groceryNameState,
+                            groceryDetailState = groceryDetailState,
+                            focusRequester = focusRequester,
+                            onConfirm = {
+                                if (singleItem) {
+                                    focusManager.clearFocus(true)
+                                }
                             }
-                        }
-                    )
-                    Spacer(Modifier.height(20.dp))
+                        )
+                        Spacer(Modifier.height(20.dp))
+                    }
+                } else {
+                    Surface {
+                        Text(
+                            text = stringResource(R.string.n_items_selected, editingGroceryItemsLocal.size),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(start = 10.dp, top = 10.dp, bottom = 10.dp)
+                        )
+                    }
                 }
             }
 
             FlowRow(
-                modifier = Modifier.padding(start = 10.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                val displayNamesRecipes = if (itemsRecipeIds.isEmpty()) null else {
-                    val distinctIdsNumber = itemsRecipeIds.toSet().size
-                    if (distinctIdsNumber == 1) {
-                        getRecipeNameFromId(itemsRecipeIds[0])
+                val displayNamesRecipes =
+                    if (distinctRecipeIds.size == 1) {
+                        if (itemsRecipeIds[0] != null) getRecipeNameFromId(itemsRecipeIds[0]!!) else resources.getString(
+                            R.string.no_recipe
+                        )
                     } else {
-                        stringResource(R.string.n_recipes, distinctIdsNumber)
+                        resources.getString(R.string.n_recipes, distinctRecipeIds.size)
                     }
-                }
                 GroceryBottomSheetSelectionField(
-                    text = displayNamesRecipes ?: stringResource(R.string.no_recipe),
+                    text = displayNamesRecipes,
                     icon = R.drawable.book,
-                    isActive = displayNamesRecipes != null,
+                    isActive = anyRecipeIds,
                     inactiveColor = placeholderColor,
                     onClick = { onChangeShowRecipeSelection(true) },
                     onClear = {
@@ -222,18 +252,18 @@ fun EditGroceriesBottomSheetContent(
                         }
                     }
                 )
-                val displayNamesLocations = if (itemsLocationIds.isEmpty()) null else {
-                    val distinctIdsNumber = itemsLocationIds.toSet().size
-                    if (distinctIdsNumber == 1) {
-                        getLocationNameFromId(itemsLocationIds[0])
+                val displayNamesLocations =
+                    if (distinctLocationIds.size == 1) {
+                        if (itemsLocationIds[0] != null) getLocationNameFromId(itemsLocationIds[0]!!) else resources.getString(
+                            R.string.no_location
+                        )
                     } else {
-                        stringResource(R.string.n_locations, distinctIdsNumber)
+                        resources.getString(R.string.n_locations, distinctLocationIds.size)
                     }
-                }
                 GroceryBottomSheetSelectionField(
-                    text = displayNamesLocations ?: stringResource(R.string.no_location),
+                    text = displayNamesLocations,
                     icon = R.drawable.location,
-                    isActive = displayNamesLocations != null,
+                    isActive = anyLocationIds,
                     inactiveColor = placeholderColor,
                     onClick = { onChangeShowLocationSelection(true) },
                     onClear = {
@@ -281,6 +311,39 @@ fun EditGroceriesBottomSheetContent(
                     selectCategoryDialogActive = false
                     onFinishAction()
                 }
+            )
+        }
+
+    if (showRecipeSelection) {
+        SelectRecipeDialog(
+            onDismissRequest = { onChangeShowRecipeSelection(false) },
+            allRecipes = allRecipes,
+            selectedRecipeId = if (distinctRecipeIds.size == 1 && anyRecipeIds) itemsRecipeIds[0] else null,
+            onSelectRecipe = { recipeId ->
+                category.items.filter { editingGroceryItemsLocal.contains(it.id) }.forEach { it.recipeId = recipeId }
+                onChangeShowRecipeSelection(false)
+            },
+            showSubtitle = false,
+            activeRecipeIds = activeRecipeIds
+        )
+    }
+    if (showLocationSelection) {
+        Dialog(
+            onDismissRequest = { onChangeShowLocationSelection(false) },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            SelectEditLocationButtons(
+                onCancel = { onChangeShowLocationSelection(false) },
+                allLocations = groceryLocations,
+                onAddLocation = onAddGroceryLocation,
+                onSelectLocation = { locationId ->
+                    category.items.filter { editingGroceryItemsLocal.contains(it.id) }.forEach { it.locationId = locationId }
+                    onChangeShowLocationSelection(false)
+                },
+                onRemoveLocation = onRemoveGroceryLocation,
+                onChangeLocationName = onChangeLocationName,
+                onReorderLocations = onReorderLocations,
+                selectedLocation = if (distinctLocationIds.size == 1 && anyLocationIds) itemsLocationIds[0] else null
             )
         }
     }
@@ -349,10 +412,12 @@ fun EditGroceriesBottomSheetPreview() {
 
     val groceryViewModel: GroceryViewModel = viewModel()
     val id = groceryViewModel.addCategory("Default 1")
-    val item = GroceryItem("Item 1", "Details 1")
+    val item = GroceryItem("Item 1", "Details 1", recipeId = UUID.randomUUID())
     val itemId = item.id
+    val item2 = GroceryItem("Item 2", "Details 2")
+    val item2Id = item2.id
     groceryViewModel.addToGroceries(item, id)
-    groceryViewModel.addToGroceries(GroceryItem("Item 2", "Details 2"), id)
+    groceryViewModel.addToGroceries(item2, id)
 
 
     Scaffold { innerPadding ->
@@ -361,7 +426,7 @@ fun EditGroceriesBottomSheetPreview() {
             sheetContent = { EditGroceriesBottomSheetContent(
                 allCategories = groceryViewModel.groceryItemCategories,
                 category = groceryViewModel.groceryItemCategories[0],
-                editingGroceryItems = listOf(itemId),
+                editingGroceryItems = listOf(itemId, item2Id),
                 allRecipes = listOf(),
                 onFinishAction = {
                     coroutineScope.launch {

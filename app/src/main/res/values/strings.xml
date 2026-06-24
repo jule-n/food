@@ -171,4 +171,5 @@
     <string name="select_all">Select all</string>
     <string name="n_selected_groceries">%d selected groceries</string>
     <string name="groceries_to_import">Groceries to import:</string>
+    <string name="n_items_selected">%d Items selected</string>
 </resources>

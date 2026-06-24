@@ -159,45 +159,45 @@ fun GroceryGridScreen(
 //                        }
             if (!(groupNames.count() == 1 && groups[0].isEmpty())) {
                 groups.forEachIndexed { index, groceryItems ->
-//                    if (index > 0 || groupingOption != GroceryGroupingOption.None) {
-                        if(groupingOption != GroceryGroupingOption.None || selectionModeActive) {
-                            val isAllSelected = selectedGroceryItems.containsAll(groceryItems.map { it.id })
-                            gridGroupTitle(
-                                title = groupNames[index],
-                                key = groupNames[index],
-                                animate = true,
-                                showMoveHereButton = (groupingOption == GroceryGroupingOption.Recipe || groupingOption == GroceryGroupingOption.Location) && selectionModeActive && !selectedGroceryItems.any { selectedItem -> groceryItems.any { it.id == selectedItem } },
-                                onMoveHere = {
-                                    if (groupingOption == GroceryGroupingOption.Recipe)
-                                        onChangeRecipeIdGroceries(
-                                            selectedGroceryItems,
-                                            recipeIds[index]
-                                        )
-                                    else if (groupingOption == GroceryGroupingOption.Location)
-                                        onChangeLocationIdGroceries(
-                                            selectedGroceryItems,
-                                            recipeIds[index]
-                                        )
-                                },
-                                isAllSelected = isAllSelected,
-                                onSelectAll = {
-                                    if (isAllSelected) {
-                                        // All are selected, deselect all
-                                        groceryItems.forEach { item ->
-                                            onRemoveFromSelection(item.id)
-                                        }
-                                    } else {
-                                        // Not all are selected, select all that are not selected yet
-                                        groceryItems.filter { !selectedGroceryItems.contains(it.id) }
-                                            .forEach { item ->
-                                                onAddToSelection(item.id)
-                                            }
+                    if(groupingOption != GroceryGroupingOption.None) {
+                        val isAllSelected = selectedGroceryItems.containsAll(groceryItems.map { it.id })
+                        gridGroupTitle(
+                            title = groupNames[index],
+                            key = groupNames[index],
+                            animate = true,
+                            showMoveHereButton = false,
+//                                showMoveHereButton = (groupingOption == GroceryGroupingOption.Recipe || groupingOption == GroceryGroupingOption.Location) && selectionModeActive && !selectedGroceryItems.any { selectedItem -> groceryItems.any { it.id == selectedItem } },
+//                                onMoveHere = {
+//                                    if (groupingOption == GroceryGroupingOption.Recipe)
+//                                        onChangeRecipeIdGroceries(
+//                                            selectedGroceryItems,
+//                                            recipeIds[index]
+//                                        )
+//                                    else if (groupingOption == GroceryGroupingOption.Location)
+//                                        onChangeLocationIdGroceries(
+//                                            selectedGroceryItems,
+//                                            recipeIds[index]
+//                                        )
+//                                },
+                            onMoveHere = { },
+                            isAllSelected = isAllSelected,
+                            onSelectAll = {
+                                if (isAllSelected) {
+                                    // All are selected, deselect all
+                                    groceryItems.forEach { item ->
+                                        onRemoveFromSelection(item.id)
                                     }
-                                },
-                                showSelectAllButton = selectionModeActive
-                            )
-                        }
-//                    }
+                                } else {
+                                    // Not all are selected, select all that are not selected yet
+                                    groceryItems.filter { !selectedGroceryItems.contains(it.id) }
+                                        .forEach { item ->
+                                            onAddToSelection(item.id)
+                                        }
+                                }
+                            },
+                            showSelectAllButton = selectionModeActive
+                        )
+                    }
                     items(
                         groceryItems,
                         key = { groceryItem -> groceryItem.id }

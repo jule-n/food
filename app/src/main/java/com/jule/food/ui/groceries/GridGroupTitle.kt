@@ -1,5 +1,7 @@
 package com.jule.food.ui.groceries
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,7 +38,12 @@ fun LazyGridScope.gridGroupTitle(
     modifier: Modifier = Modifier
 ) {
     item(span = { GridItemSpan(maxLineSpan) }, key = key) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.conditional(animate) { Modifier.animateItem() }) {
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.conditional(animate) { Modifier.animateItem() }.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) {
+            onSelectAll()
+        }) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
@@ -63,8 +71,8 @@ fun LazyGridScope.gridGroupTitle(
                 ) {
                     CustomCheckbox(
                         selectionOption = if (isAllSelected) SelectionOption.Yes else SelectionOption.No,
-                        selectedBackgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                        borderColor = MaterialTheme.colorScheme.onBackground
+                        selectedBackgroundColor = MaterialTheme.colorScheme.primary,
+                        borderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
                     )
                 }
             }

@@ -4,6 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
+import androidx.compose.animation.graphics.res.animatedVectorResource
+import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
+import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -40,8 +44,9 @@ import com.jule.food.R
 import com.jule.food.data.Recipe
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalAnimationGraphicsApi::class)
 @Composable
 fun SpecificRecipeNotes(
     recipe: Recipe,
@@ -63,34 +68,26 @@ fun SpecificRecipeNotes(
         title = stringResource(R.string.notes),
         actionButtons = {
             AnimatedVisibility (noNote || isNoteFocused, enter = fadeIn() + expandVertically(expandFrom = Alignment.Top, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec())) {
-                if (noNote) { // If there is no note, display Plus button
-                    FilledExpressiveIconButtonWithTooltip(
-                        shapes = IconButtonDefaults.shapes(),
-                        tooltipText = stringResource(R.string.add_note),
-                        onClick = {
+                val animAtEnd = !noNote
+                val painter = rememberAnimatedVectorPainter(AnimatedImageVector.animatedVectorResource(R.drawable.plus_to_check), animAtEnd)
+                FilledExpressiveIconButtonWithTooltip(
+                    shapes = IconButtonDefaults.shapes(),
+                    tooltipText = if (noNote) stringResource(R.string.add_note) else stringResource(R.string.done),
+                    onClick = {
+                        if (noNote) {
                             noNote = false
                             coroutineScope.launch {
-                                delay(100)
+                                delay(100.milliseconds)
                                 noteTextFocusRequester.requestFocus()
                             }
-                        }) {
-                        Icon(
-                            painterResource(R.drawable.add),
-                            contentDescription = stringResource(R.string.add_note)
-                        )
-                    }
-                } else { // If note is focused, display checkmark button
-                    FilledExpressiveIconButtonWithTooltip(
-                        shapes = IconButtonDefaults.shapes(),
-                        tooltipText = stringResource(R.string.done),
-                        onClick = {
+                        } else {
                             focusManager.clearFocus(true)
-                        }) {
-                        Icon(
-                            painterResource(R.drawable.done),
-                            contentDescription = stringResource(R.string.done)
-                        )
-                    }
+                        }
+                    }) {
+                    Icon(
+                        painter = painter,
+                        contentDescription = stringResource(R.string.add_note)
+                    )
                 }
             }
         },

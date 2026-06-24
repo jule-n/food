@@ -26,9 +26,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -181,7 +183,7 @@ fun GroceryScreen(
 
 
     val scaffoldState = rememberBottomSheetScaffoldState(
-        bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
+        bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Expanded, skipHiddenState = false)
     )
 
     LaunchedEffect(selectionModeActive) {
@@ -403,11 +405,11 @@ fun GroceryScreen(
     }
 
     val addGroceryFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(showAddGroceryDialog) {
-        if (showAddGroceryDialog) {
-            addGroceryFocusRequester.requestFocus()
-        }
-    }
+//    LaunchedEffect(showAddGroceryDialog) {
+//        if (showAddGroceryDialog) {
+//            addGroceryFocusRequester.requestFocus()
+//        }
+//    }
     if (showAddGroceryDialog && selectedCategoryId != null) {
         AddGroceryBottomSheet(
             onDismissRequest = { showAddGroceryDialog = false },
@@ -430,28 +432,31 @@ fun GroceryScreen(
             onReorderLocations = reorderGroceryLocations
         )
     }
-    val searchRecipesFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(showAddFromRecipeDialog) {
-        if (showAddFromRecipeDialog) {
-            scope.launch {
-                delay(100)
-                searchRecipesFocusRequester.requestFocus()
-            }
-        }
-    }
+//    val searchRecipesFocusRequester = remember { FocusRequester() }
+//    LaunchedEffect(showAddFromRecipeDialog) {
+//        if (showAddFromRecipeDialog) {
+//            scope.launch {
+//                delay(100)
+//                searchRecipesFocusRequester.requestFocus()
+//            }
+//        }
+//    }
 
     if (showAddFromRecipeDialog) {
         var chosenRecipeId: UUID? by remember { mutableStateOf(null) }
         var showAddGroceriesFromRecipeDialog by remember { mutableStateOf(false) }
 
-        SelectRecipeBottomSheet(
+        SelectRecipeDialog(
             onDismissRequest = { showAddFromRecipeDialog = false },
-            allRecipes = allRecipes,
+            allRecipes = allRecipes.filter { recipe -> recipe.groceries.isNotEmpty() },
             onSelectRecipe = { recipeId ->
                 chosenRecipeId = recipeId
                 showAddGroceriesFromRecipeDialog = true
             },
-            searchFocusRequester = searchRecipesFocusRequester
+            selectedRecipeId = null,
+            showSubtitle = true,
+            activeRecipeIds = null
+//            searchFocusRequester = searchRecipesFocusRequester
         )
         if (showAddGroceriesFromRecipeDialog && selectedCategoryId != null) {
             AddGroceriesFromRecipeDialog(

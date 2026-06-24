@@ -1,5 +1,6 @@
 package com.jule.food.ui.groceries
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -229,6 +230,7 @@ fun CategoriesEditScreen(
                 val isCategoryNameSame = allCategories.filter { it.id != category.id }.any { it.name == textState.text.trim().toString() }
 
                 DisposableEffect(Unit) {
+                    Log.d("CategoriesEditScreen", "onDispose!")
                     onDispose {
                         if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame)
                             onChangeCategoryName(textState.text.trim().toString(), category.id)
@@ -262,10 +264,11 @@ fun CategoriesEditScreen(
                                     textStyle = ButtonDefaults.textStyleFor(40.dp),
                                     textColor = MaterialTheme.colorScheme.onTertiary,
                                     modifier = Modifier.weight(1f).onFocusChanged { focusState ->
-                                        if (!focusState.isFocused && (isCategoryNameEmpty || isCategoryNameTooLong)) {
+                                        if (!focusState.isFocused && (isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame)) {
                                             textState.setTextAndPlaceCursorAtEnd(category.name)
                                         }
-                                    }
+                                    },
+                                    onKeyboardAction = { focusManager.clearFocus() }
                                 )
                                 IconButtonWithTooltip(
                                     onClick = {},

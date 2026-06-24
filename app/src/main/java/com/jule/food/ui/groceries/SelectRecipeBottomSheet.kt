@@ -39,6 +39,7 @@ fun SelectRecipeBottomSheet(
                 onCancel = onDismissRequest,
                 searchFocusRequester = searchFocusRequester,
                 subtitle = stringResource(R.string.select_groceries_from_recipe_info),
+                isBottomSheet = true
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.jule.food.ui.groceries
 
+import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,6 +75,7 @@ import com.jule.food.utils.DefaultDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,9 +111,9 @@ fun AddGroceryBottomSheet(
 
     val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = remember { SheetState(skipPartiallyExpanded = true, positionalThreshold = { 0f }, velocityThreshold = { 0f }, initialValue = SheetValue.Expanded) }
 
-    val anythingChanged = groceryNameState.text.isNotEmpty() || groceryDetailState.text.isNotEmpty() || selectedRecipeId != null || selectedGroceryLocationId != null
+    val anythingChanged = groceryNameState.text.isNotEmpty() || groceryDetailState.text.isNotEmpty()
     var showConfirmDiscardDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(groceryNameState.text) {
@@ -130,6 +136,10 @@ fun AddGroceryBottomSheet(
                 selectedGroceryLocationId = null
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
     }
 
     fun confirm(){
@@ -167,41 +177,43 @@ fun AddGroceryBottomSheet(
         },
         dragHandle = null,
         sheetGesturesEnabled = !showRecipeSelection && !showLocationSelection,
-        modifier = modifier
+//        contentWindowInsets = { WindowInsets()}
     ) {
-        GroceryBottomSheetContentWithRecipeSelection(
-            onSelectRecipe = { recipeId ->
-                selectedRecipeId = recipeId
-                showRecipeSelection = false
-                focusRequester.requestFocus()
-            },
-            onExitRecipeSelection = {
-                showRecipeSelection = false
-                focusRequester.requestFocus()
-            },
-            showRecipeSelection = showRecipeSelection,
-            showLocationSelection = showLocationSelection,
-            onSelectLocation = { locationId ->
-                selectedGroceryLocationId = locationId
-                changedGroceryLocationManually = true
-                showLocationSelection = false
-                focusRequester.requestFocus()
-            },
-            onAddNewLocation = onAddGroceryLocation,
-            onRemoveLocation = onRemoveGroceryLocation,
-            onExitLocationSelection = {
-                showLocationSelection = false
-                focusRequester.requestFocus()
-            },
-            allLocations = groceryLocations,
-            allRecipes = allRecipes,
-            activeRecipeIds = activeRecipeIds,
-            onChangeLocationName = onChangeLocationName,
-            onReorderLocations = onReorderLocations,
-            selectedLocationId = selectedGroceryLocationId,
-            selectedRecipeId = selectedRecipeId
-        ) {
-            Column {
+//        GroceryBottomSheetContentWithRecipeSelection(
+//            onSelectRecipe = { recipeId ->
+//                selectedRecipeId = recipeId
+//                showRecipeSelection = false
+//                focusRequester.requestFocus()
+//            },
+//            onExitRecipeSelection = {
+//                showRecipeSelection = false
+//                focusRequester.requestFocus()
+//            },
+//            showRecipeSelection = showRecipeSelection,
+//            showLocationSelection = showLocationSelection,
+//            onSelectLocation = { locationId ->
+//                selectedGroceryLocationId = locationId
+//                changedGroceryLocationManually = true
+//                showLocationSelection = false
+//                focusRequester.requestFocus()
+//            },
+//            onAddNewLocation = onAddGroceryLocation,
+//            onRemoveLocation = onRemoveGroceryLocation,
+//            onExitLocationSelection = {
+//                showLocationSelection = false
+//                focusRequester.requestFocus()
+//            },
+//            allLocations = groceryLocations,
+//            allRecipes = allRecipes,
+//            activeRecipeIds = activeRecipeIds,
+//            onChangeLocationName = onChangeLocationName,
+//            onReorderLocations = onReorderLocations,
+//            selectedLocationId = selectedGroceryLocationId,
+//            selectedRecipeId = selectedRecipeId
+//        ) {
+            Column(
+//                modifier = Modifier.imePadding()
+            ) {
                 GroceryBottomSheetInputs(
                     groceryNameState = groceryNameState,
                     groceryDetailState = groceryDetailState,
@@ -261,7 +273,7 @@ fun AddGroceryBottomSheet(
                 }
             }
         }
-    }
+//    }
     // Dialog for confirming discard of item
     if (showConfirmDiscardDialog) {
         DefaultDialog(
@@ -279,6 +291,40 @@ fun AddGroceryBottomSheet(
             }
         ) {
             Text(stringResource(R.string.discard_item))
+        }
+    }
+
+    if (showRecipeSelection) {
+        SelectRecipeDialog(
+            onDismissRequest = { showRecipeSelection = false},
+            allRecipes = allRecipes,
+            selectedRecipeId = selectedRecipeId,
+            onSelectRecipe = { recipeId ->
+                selectedRecipeId = recipeId
+                showRecipeSelection = false
+            },
+            showSubtitle = false,
+            activeRecipeIds = activeRecipeIds
+        )
+    }
+    if (showLocationSelection) {
+        Dialog(
+            onDismissRequest = { showLocationSelection = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            SelectEditLocationButtons(
+                onCancel = { showLocationSelection = false },
+                allLocations = groceryLocations,
+                onAddLocation = onAddGroceryLocation,
+                onSelectLocation = { locationId ->
+                    selectedGroceryLocationId = locationId
+                    showLocationSelection = false
+                },
+                onRemoveLocation = onRemoveGroceryLocation,
+                onChangeLocationName = onChangeLocationName,
+                onReorderLocations = onReorderLocations,
+                selectedLocation = selectedGroceryLocationId
+            )
         }
     }
 }
@@ -568,7 +614,8 @@ fun GroceryBottomSheetContentWithRecipeSelection(
                     onCancel = onExitRecipeSelection,
                     searchFocusRequester = recipeSearchFocusRequester,
                     activeRecipeIds = activeRecipeIds,
-                    selectedRecipeId = selectedRecipeId
+                    selectedRecipeId = selectedRecipeId,
+                    isBottomSheet = false
                 )
             }
         }
@@ -588,23 +635,6 @@ fun GroceryBottomSheetContentWithRecipeSelection(
             }
 
         }
-
-//        AnimatedVisibility(showLocationSelection && !showRecipeSelection, modifier = Modifier.background(
-//                color = if (showRecipeSelection) MaterialTheme.colorScheme.surfaceColorAtElevation(
-//                    4.dp
-//                ).copy(alpha = 0.2f) else Color.Transparent)
-//        ) {
-//            SelectEditLocationButtons(
-//                onCancel = onExitLocationSelection,
-//                allLocations = allLocations,
-//                onAddLocation = onAddNewLocation,
-//                onSelectLocation = onSelectLocation,
-//                onRemoveLocation = onRemoveLocation,
-//                onChangeLocationName = onChangeLocationName,
-//                onReorderLocations = onReorderLocations,
-//                selectedLocation = selectedLocationId
-//            )
-//        }
 
     }
 }

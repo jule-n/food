@@ -95,7 +95,7 @@ fun SelectEditLocationButtons(
         editMode = false
     }
 
-    Surface(color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(10), modifier = modifier) {
+    Surface(color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(10.dp), modifier = modifier) {
 //        SharedTransitionLayout {
 //            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
 //                AnimatedContent(targetState = editMode, modifier = modifier) { editModeEnabled ->

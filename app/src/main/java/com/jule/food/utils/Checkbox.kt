@@ -37,7 +37,7 @@ fun CustomCheckbox(
     modifier: Modifier = Modifier,
     selectionOption: SelectionOption,
     topStartRadius: Int = 20,
-    selectedTopStartRadius: Int = 20,
+    selectedTopStartRadius: Int = topStartRadius,
     selectedBackgroundColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
     borderColor: Color = selectedBackgroundColor,
     backgroundColor: Color = Color.Transparent,
