@@ -79,6 +79,7 @@ fun GroceryScreenTopBar(
     onBackFromCategoryEditing: () -> Unit,
     onPickJsonFile: () -> Unit,
     onOpenSettings: () -> Unit,
+    onSelectAll: () -> Unit,
     selectedGroceryItemsNumber: Int,
     onClearSelectedGroceryItems: () -> Unit
 ) {
@@ -103,6 +104,12 @@ fun GroceryScreenTopBar(
                     CenterAlignedTopAppBar(
                         title = { Text(stringResource(R.string.groceries)) },
                         actions = {
+                            IconButtonWithTooltip(
+                                onClick = onSelectAll,
+                                tooltipText = stringResource(R.string.select_all)
+                            ) {
+                                Icon(painterResource(R.drawable.check_circle), contentDescription = stringResource(R.string.select_all))
+                            }
                             var menuExpanded by remember { mutableStateOf(false) }
                             IconButtonWithTooltip(
                                 onClick = { menuExpanded = true },
@@ -114,14 +121,6 @@ fun GroceryScreenTopBar(
                                 )
                             }
                             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.share_groceries)) },
-                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.share), contentDescription = null) },
-                                    onClick = {
-                                        onOpenSharingDialog()
-                                        menuExpanded = false
-                                    }
-                                )
                                 DropdownMenuItem(
                                     text = { Column {
                                         Text(stringResource(R.string.import_groceries))

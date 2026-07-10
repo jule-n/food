@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -34,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -55,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -67,6 +70,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,8 +87,14 @@ import com.jule.food.data.RecipeViewModel
 import com.jule.food.utils.SimpleAddEditBottomSheet
 import com.jule.food.data.Tag
 import com.jule.food.data.getTagFromId
+import com.jule.food.data.isCategoryNameTooLong
+import com.jule.food.data.isTagNameTooLong
+import com.jule.food.data.tagIcons
+import com.jule.food.ui.groceries_recipes.EditScreen
+import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.theme.FoodTheme
 import com.jule.food.utils.DeleteDialog
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.UUID
 
 
@@ -125,11 +135,6 @@ fun RecipeScreen(
                     icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
                 )
             }
-            LaunchedEffect(showNewRecipeSheet) {
-                if (showNewRecipeSheet) {
-                    newRecipeFocusRequester.requestFocus()
-                }
-            }
             if (showNewRecipeSheet) {
                 SimpleAddEditBottomSheet(
                     onDismissRequest = { showNewRecipeSheet = false },
@@ -138,7 +143,6 @@ fun RecipeScreen(
                         onClickRecipe(id, false)
                         showNewRecipeSheet = false
                     },
-                    focusRequester = newRecipeFocusRequester,
                     placeholderText = stringResource(R.string.new_recipe),
                     nameTooLongLimit = 40
                 )
@@ -181,6 +185,7 @@ fun RecipeScreen(
                 onChangeTagRecipeIds = { tagId, newRecipeIds ->
                     recipeViewModel.changeTagRecipes(tagId, newRecipeIds, context)
                 },
+                onReorderTags = { fromIndex, toIndex -> recipeViewModel.reorderTags(fromIndex, toIndex, context) },
                 recipeGridState = recipeGridState,
                 searchBarExpanded = recipeViewModel.isSearchBarExpanded,
                 onChangeSearchBarExpanded = { recipeViewModel.changeIsSearchBarExpanded(it) },
@@ -217,6 +222,7 @@ fun RecipeScreenMain(
     onChangeTagIconIndex: (UUID, Int) -> Unit,
     onChangeTagRecipeIds: (tagId: UUID, newRecipeIds: List<UUID>) -> Unit,
     onDeleteTagId: (UUID) -> Unit,
+    onReorderTags: (fromIndex: Int, toIndex: Int) -> Unit,
     onAddTag: (tag: Tag, recipeIds: List<UUID>) -> Unit,
     onClickRecipe: (recipeId: UUID, fromSearch: Boolean) -> Unit,
     recipeGridState: LazyGridState,
@@ -234,7 +240,6 @@ fun RecipeScreenMain(
 
     var editTagId: UUID? by remember { mutableStateOf(null) }
     var showEditTagSheet by remember { mutableStateOf(false) }
-    var showAddTagSheet by remember { mutableStateOf(false) }
 
     var showConfirmDeleteTagDialog by remember { mutableStateOf(false) }
 
@@ -244,6 +249,8 @@ fun RecipeScreenMain(
         }
 
     val textFieldState = rememberTextFieldState()
+
+    val backgroundColor by animateColorAsState(if (isEditingTags) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else MaterialTheme.colorScheme.background)
 
     
     BackHandler(enabled = isEditingTags) {
@@ -259,87 +266,118 @@ fun RecipeScreenMain(
             onClick = {
                 focusManager.clearFocus(true)
             }
-        ).background(MaterialTheme.colorScheme.background)
+        ).background(backgroundColor)
     ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                verticalArrangement = Arrangement.Top,
-                horizontalArrangement = Arrangement.Start,
-                contentPadding = PaddingValues(bottom = 100.dp),
-            ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))) {
-                        Column {
-                            Spacer(Modifier.height(SearchBarDefaults.InputFieldHeight + 20.dp))
-                            AnimatedVisibility(isEditingTags) {
-                                Text(
-                                    text = stringResource(R.string.edit_tag_screen_info),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
-                                )
-                            }
-                            ExpandableTagSelectionFlowRow(
-                                tags = tags,
-                                selectedTagIds = if (!isEditingTags) selectedTagIds else listOf(),
-                                onAddToSelectedTagIds = { id ->
-                                    if (!isEditingTags) onAddSelectedTagId(id) else {
-                                        editTagId = id
-                                        showEditTagSheet = true
-                                    }
-                                },
-                                onRemoveFromSelectedTagIds = onRemoveSelectedTagId,
-                                possibleTagIdsToSelect = if (!isEditingTags) possibleTagIdsToSelect else tags.map { it.id },
-                                expanded = tagSelectionExpanded || isEditingTags,
-                                onExpandedChange = onChangeTagSelectionExpanded,
-                                showExpansionButton = !isEditingTags,
-                                extraContent = {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(end = 10.dp),
-                                        horizontalArrangement = Arrangement.End
-                                    ) {
-                                        EditButton(
-                                            text = stringResource(R.string.edit_tags),
-                                            onClick = { onChangeIsEditingTags(true) }
+        AnimatedContent(targetState = isEditingTags, transitionSpec = { fadeIn() togetherWith fadeOut() }) { editingTags ->
+                if (!editingTags) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            verticalArrangement = Arrangement.Top,
+                            horizontalArrangement = Arrangement.Start,
+                            contentPadding = PaddingValues(bottom = 100.dp),
+                        ) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier.background(
+                                        MaterialTheme.colorScheme.surfaceColorAtElevation(
+                                            4.dp
                                         )
-                                    }
-                                }
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            AnimatedVisibility(isEditingTags) {
-                                Button(
-                                    onClick = { showAddTagSheet = true },
-                                    modifier = Modifier.padding(start = 10.dp)
+                                    )
                                 ) {
-                                    Icon(painterResource(R.drawable.add), contentDescription = null)
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text(stringResource(R.string.new_tag))
+                                    Column {
+                                        Spacer(Modifier.height(SearchBarDefaults.InputFieldHeight + 20.dp))
+//                            AnimatedVisibility(isEditingTags) {
+//                                Text(
+//                                    text = stringResource(R.string.edit_tag_screen_info),
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    color = MaterialTheme.colorScheme.onBackground,
+//                                    modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+//                                )
+//                            }
+                                        ExpandableTagSelectionFlowRow(
+                                            tags = tags,
+                                            selectedTagIds = selectedTagIds,
+                                            onAddToSelectedTagIds = { id ->
+                                                onAddSelectedTagId(id)
+                                            },
+                                            onRemoveFromSelectedTagIds = onRemoveSelectedTagId,
+                                            possibleTagIdsToSelect = possibleTagIdsToSelect,
+                                            expanded = tagSelectionExpanded,
+                                            onExpandedChange = onChangeTagSelectionExpanded,
+                                            showExpansionButton = true,
+                                            extraContent = {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(end = 10.dp),
+                                                    horizontalArrangement = Arrangement.End
+                                                ) {
+                                                    EditButton(
+                                                        text = stringResource(R.string.edit_tags),
+                                                        onClick = { onChangeIsEditingTags(true) }
+                                                    )
+                                                }
+                                            }
+                                        )
+                                        Spacer(Modifier.height(10.dp))
+//                            AnimatedVisibility(isEditingTags) {
+//                                Box(modifier = Modifier.height(500.dp))
+//                            }
+                                    }
+//                        if(!isEditingTags) {
+                                    Box(
+                                        modifier = Modifier.background(
+                                            color = MaterialTheme.colorScheme.background,
+                                            shape = RoundedCornerShape(
+                                                topStart = 10.dp,
+                                                topEnd = 10.dp
+                                            )
+                                        ).fillMaxWidth().height(10.dp).align(Alignment.BottomCenter)
+                                    )
+//                        }
                                 }
+                            }
+                            itemsIndexed(
+                                recipesSelected,
+                                key = { _, recipe -> recipe.id }) { index, recipe ->
+                                val left = index % 3 == 0
+                                val right = (index + 1) % 3 == 0
+                                val middle = !left && !right
+
+                                val paddingLeft =
+                                    if (left) 10.dp else (if (middle) 6.67.dp else 3.33.dp)
+                                val paddingRight =
+                                    if (right) 10.dp else (if (middle) 6.67.dp else 3.33.dp)
+                                val paddingTop = if (index >= 3) 10.dp else 0.dp
+//                    AnimatedVisibility(!isEditingTags, enter = fadeIn(), exit = fadeOut()) {
+                                RecipeSmallDisplay(
+                                    recipe = recipe,
+                                    onClick = { onClickRecipe(recipe.id, false) },
+                                    showImage = true,
+                                    isRecipeSearch = false,
+                                    modifier = Modifier.animateItem().padding(
+                                        start = paddingLeft,
+                                        end = paddingRight,
+                                        top = paddingTop
+                                    )
+                                )
+//                    }
                             }
                         }
-                        Box(
-                            modifier = Modifier.background(
-                                color = MaterialTheme.colorScheme.background,
-                                shape = RoundedCornerShape(topStart=10.dp, topEnd=10.dp)
-                            ).fillMaxWidth().height(10.dp).align(Alignment.BottomCenter)
-                        )
-                    }
-                }
-                itemsIndexed(recipesSelected, key = { _, recipe -> recipe.id }) { index, recipe ->
-                    val left = index % 3 == 0
-                    val right = (index+1) % 3 == 0
-                    val middle = !left && !right
-
-                    val paddingLeft = if (left) 10.dp else (if (middle) 6.67.dp else 3.33.dp)
-                    val paddingRight = if (right) 10.dp else (if (middle) 6.67.dp else 3.33.dp)
-                    val paddingTop = if (index >= 3) 10.dp else 0.dp
-                    RecipeSmallDisplay(
-                        recipe = recipe, onClick = { onClickRecipe(recipe.id, false) }, showImage = true, isRecipeSearch = false, modifier = Modifier.animateItem().padding(start = paddingLeft, end = paddingRight, top = paddingTop)
+                } else {
+                    EditTagsScreen(
+                        tags = tags,
+                        allRecipes = recipes,
+                        onChangeTagName = onChangeTagName,
+                        onChangeTagIcon = onChangeTagIconIndex,
+                        onChangeTagRecipes = onChangeTagRecipeIds,
+                        onReorderTags = onReorderTags,
+                        onAddNewTag = { onAddTag(Tag(it, tagIcons[0]), emptyList()) },
+                        onDeleteTagId = onDeleteTagId
                     )
                 }
             }
+        }
 //            AnimatedVisibility (!isEditingTags, enter = slideInVertically(initialOffsetY = { it }), exit = slideOutVertically(targetOffsetY = { it })) {
 //                Box(
 //                    modifier = Modifier.background(
@@ -390,46 +428,32 @@ fun RecipeScreenMain(
                 )
             }
         }
-    }
+//    }
 
 
-    if (showEditTagSheet && editTagId != null) {
-        EditTagSheet(
-            tag = getTagFromId(editTagId!!, tags),
-            allRecipes = recipes,
-            onDeleteTag = {
-                showConfirmDeleteTagDialog = true
-            },
-            onChangeTagName = { newName -> onChangeTagName(editTagId!!, newName) },
-            onChangeTagIconIndex = { newIndex ->
-                onChangeTagIconIndex(
-                    editTagId!!,
-                    newIndex
-                )
-            },
-            onChangeTagRecipeIds = { newRecipeIds ->
-                onChangeTagRecipeIds(
-                    editTagId!!,
-                    newRecipeIds
-                )
-            },
-            onDismissRequest = { showEditTagSheet = false }
-        )
-    }
-    val addTagSheetFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(showAddTagSheet) {
-        if (showAddTagSheet) {
-            addTagSheetFocusRequester.requestFocus()
-        }
-    }
-    if (showAddTagSheet) {
-        AddTagSheet(
-            allRecipes = recipes,
-            onAddTag = onAddTag,
-            onDismissRequest = { showAddTagSheet = false },
-            focusRequester = addTagSheetFocusRequester
-        )
-    }
+//    if (showEditTagSheet && editTagId != null) {
+//        EditTagSheet(
+//            tag = getTagFromId(editTagId!!, tags),
+//            allRecipes = recipes,
+//            onDeleteTag = {
+//                showConfirmDeleteTagDialog = true
+//            },
+//            onChangeTagName = { newName -> onChangeTagName(editTagId!!, newName) },
+//            onChangeTagIconIndex = { newIndex ->
+//                onChangeTagIconIndex(
+//                    editTagId!!,
+//                    newIndex
+//                )
+//            },
+//            onChangeTagRecipeIds = { newRecipeIds ->
+//                onChangeTagRecipeIds(
+//                    editTagId!!,
+//                    newRecipeIds
+//                )
+//            },
+//            onDismissRequest = { showEditTagSheet = false }
+//        )
+//    }
     
     if (showConfirmDeleteTagDialog && editTagId != null) {
         DeleteDialog(

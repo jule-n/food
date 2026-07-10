@@ -207,6 +207,12 @@ class RecipeViewModel : ViewModel() {
         _selectedRecipeImageIndex = index
     }
 
+    private var _isEditGroceriesScreenActive by mutableStateOf<Boolean>(false)
+    val isEditGroceriesScreenActive get() = _isEditGroceriesScreenActive
+    fun setIsEditGroceriesScreenActive(value: Boolean) {
+        _isEditGroceriesScreenActive = value
+    }
+
     private var _recentRecipeIds = mutableStateListOf<UUID>()
     val recentRecipeIds get() = _recentRecipeIds
 
@@ -362,18 +368,15 @@ class RecipeViewModel : ViewModel() {
     // Add a new tag
     fun addTag(tag: Tag, context: Context) {
         _tags.add(tag)
-        _tags.sortBy { it.name }
 
         saveToFile(context)
     }
     fun addTagWithoutSaving(tag: Tag) {
         _tags.add(tag)
-        _tags.sortBy { it.name }
     }
     // Add multiple tags
     fun addTags(tags: List<Tag>, context: Context) {
         _tags.addAll(tags)
-        _tags.sortBy { it.name }
 
         saveToFile(context)
     }
@@ -385,7 +388,6 @@ class RecipeViewModel : ViewModel() {
             return
         }
         tag.name = newName
-        _tags.sortBy { it.name }
 
         saveToFile(context)
     }
@@ -425,6 +427,13 @@ class RecipeViewModel : ViewModel() {
         }
         _tags.remove(tag)
 
+        saveToFile(context)
+    }
+    // Change the tag order
+    fun reorderTags(fromIndex: Int, toIndex: Int, context: Context) {
+        _tags.apply {
+            add(toIndex, removeAt(fromIndex))
+        }
         saveToFile(context)
     }
     // Get a recipe name from its UUID

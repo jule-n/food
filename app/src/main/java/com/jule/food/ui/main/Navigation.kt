@@ -7,11 +7,16 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 //import androidx.compose.material3.NavigationBarItem
@@ -54,8 +59,11 @@ import com.jule.food.ui.groceries_recipes.GroceryListAddingOption
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.ui.recipes.RecipeScreen
+import com.jule.food.ui.recipes.SpecificRecipeEditGroceriesScreen
 import com.jule.food.ui.recipes.SpecificRecipeScreen
 import com.jule.food.utils.ImageViewer
+import com.jule.food.utils.completeSlideIn
+import com.jule.food.utils.completeSlideOut
 import java.util.UUID
 
 sealed class BottomNavItem(val route: String, @DrawableRes val icon: Int = 0, @StringRes val label: Int = 0) {
@@ -64,6 +72,7 @@ sealed class BottomNavItem(val route: String, @DrawableRes val icon: Int = 0, @S
     data object Settings : BottomNavItem("settings")
     data object SpecificRecipe : BottomNavItem("specific_recipe")
     data object SpecificRecipeImage : BottomNavItem("specific_recipe_image")
+    data object SpecificRecipeEditGroceries : BottomNavItem("specific_recipe_edit_groceries")
 }
 
 // The global navigation bar
@@ -82,7 +91,11 @@ fun BottomNavigationBar(
     ) {
         val groceriesSelected = currentRoute == BottomNavItem.Groceries.route
         val recipesSelected = currentRoute == BottomNavItem.Recipes.route || (
-                currentRoute != null && (currentRoute.startsWith(BottomNavItem.SpecificRecipe.route) || currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route))
+                currentRoute != null && (
+                        currentRoute.startsWith(BottomNavItem.SpecificRecipe.route) ||
+                        currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route) ||
+                        currentRoute.startsWith(BottomNavItem.SpecificRecipeEditGroceries.route)
+                )
             )
         NavigationBarItem(
             selected = groceriesSelected,
@@ -113,10 +126,35 @@ fun BottomNavigationBar(
                             launchSingleTop = true
                         }
                     }
+                    Log.d("Navigation", "selectedRecipe is ${if (recipeViewModel.selectedRecipeId != null) recipeViewModel.getRecipeNameFromId(recipeViewModel.selectedRecipeId!!) else "NULL"}")
                     if (recipeViewModel.selectedRecipeId != null) {
                         navController.navigate("${BottomNavItem.SpecificRecipe.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.lastSelectedRecipeFromSearch}")
+                        Log.d("Navigation", "selectedRecipeImageIndex is ${recipeViewModel.selectedRecipeImageIndex}")
                         if (recipeViewModel.selectedRecipeImageIndex != null) {
                             navController.navigate("${BottomNavItem.SpecificRecipeImage.route}/${recipeViewModel.selectedRecipeId}/${recipeViewModel.selectedRecipeImageIndex}")
+                        } else {
+                            Log.d("Navigation", "editGroceryScreen is ${recipeViewModel.isEditGroceriesScreenActive}")
+                            if (recipeViewModel.isEditGroceriesScreenActive) {
+                                navController.navigate("${BottomNavItem.SpecificRecipeEditGroceries.route}/${recipeViewModel.selectedRecipeId}")
+                            }
+                        }
+                    }
+                } else {
+                    if (recipeViewModel.selectedRecipeImageIndex != null) {
+                        recipeViewModel.setSelectedRecipeImageIndex(null)
+                    }
+                    if (recipeViewModel.isEditGroceriesScreenActive) {
+                        recipeViewModel.setIsEditGroceriesScreenActive(false)
+                    }
+                    recipeViewModel.resetSelectedRecipeId()
+                    val poppingSuccessful = navController.popBackStack(BottomNavItem.Recipes.route, inclusive = false)
+                    if (poppingSuccessful) {
+                        Log.d("Navigation", "Popped back to recipes")
+                    }
+                    if (!poppingSuccessful) {
+                        Log.d("Navigation", "Recipes not in back stack")
+                        navController.navigate(BottomNavItem.Recipes.route) {
+                            launchSingleTop = true
                         }
                     }
                 }
@@ -127,7 +165,7 @@ fun BottomNavigationBar(
         )
     }
 }
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NavigationHost(
     navController: NavHostController,
@@ -167,6 +205,7 @@ fun NavigationHost(
             var scheduledDeletionOfCurrentRecipe by remember { mutableStateOf(false) }
             val recipeGridState = rememberLazyGridState()
             val context = LocalContext.current
+            val motionScheme = MaterialTheme.motionScheme
 
             // Start at grocery screen
             NavHost(
@@ -241,7 +280,7 @@ fun NavigationHost(
                                 scheduledDeletionOfCurrentRecipe = false
                             }
                             val currentRoute = navController.currentDestination?.route
-                            if (currentRoute != null && currentRoute != BottomNavItem.Groceries.route && !currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route)) {
+                            if (currentRoute != null && currentRoute != BottomNavItem.Groceries.route && !currentRoute.startsWith(BottomNavItem.SpecificRecipeImage.route) && !currentRoute.startsWith(BottomNavItem.SpecificRecipeEditGroceries.route)) {
                                 // Reset selected recipe
                                 recipeViewModel.resetSelectedRecipeId()
                             }
@@ -270,48 +309,13 @@ fun NavigationHost(
                                 recipeViewModel.setSelectedRecipeImageIndex(imageIndex)
                             },
                             fromRecipeSearch = fromRecipeSearch,
-                            allLocations = locationViewModel.groceryLocations,
-                            onAddLocation = { newLocationName ->
-                                locationViewModel.addGroceryLocation(
-                                    newLocationName,
-                                    context
-                                )
-                            },
-                            onRemoveLocation = { locationId ->
-                                locationViewModel.removeGroceryLocation(
-                                    locationId,
-                                    context
-                                )
-                            },
-                            onChangeLocationName = { newName, locationId ->
-                                locationViewModel.changeGroceryLocationName(
-                                    newName,
-                                    locationId,
-                                    context
-                                )
-                            },
-                            onReorderLocations = { fromIndex, toIndex ->
-                                locationViewModel.reorderGroceryLocations(
-                                    fromIndex,
-                                    toIndex,
-                                    context
-                                )
-                            },
-                            getLocationNameFromId = { locationId ->
-                                locationViewModel.getLocationNameFromId(
-                                    locationId
-                                )
-                            },
-                            changeLocationsWithNewGroceries = { newGroceries ->
-                                locationViewModel.changeLocationsWithNewGroceries(newGroceries, context)
-                            },
-                            allCategories = groceryCategories,
-                            getCategoryNameFromId = { groceryViewModel.getCategoryNameFromId(it) },
-
+                            onOpenEditGroceriesScreen = {
+                                navController.navigate("${BottomNavItem.SpecificRecipeEditGroceries.route}/$id")
+                                recipeViewModel.setIsEditGroceriesScreenActive(true)
+                            }
                         )
                     }
                 }
-                // TODO: Make specific recipe edit grocery screen into its own composable
                 // Full screen image viewer
                 composable(
                     "${BottomNavItem.SpecificRecipeImage.route}/{id}/{imageIndex}",
@@ -321,22 +325,93 @@ fun NavigationHost(
                     val recipe = getRecipeFromId(id, recipeViewModel.recipes)
                     val imageIndex = backStackEntry.arguments?.getInt("imageIndex")!!
 
-                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
-                        ImageViewer(
-                            bottomBar = bottomBar,
-                            images = recipe.images,
-                            startIndex = imageIndex,
-                            onClose = {
-                                navController.popBackStack()
-                            }
-                        )
-                    }
+//                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
+                    ImageViewer(
+                        bottomBar = bottomBar,
+                        images = recipe.images,
+                        startIndex = imageIndex,
+                        onClose = {
+                            navController.popBackStack()
+                        }
+                    )
+//                    }
 
                     DisposableEffect(Unit) {
                         onDispose {
                             if (navController.currentDestination?.route != BottomNavItem.Groceries.route) {
                                 // Reset selected recipe image
                                 recipeViewModel.setSelectedRecipeImageIndex(null)
+                            }
+                        }
+                    }
+
+                }
+                // Edit Groceries on Specific Recipe Screen
+                composable(
+                    "${BottomNavItem.SpecificRecipeEditGroceries.route}/{id}",
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    enterTransition = { completeSlideIn(true, motionScheme) },
+                    exitTransition = { fadeOut() },
+                    popEnterTransition = { fadeIn() },
+                    popExitTransition = { completeSlideOut(false, motionScheme) }
+                ) { backStackEntry ->
+                    val id = UUID.fromString(backStackEntry.arguments?.getString("id"))
+                    val recipe = getRecipeFromId(id, recipeViewModel.recipes)
+
+//                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
+                    SpecificRecipeEditGroceriesScreen(
+                        bottomBar = bottomBar,
+                        recipe = recipe,
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                        allLocations = locationViewModel.groceryLocations,
+                        onAddLocation = { newLocationName ->
+                            locationViewModel.addGroceryLocation(newLocationName, context)
+                        },
+                        onRemoveLocation = { locationId ->
+                            locationViewModel.removeGroceryLocation(locationId, context)
+                        },
+                        onChangeLocationName = { newName, locationId ->
+                            locationViewModel.changeGroceryLocationName(
+                                newName,
+                                locationId,
+                                context
+                            )
+                        },
+                        onReorderLocations = { fromIndex, toIndex ->
+                            locationViewModel.reorderGroceryLocations(
+                                fromIndex,
+                                toIndex,
+                                context
+                            )
+                        },
+                        getLocationNameFromId = { locationId ->
+                            locationViewModel.getLocationNameFromId(locationId)
+                        },
+                        allCategories = groceryCategories,
+                        getCategoryNameFromId = { groceryViewModel.getCategoryNameFromId(it) },
+                        onChangeRecipeGroceries = {
+                            recipeViewModel.changeRecipeGroceries(
+                                id,
+                                it
+                            )
+                        },
+                        onDispose = {
+                            locationViewModel.changeLocationsWithNewGroceries(
+                                recipe.groceries,
+                                context
+                            )
+                            recipeViewModel.saveToFile(context)
+                        }
+                    )
+//                    }
+
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            if (navController.currentDestination?.route != BottomNavItem.Groceries.route) {
+                                // Reset selected recipe image
+                                recipeViewModel.setIsEditGroceriesScreenActive(false)
                             }
                         }
                     }

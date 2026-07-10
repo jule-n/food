@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -13,6 +14,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -59,85 +65,114 @@ fun SelectRecipeGrid(
     isBottomSheet: Boolean,
     subtitle: String? = null,
     activeRecipeIds: List<UUID>? = null,
-    selectedRecipeId: UUID? = null
+    selectedRecipeIds: List<UUID>? = null,
+    showSelectionCheckboxes: Boolean = false
 ) {
     val searchState = rememberTextFieldState()
 
-    Column(
+    LazyVerticalGrid(
         modifier = modifier.imePadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        columns = GridCells.Fixed(4),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+        contentPadding = PaddingValues(bottom = 10.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Spacer(Modifier.width(48.dp))
-            Text(text = stringResource(R.string.select_recipe), style = MaterialTheme.typography.titleMedium)
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Spacer(Modifier.width(48.dp))
+                Text(
+                    text = stringResource(R.string.select_recipe),
+                    style = MaterialTheme.typography.titleMedium
+                )
 //            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onCancel) {
-                Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
+                IconButton(onClick = onCancel) {
+                    Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
+                }
             }
         }
         if (subtitle != null) {
-            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp, bottom = 10.dp))
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+                )
+            }
         }
         if (!activeRecipeIds.isNullOrEmpty()) {
-            Text(stringResource(R.string.active_recipes), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp))
-            BoxWithConstraints (modifier = Modifier.padding(10.dp)){
-                val itemSize = (this@BoxWithConstraints.maxWidth - 30.dp - 10.dp) / 4
-                FlowRow(
-                    maxItemsInEachRow = 4,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    recipes.filter { recipe -> activeRecipeIds.contains(recipe.id) }.forEach { recipe ->
-                        val selected = recipe.id == selectedRecipeId
-                        RecipeTinyDisplay(
-                            recipe = recipe,
-                            modifier = Modifier.width(itemSize),
-                            onClick = { if (!selected) onClickRecipe(recipe.id) },
-                            disabled = recipe.id == selectedRecipeId
-                        )
-                    }
-                }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    stringResource(R.string.active_recipes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
             }
-            Text(stringResource(R.string.all_recipes), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Start).padding(start = 10.dp))
+            itemsIndexed(recipes.filter { recipe -> activeRecipeIds.contains(recipe.id) }) { index, recipe ->
+                // Space: 50dp
+                // For each item: 12.5 dp
+                // Between items: 10dp
+
+                val positionInRow = index % 4
+                val paddingLeft = when (positionInRow) {
+                    0 -> 10.dp; 1 -> 7.5.dp; 2 -> 5.dp; 3 -> 2.5.dp else -> 0.dp
+                }
+                val paddingRight = when (positionInRow) {
+                    0 -> 2.5.dp; 1 -> 5.dp; 2 -> 7.5.dp; 3 -> 10.dp else -> 0.dp
+                }
+
+                val selected = selectedRecipeIds?.contains(recipe.id) ?: false
+                RecipeTinyDisplay(
+                    recipe = recipe,
+                    modifier = Modifier.padding(start = paddingLeft, end = paddingRight, top = 10.dp),
+                    onClick = { if (!selected) onClickRecipe(recipe.id) },
+                    selected = if (showSelectionCheckboxes) selected else null
+                )
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    stringResource(R.string.all_recipes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
+            }
         }
-        TextField(
-            state = searchState,
-            colors = TextFieldDefaults.colors().copy(
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent,
-                errorIndicatorColor = Color.Transparent
-            ),
-            placeholder = {
-                Text(text = stringResource(R.string.search_recipes))
-            },
-            shape = SearchBarDefaults.inputFieldShape,
-            lineLimits = TextFieldLineLimits.SingleLine,
-            modifier = Modifier.focusRequester(searchFocusRequester)
-        )
-        BoxWithConstraints (modifier = Modifier.padding(10.dp)){
-            val itemSize = (this@BoxWithConstraints.maxWidth - 30.dp - 10.dp) / 4
-            FlowRow(
-                maxItemsInEachRow = 4,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-//                modifier = Modifier.width(maxWidth)
-            ) {
-                recipes.filter { recipe -> recipe.name.contains(searchState.text, ignoreCase = true) }.forEach { recipe ->
-                    val selected = recipe.id == selectedRecipeId
-                    RecipeTinyDisplay(
-                        recipe = recipe,
-                        modifier = Modifier.width(itemSize),
-                        onClick = { if (!selected) onClickRecipe(recipe.id) },
-                        disabled = selected
-                    )
-                }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            TextField(
+                state = searchState,
+                colors = TextFieldDefaults.colors().copy(
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    errorIndicatorColor = Color.Transparent
+                ),
+                placeholder = {
+                    Text(text = stringResource(R.string.search_recipes))
+                },
+                shape = SearchBarDefaults.inputFieldShape,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                modifier = Modifier.focusRequester(searchFocusRequester).padding(horizontal = 10.dp)
+            )
+        }
+        itemsIndexed(recipes.filter { it.name.contains(searchState.text, ignoreCase = true) }) { index, recipe ->
+            val positionInRow = index % 4
+            val paddingLeft = when (positionInRow) {
+                0 -> 10.dp; 1 -> 7.5.dp; 2 -> 5.dp; 3 -> 2.5.dp else -> 0.dp
             }
+            val paddingRight = when (positionInRow) {
+                0 -> 2.5.dp; 1 -> 5.dp; 2 -> 7.5.dp; 3 -> 10.dp else -> 0.dp
+            }
+            val selected = selectedRecipeIds?.contains(recipe.id) ?: false
+            RecipeTinyDisplay(
+                recipe = recipe,
+                modifier = Modifier.padding(start = paddingLeft, end = paddingRight, top = 10.dp),
+                onClick = { if (!selected) onClickRecipe(recipe.id) },
+                disabled = if (!showSelectionCheckboxes && selected) true else false,
+                selected = if (showSelectionCheckboxes) selected else null
+            )
         }
     }
 }
@@ -207,7 +242,9 @@ fun SelectRecipeGridPreview() {
             onCancel = { },
             searchFocusRequester = remember { FocusRequester() },
             subtitle = "Subtitle",
-            isBottomSheet = false
+            isBottomSheet = false,
+            selectedRecipeIds = listOf(recipes[0].id, recipes[5].id),
+            showSelectionCheckboxes = true
         )
     }
 

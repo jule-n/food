@@ -169,7 +169,9 @@
     <string name="all_groceries">All groceries</string>
     <string name="deleted_n_finished_items">Deleted %d finished items</string>
     <string name="select_all">Select all</string>
-    <string name="n_selected_groceries">%d selected groceries</string>
+    <string name="n_selected_groceries">%d groceries selected</string>
     <string name="groceries_to_import">Groceries to import:</string>
     <string name="n_items_selected">%d Items selected</string>
+    <string name="deleted_tag_name">Deleted Tag \"%s\"</string>
+    <string name="select_icon_for_tag">Select Icon for \"%s\"</string>
 </resources>

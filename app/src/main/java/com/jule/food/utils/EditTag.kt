@@ -1,5 +1,6 @@
 package com.jule.food.utils
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jule.food.R
 import com.jule.food.ui.groceries.RecipeTinyDisplay
@@ -128,13 +131,11 @@ fun EditTagSheet(
         }
     }
 
-    ModalBottomSheet(
-        sheetState = rememberModalBottomSheetState(),
+    Dialog(
         onDismissRequest = {
             onChangeTagRecipeIds(selectedRecipeIds)
             onDismissRequest()
-        },
-        dragHandle = null
+        }
     ) {
         AddEditTagSheetContent(
             nameState = nameState,
@@ -175,6 +176,8 @@ fun AddEditTagSheetContent(
 
     Column(
         modifier = Modifier
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(10.dp))
+            .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                 focusManager.clearFocus(true)

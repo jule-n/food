@@ -1,6 +1,9 @@
 package com.jule.food.ui.recipes
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -12,12 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocal
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +42,7 @@ import com.jule.food.data.tagIcons
 import com.jule.food.ui.theme.FoodTheme
 import java.util.UUID
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ExpandableTagSelectionFlowRow(
     tags: List<Tag>,
@@ -187,6 +194,7 @@ fun TagDisplayFlowRow(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Preview(showBackground = true)
 @Composable
 fun ExpandableTagSelectionFlowRowPreview() {
@@ -202,19 +210,17 @@ fun ExpandableTagSelectionFlowRowPreview() {
 
     var expanded by remember { mutableStateOf(false) }
 
-    FoodTheme {
-//        Scaffold() { innerPadding ->
-        ExpandableTagSelectionFlowRow(
-            tags = tags,
-            selectedTagIds = listOf(tags[0].id, tags[2].id),
-            possibleTagIdsToSelect = tags.map { it.id },
-            onRemoveFromSelectedTagIds = {},
-            onAddToSelectedTagIds = {},
-            expanded = expanded,
-            onExpandedChange = { expanded = it }
-        )
-//        }
-    }
+        FoodTheme {
+                ExpandableTagSelectionFlowRow(
+                    tags = tags,
+                    selectedTagIds = listOf(tags[0].id, tags[2].id),
+                    possibleTagIdsToSelect = tags.map { it.id },
+                    onRemoveFromSelectedTagIds = {},
+                    onAddToSelectedTagIds = {},
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                )
+            }
 }
 
 @Preview(showBackground = true)

@@ -24,29 +24,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ButtonDefaults
@@ -66,8 +59,6 @@ import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
@@ -84,7 +75,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
@@ -98,32 +88,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.jule.food.ui.groceries_recipes.AddGroceriesFromRecipeDialog
 import com.jule.food.ui.main.BottomNavigationBar
-import com.jule.food.ui.recipes.EditScreenTopBar
 import com.jule.food.data.GroceryGroupingOption
 import com.jule.food.data.GroceryItem
 import com.jule.food.data.GroceryItemCategory
 import com.jule.food.data.GroceryLocation
 import com.jule.food.data.GroceryViewModel
-import com.jule.food.utils.IconButtonWithTooltip
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.R
 import com.jule.food.data.ListOfSaveableGroceryItems
 import com.jule.food.data.Recipe
-import com.jule.food.data.SaveableGroceryItemCategories
 import com.jule.food.ui.settings.SettingDialog
 import com.jule.food.ui.settings.SettingDialogElement
-import com.jule.food.data.getCategoriesFromSaveable
 import com.jule.food.data.getGroceriesFromSaveable
 import com.jule.food.utils.getDownloadsDir
 import com.jule.food.data.getJsonFromString
 import com.jule.food.data.groceryGroupingOptionsDisplay
 import com.jule.food.data.groceryGroupingOptionsIcons
-import com.jule.food.ui.groceries_recipes.GroceryListAddingOption
 import com.jule.food.utils.shareFile
 import com.jule.food.utils.shareText
 import com.jule.food.ui.theme.FoodTheme
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
@@ -236,6 +220,10 @@ fun GroceryScreen(
                 onBackFromCategoryEditing = { isEditingCategories = false },
                 onPickJsonFile = onPickJsonFile,
                 onOpenSettings = onOpenSettings,
+                onSelectAll = {
+                    selectedGroceryItems.clear()
+                    selectedGroceryItems.addAll(selectedCategory!!.items.map { it.id })
+                },
                 selectedGroceryItemsNumber = selectedGroceryItems.count(),
                 onClearSelectedGroceryItems = { selectedGroceryItems.clear() }
             )
@@ -449,11 +437,11 @@ fun GroceryScreen(
         SelectRecipeDialog(
             onDismissRequest = { showAddFromRecipeDialog = false },
             allRecipes = allRecipes.filter { recipe -> recipe.groceries.isNotEmpty() },
-            onSelectRecipe = { recipeId ->
+            onClickRecipe = { recipeId ->
                 chosenRecipeId = recipeId
                 showAddGroceriesFromRecipeDialog = true
             },
-            selectedRecipeId = null,
+            selectedRecipeIds = null,
             showSubtitle = true,
             activeRecipeIds = null
 //            searchFocusRequester = searchRecipesFocusRequester

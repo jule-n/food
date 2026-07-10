@@ -167,4 +167,10 @@
     <string name="only_no_list">Einträge ohne Liste</string>
     <string name="all_groceries">Alle Einträge</string>
     <string name="deleted_n_finished_items">%d fertige Einträge gelöscht</string>
+    <string name="select_all">Alle auswählen</string>
+    <string name="n_selected_groceries">%d Einträge ausgewählt</string>
+    <string name="groceries_to_import">Einträge importieren:</string>
+    <string name="n_items_selected">%d Items? ausgewählt</string>
+    <string name="deleted_tag_name">Tag \"%s\" gelöscht</string>
+    <string name="select_icon_for_tag">Icon für \"%s\" auswählen</string>
 </resources>
