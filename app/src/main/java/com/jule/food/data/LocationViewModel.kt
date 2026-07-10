@@ -111,6 +111,7 @@ class LocationViewModel: ViewModel() {
     }
 
     fun addGroceryNameToLocation(groceryName: String, locationId: UUID, context: Context) {
+        Log.d("addGroceryNameToLocation", "Adding ${groceryName} to location ${_groceryLocations.first { it.id == locationId}.name}.")
         _groceryLocations.forEach {
             val containsName = it.groceryNames.contains(groceryName)
             if (it.id == locationId && !containsName) {

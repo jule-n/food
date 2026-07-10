@@ -103,87 +103,79 @@ fun SpecificRecipeScreen(
     onDeleteRecipe: () -> Unit,
     onDisplayImage: (imageIndex: Int) -> Unit,
     fromRecipeSearch: Boolean,
-    allLocations: List<GroceryLocation>,
-    onAddLocation: (String) -> Unit,
-    onRemoveLocation: (UUID) -> Unit,
-    onChangeLocationName: (String, UUID) -> Unit,
-    onReorderLocations: (fromIndex: Int, toIndex: Int) -> Unit,
-    getLocationNameFromId: (UUID) -> String,
-    allCategories: List<GroceryItemCategory>,
-    getCategoryNameFromId: (UUID) -> String,
-    changeLocationsWithNewGroceries: (List<GroceryItem>) -> Unit,
+    onOpenEditGroceriesScreen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 //    var expanded by remember { mutableStateOf(false) }
-    var showGroceryScreen by remember { mutableStateOf(false) }
+//    var showGroceryScreen by remember { mutableStateOf(false) }
     val tags = recipeViewModel.tags
 
-    AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(
-        false,
-        MaterialTheme.motionScheme
-    ), exit = completeSlideOut(true, MaterialTheme.motionScheme)
-    ) {
-        SpecificRecipeScreenMain(
-            recipe = recipe,
-            onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it, context) },
-            allTags = tags,
-            onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it, context) },
-            onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it, context) },
-            addToGroceries = { groceries, addingOption, categoryId -> addToGroceries(groceries, addingOption, categoryId, recipe.id) },
-            groceryCategories = groceryCategories,
-            onBack = onBack,
-            onDelete = onDeleteRecipe,
-            onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it, context) },
-            bottomBar = bottomBar,
-            onOpenGroceryScreen = { showGroceryScreen = true },
-            onDisplayImage = { onDisplayImage(it) },
-            onChangeImageOrder = { fromIndex, toIndex ->
-                val newImages = recipe.images.toMutableList().apply {
-                    add(toIndex, removeAt(fromIndex))
-                }
-                recipeViewModel.changeRecipeImages(recipe.id, newImages, context)
-            },
-            onDeleteImages = { indizesToDelete ->
-                val paths = indizesToDelete.map { recipe.images[it] }
-                recipeViewModel.deleteRecipeImages(recipe.id, paths, context)
+//    AnimatedVisibility(visible = !showGroceryScreen, enter = completeSlideIn(
+//        false,
+//        MaterialTheme.motionScheme
+//    ), exit = completeSlideOut(true, MaterialTheme.motionScheme)
+//    ) {
+    SpecificRecipeScreenMain(
+        recipe = recipe,
+        onChangeRecipeName = { recipeViewModel.changeRecipeName(recipe.id, it, context) },
+        allTags = tags,
+        onChangeRecipeTags = { recipeViewModel.changeRecipeTags(recipe.id, it, context) },
+        onChangeRecipeNote = { recipeViewModel.changeRecipeNote(recipe.id, it, context) },
+        addToGroceries = { groceries, addingOption, categoryId -> addToGroceries(groceries, addingOption, categoryId, recipe.id) },
+        groceryCategories = groceryCategories,
+        onBack = onBack,
+        onDelete = onDeleteRecipe,
+        onAddImages = { recipeViewModel.addImagesToRecipe(recipe.id, it, context) },
+        bottomBar = bottomBar,
+        onOpenGroceryScreen = onOpenEditGroceriesScreen,
+        onDisplayImage = { onDisplayImage(it) },
+        onChangeImageOrder = { fromIndex, toIndex ->
+            val newImages = recipe.images.toMutableList().apply {
+                add(toIndex, removeAt(fromIndex))
+            }
+            recipeViewModel.changeRecipeImages(recipe.id, newImages, context)
+        },
+        onDeleteImages = { indizesToDelete ->
+            val paths = indizesToDelete.map { recipe.images[it] }
+            recipeViewModel.deleteRecipeImages(recipe.id, paths, context)
 
-            },
-            fromRecipeSearch = fromRecipeSearch,
-            modifier = modifier
-        )
-    }
-    AnimatedVisibility(
-        visible = showGroceryScreen,
-        enter = completeSlideIn(true, MaterialTheme.motionScheme),
-        exit = completeSlideOut(false, MaterialTheme.motionScheme)
-    ) {
-        SpecificRecipeEditGroceriesScreen(
-            bottomBar = bottomBar,
-            recipe = recipe,
-//            onConfirm = { newGroceries ->
+        },
+        fromRecipeSearch = fromRecipeSearch,
+        modifier = modifier
+    )
+//    }
+//    AnimatedVisibility(
+//        visible = showGroceryScreen,
+//        enter = completeSlideIn(true, MaterialTheme.motionScheme),
+//        exit = completeSlideOut(false, MaterialTheme.motionScheme)
+//    ) {
+//        SpecificRecipeEditGroceriesScreen(
+//            bottomBar = bottomBar,
+//            recipe = recipe,
+////            onConfirm = { newGroceries ->
+////                showGroceryScreen = false
+////                recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries, context)
+////            },
+//            onBack = {
 //                showGroceryScreen = false
-//                recipeViewModel.changeRecipeGroceries(recipe.id, newGroceries, context)
 //            },
-            onBack = {
-                showGroceryScreen = false
-            },
-            allLocations = allLocations,
-            onAddLocation = onAddLocation,
-            onRemoveLocation = onRemoveLocation,
-            onChangeLocationName = onChangeLocationName,
-            onReorderLocations = onReorderLocations,
-            getLocationNameFromId = getLocationNameFromId,
-            allCategories = allCategories,
-            getCategoryNameFromId = getCategoryNameFromId,
-            onChangeRecipeGroceries = { recipeViewModel.changeRecipeGroceries(recipe.id, it) },
-            onDispose = {
-                changeLocationsWithNewGroceries(recipe.groceries)
-                recipeViewModel.saveToFile(context)
-            },
-            modifier = modifier
-        )
-    }
+//            allLocations = allLocations,
+//            onAddLocation = onAddLocation,
+//            onRemoveLocation = onRemoveLocation,
+//            onChangeLocationName = onChangeLocationName,
+//            onReorderLocations = onReorderLocations,
+//            getLocationNameFromId = getLocationNameFromId,
+//            allCategories = allCategories,
+//            getCategoryNameFromId = getCategoryNameFromId,
+//            onChangeRecipeGroceries = { recipeViewModel.changeRecipeGroceries(recipe.id, it) },
+//            onDispose = {
+//                changeLocationsWithNewGroceries(recipe.groceries)
+//                recipeViewModel.saveToFile(context)
+//            },
+//            modifier = modifier
+//        )
+//    }
 
 }
 
@@ -391,12 +383,6 @@ fun SpecificRecipeScreenMain(
             }
         }
     }
-
-    LaunchedEffect(showEditNameSheet) {
-        if (showEditNameSheet) {
-            editNameFocusRequester.requestFocus()
-        }
-    }
     if (showEditNameSheet) {
         SimpleAddEditBottomSheet(
             onConfirm = { newName ->
@@ -405,7 +391,6 @@ fun SpecificRecipeScreenMain(
             },
             onDismissRequest = { showEditNameSheet = false },
             initialText = recipe.name,
-            focusRequester = editNameFocusRequester,
             placeholderText = stringResource(R.string.recipe_name),
             nameTooLongLimit = 40
         )
@@ -586,18 +571,7 @@ fun SpecificRecipeScreenPreview() {
                     onDisplayImage = { },
                     onDeleteRecipe = { },
                     fromRecipeSearch = false,
-                    allLocations = listOf(
-                        GroceryLocation("Location1"),
-                        GroceryLocation("Location2")
-                    ),
-                    onAddLocation = { },
-                    onRemoveLocation = { },
-                    onChangeLocationName = { _, _, -> },
-                    onReorderLocations = { _, _ -> },
-                    getLocationNameFromId = { it.toString() },
-                    allCategories = listOf(),
-                    getCategoryNameFromId = { it.toString() },
-                    changeLocationsWithNewGroceries = { },
+                    onOpenEditGroceriesScreen = { }
                 )
             }
         }

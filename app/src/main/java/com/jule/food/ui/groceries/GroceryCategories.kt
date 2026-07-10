@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,10 +85,13 @@ import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.R
 import com.jule.food.utils.SheetErrorMessage
 import com.jule.food.data.isCategoryNameTooLong
+import com.jule.food.ui.groceries_recipes.EditScreen
+import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.theme.FoodTheme
 import com.jule.food.utils.CustomCheckbox
 import com.jule.food.utils.DeleteDialog
 import com.jule.food.utils.SelectionOption
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.UUID
@@ -100,12 +105,16 @@ fun CategoriesConnectedButtonsCustom(
     onEnableEditMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val indexOfSelected = allCategories.indexOfFirst { it.id == selectedCategoryId }
+    val lazyRowState = rememberLazyListState(initialFirstVisibleItemIndex = indexOfSelected)
+    val coroutineScope = rememberCoroutineScope()
     with (LocalSharedTransitionScope.current!!) {
         LazyRow(
             modifier = modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            state = lazyRowState
         ) {
             item {
                 IconButtonWithTooltip(
@@ -120,11 +129,13 @@ fun CategoriesConnectedButtonsCustom(
                     )
                 }
             }
-            items(allCategories) { category ->
+            itemsIndexed(allCategories) { index, category ->
                 CategoryButton(
                     name = category.name,
                     selected = category.id == selectedCategoryId,
-                    onClick = { onChangeSelectedCategoryId(category.id) },
+                    onClick = {
+                        onChangeSelectedCategoryId(category.id)
+                    },
                     modifier = Modifier.sharedElement(
                         sharedContentState = rememberSharedContentState(category.id),
                         animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
@@ -208,137 +219,189 @@ fun CategoriesEditScreen(
     var showAddCategorySheet by remember { mutableStateOf(false) }
     val addCategoryFocusRequester = remember { FocusRequester() }
     var showConfirmDeleteCategoryDialog by remember { mutableStateOf(false) }
-    var categoryIdToDelete: UUID? by remember { mutableStateOf(null) }
+    var categoryToDelete: GroceryItemCategory? by remember { mutableStateOf(null) }
 
     with (LocalSharedTransitionScope.current!!) {
-        LazyColumn(
-            state = lazyListState,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = modifier
-                .padding(top = 20.dp)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                    focusManager.clearFocus(true)
-                }
-                .fillMaxHeight()
-            ,
-        ) {
-            items(allCategories, key = { it.id }) { category ->
-
-                val textState = rememberTextFieldState(category.name)
-                val isCategoryNameEmpty = textState.text.isEmpty()
-                val isCategoryNameTooLong = isCategoryNameTooLong(textState.text.toString())
-                val isCategoryNameSame = allCategories.filter { it.id != category.id }.any { it.name == textState.text.trim().toString() }
-
-                DisposableEffect(Unit) {
-                    Log.d("CategoriesEditScreen", "onDispose!")
-                    onDispose {
-                        if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame)
-                            onChangeCategoryName(textState.text.trim().toString(), category.id)
-                    }
-                }
-
-                ReorderableItem(
-                    state = reorderableListState,
-                    key = category.id
-                ) {
-                    Column() {
-
-                        Surface(
-                            color = MaterialTheme.colorScheme.tertiary,
-                            shape = RoundedCornerShape(20),
-                            modifier = Modifier.sharedElement(
-                                sharedContentState = rememberSharedContentState(category.id),
-                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!,
-                                boundsTransform = { _, _ ->
-                                    motionScheme.slowSpatialSpec()
-                                }
-                            )
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp)
-                                .height(48.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
-                                BasicTextFieldWithBox(
-                                    state = textState,
-                                    lineLimits = TextFieldLineLimits.SingleLine,
-                                    textStyle = ButtonDefaults.textStyleFor(40.dp),
-                                    textColor = MaterialTheme.colorScheme.onTertiary,
-                                    modifier = Modifier.weight(1f).onFocusChanged { focusState ->
-                                        if (!focusState.isFocused && (isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame)) {
-                                            textState.setTextAndPlaceCursorAtEnd(category.name)
-                                        }
-                                    },
-                                    onKeyboardAction = { focusManager.clearFocus() }
-                                )
-                                IconButtonWithTooltip(
-                                    onClick = {},
-                                    tooltipText = stringResource(R.string.reorder_categories),
-                                    modifier = Modifier.draggableHandle(
-                                        onDragStarted = {
-                                            hapticFeedback.performHapticFeedback(
-                                                HapticFeedbackType.GestureThresholdActivate
-                                            )
-                                        },
-                                        onDragStopped = {
-                                            hapticFeedback.performHapticFeedback(
-                                                HapticFeedbackType.GestureEnd
-                                            )
-                                        }
-                                    )
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.drag_handle),
-                                        contentDescription = stringResource(R.string.reorder_categories)
-                                    )
-                                }
-                                FilledIconButtonWithTooltip(
-                                    onClick = {
-                                        categoryIdToDelete = category.id
-                                        showConfirmDeleteCategoryDialog = true
-                                    },
-                                    tooltipText = stringResource(R.string.delete),
-                                    enabled = deleteEnabled,
-//                                shapes = IconButtonDefaults.shapes(),
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.onError,
-                                        contentColor = MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.delete),
-                                        contentDescription = stringResource(R.string.delete)
-                                    )
-                                }
-                            }
+        EditScreen(
+            lazyListState = lazyListState,
+            reorderableListState = reorderableListState,
+            items = allCategories,
+            key = { it.id },
+            itemName = { it.name },
+            itemComposable = { item ->
+                EditScreenItem(
+                    item = item,
+                    itemName = item.name,
+                    itemBackgroundColor = MaterialTheme.colorScheme.tertiary,
+                    sharedElementModifier = Modifier.sharedElement(rememberSharedContentState(item.id), LocalNavAnimatedVisibilityScope.current!!),
+                    onDispose = { item, itemName ->
+                        if(isCategoryNameTooLong(itemName) ||
+                            itemName.isEmpty() ||
+                            allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
+                            return@EditScreenItem
                         }
+                        onChangeCategoryName(itemName, item.id)
+                    },
+                    isError = { item, itemName ->
+                        isCategoryNameTooLong(itemName) ||
+                                itemName.isEmpty() ||
+                                allCategories.filter { it.id != item.id }.any { it.name == itemName}
+                    },
+                    errorText = { item, itemName ->
+                        if (isCategoryNameTooLong(itemName)) {
+                            return@EditScreenItem resources.getString(R.string.name_too_long, 40)
+                        }
+                        if (itemName.isEmpty()) {
+                            return@EditScreenItem resources.getString(R.string.name_empty)
+                        }
+                        if (allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
+                            return@EditScreenItem resources.getString(R.string.name_already_exists)
+                        }
+                        return@EditScreenItem null
 
-                        SheetErrorMessage(
-                            isError = isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame,
-                            message = if (isCategoryNameTooLong) stringResource(
-                                R.string.name_too_long,
-                                40
-                            ) else
-                                if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
-                                    if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
-                        )
+                    },
+                    onClickDelete = {
+                        categoryToDelete = item
                     }
-                }
-            }
-            item {
-                Button(
-                    onClick = { showAddCategorySheet = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    ),
-                    modifier = Modifier.padding(start = 10.dp).animateItem()
-                ) {
-                    Icon(painterResource(R.drawable.add), contentDescription = null)
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text(stringResource(id = R.string.new_category))
-                }
-            }
-        }
+                )
+            },
+            newButtonText = stringResource(R.string.new_category),
+            onPressNewButton = { showAddCategorySheet = true },
+            newButtonBackgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
+            onDelete = { onDeleteCategory(it.id) },
+            confirmDeleteDialogTitle = stringResource(R.string.delete_category),
+            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.name) },
+            itemToDelete = categoryToDelete,
+            onResetItemToDelete = { categoryToDelete = null }
+        )
+//        LazyColumn(
+//            state = lazyListState,
+//            verticalArrangement = Arrangement.spacedBy(20.dp),
+//            modifier = modifier
+//                .padding(top = 20.dp)
+//                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+//                    focusManager.clearFocus(true)
+//                }
+//                .fillMaxHeight()
+//            ,
+//        ) {
+//            items(allCategories, key = { it.id }) { category ->
+//
+//                val textState = rememberTextFieldState(category.name)
+//                val isCategoryNameEmpty = textState.text.isEmpty()
+//                val isCategoryNameTooLong = isCategoryNameTooLong(textState.text.toString())
+//                val isCategoryNameSame = allCategories.filter { it.id != category.id }.any { it.name == textState.text.trim().toString() }
+//
+//                DisposableEffect(Unit) {
+//                    Log.d("CategoriesEditScreen", "onDispose!")
+//                    onDispose {
+//                        if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame)
+//                            onChangeCategoryName(textState.text.trim().toString(), category.id)
+//                    }
+//                }
+//
+//                ReorderableItem(
+//                    state = reorderableListState,
+//                    key = category.id
+//                ) {
+//                    Column() {
+//
+//                        Surface(
+//                            color = MaterialTheme.colorScheme.tertiary,
+//                            shape = RoundedCornerShape(20),
+//                            modifier = Modifier.sharedElement(
+//                                sharedContentState = rememberSharedContentState(category.id),
+//                                animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!,
+//                                boundsTransform = { _, _ ->
+//                                    motionScheme.slowSpatialSpec()
+//                                }
+//                            )
+//                                .fillMaxWidth()
+//                                .padding(horizontal = 10.dp)
+//                                .height(48.dp)
+//                        ) {
+//                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
+//                                BasicTextFieldWithBox(
+//                                    state = textState,
+//                                    lineLimits = TextFieldLineLimits.SingleLine,
+//                                    textStyle = ButtonDefaults.textStyleFor(40.dp),
+//                                    textColor = MaterialTheme.colorScheme.onTertiary,
+//                                    modifier = Modifier.weight(1f).onFocusChanged { focusState ->
+//                                        if (!focusState.isFocused && (isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame)) {
+//                                            textState.setTextAndPlaceCursorAtEnd(category.name)
+//                                        }
+//                                    },
+//                                    onKeyboardAction = { focusManager.clearFocus() }
+//                                )
+//                                IconButtonWithTooltip(
+//                                    onClick = {},
+//                                    tooltipText = stringResource(R.string.reorder_categories),
+//                                    modifier = Modifier.draggableHandle(
+//                                        onDragStarted = {
+//                                            hapticFeedback.performHapticFeedback(
+//                                                HapticFeedbackType.GestureThresholdActivate
+//                                            )
+//                                        },
+//                                        onDragStopped = {
+//                                            hapticFeedback.performHapticFeedback(
+//                                                HapticFeedbackType.GestureEnd
+//                                            )
+//                                        }
+//                                    )
+//                                ) {
+//                                    Icon(
+//                                        painter = painterResource(R.drawable.drag_handle),
+//                                        contentDescription = stringResource(R.string.reorder_categories)
+//                                    )
+//                                }
+//                                FilledIconButtonWithTooltip(
+//                                    onClick = {
+//                                        categoryIdToDelete = category.id
+//                                        showConfirmDeleteCategoryDialog = true
+//                                    },
+//                                    tooltipText = stringResource(R.string.delete),
+//                                    enabled = deleteEnabled,
+////                                shapes = IconButtonDefaults.shapes(),
+//                                    colors = IconButtonDefaults.filledIconButtonColors(
+//                                        containerColor = MaterialTheme.colorScheme.onError,
+//                                        contentColor = MaterialTheme.colorScheme.error
+//                                    )
+//                                ) {
+//                                    Icon(
+//                                        painter = painterResource(id = R.drawable.delete),
+//                                        contentDescription = stringResource(R.string.delete)
+//                                    )
+//                                }
+//                            }
+//                        }
+//
+//                        SheetErrorMessage(
+//                            isError = isCategoryNameEmpty || isCategoryNameTooLong || isCategoryNameSame,
+//                            message = if (isCategoryNameTooLong) stringResource(
+//                                R.string.name_too_long,
+//                                40
+//                            ) else
+//                                if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
+//                                    if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
+//                        )
+//                    }
+//                }
+//            }
+//            item {
+//                Button(
+//                    onClick = { showAddCategorySheet = true },
+//                    colors = ButtonDefaults.buttonColors(
+//                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+//                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+//                    ),
+//                    modifier = Modifier.padding(start = 10.dp).animateItem()
+//                ) {
+//                    Icon(painterResource(R.drawable.add), contentDescription = null)
+//                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+//                    Text(stringResource(id = R.string.new_category))
+//                }
+//            }
+//        }
     }
 
     LaunchedEffect(showAddCategorySheet) {
@@ -411,34 +474,34 @@ fun CategoriesEditScreen(
         }
     }
 
-    if (showConfirmDeleteCategoryDialog && categoryIdToDelete != null) {
-        val deletedCategoryName = allCategories.fastFirstOrNull { it.id == categoryIdToDelete }?.name ?: ""
-        DeleteDialog(
-            title = stringResource(R.string.delete_category),
-            onDismissRequest = {
-                showConfirmDeleteCategoryDialog = false
-                categoryIdToDelete = null
-            },
-            onConfirm = {
-                Toast.makeText(
-                    context,
-                    resources.getString(R.string.deleted_category_name, deletedCategoryName),
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                onDeleteCategory(categoryIdToDelete!!)
-                showConfirmDeleteCategoryDialog = false
-                categoryIdToDelete = null
-            }
-        ) {
-            Text(
-                stringResource(
-                    R.string.are_you_sure_you_want_to_delete_category_name,
-                    deletedCategoryName
-                )
-            )
-        }
-    }
+//    if (showConfirmDeleteCategoryDialog && categoryIdToDelete != null) {
+//        val deletedCategoryName = allCategories.fastFirstOrNull { it.id == categoryIdToDelete }?.name ?: ""
+//        DeleteDialog(
+//            title = stringResource(R.string.delete_category),
+//            onDismissRequest = {
+//                showConfirmDeleteCategoryDialog = false
+//                categoryIdToDelete = null
+//            },
+//            onConfirm = {
+//                Toast.makeText(
+//                    context,
+//                    resources.getString(R.string.deleted_category_name, deletedCategoryName),
+//                    Toast.LENGTH_SHORT
+//                ).show()
+//
+//                onDeleteCategory(categoryIdToDelete!!)
+//                showConfirmDeleteCategoryDialog = false
+//                categoryIdToDelete = null
+//            }
+//        ) {
+//            Text(
+//                stringResource(
+//                    R.string.are_you_sure_you_want_to_delete_category_name,
+//                    deletedCategoryName
+//                )
+//            )
+//        }
+//    }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)

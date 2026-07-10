@@ -37,12 +37,17 @@ fun SimpleAddEditBottomSheet(
     modifier: Modifier = Modifier,
     onConfirm: (String) -> Unit,
     onDismissRequest: () -> Unit,
-    focusRequester: FocusRequester,
+//    focusRequester: FocusRequester,
     placeholderText: String,
     initialText: String = "",
-    nameTooLongLimit: Int
+    nameTooLongLimit: Int,
+    existingNames: List<String>? = null
 ) {
     val textFieldState = rememberTextFieldState(initialText)
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -53,6 +58,7 @@ fun SimpleAddEditBottomSheet(
 
         val isNameEmpty = textFieldState.text.isEmpty()
         val isNameTooLong = textFieldState.text.length > nameTooLongLimit
+        val isNameSame = existingNames?.any { it == textFieldState.text.trim().toString() } ?: false
 
         // Only show error that field is empty after something has been typed for the first time
         if (!showEmptyError) {
@@ -76,23 +82,26 @@ fun SimpleAddEditBottomSheet(
             contentPadding = PaddingValues(15.dp),
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
             onKeyboardAction = {
-                onConfirm(textFieldState.text.trim().toString())
+                if (!isNameEmpty && !isNameTooLong && !isNameSame) {
+                    onConfirm(textFieldState.text.trim().toString())
+                }
             }
         )
         SheetErrorMessage(
-            isError = (showEmptyError && isNameEmpty) || isNameTooLong,
+            isError = (showEmptyError && isNameEmpty) || isNameTooLong || isNameSame,
             message = if (isNameTooLong) stringResource(
                 R.string.name_too_long,
                 nameTooLongLimit
             ) else
-                if (isNameEmpty) stringResource(R.string.name_empty) else ""
+                if (isNameEmpty) stringResource(R.string.name_empty) else 
+            if (isNameSame) stringResource(R.string.name_already_exists) else ""
         )
         Row(
             horizontalArrangement = Arrangement.End,
             modifier = Modifier.fillMaxWidth()
         ) {
             TextButton(
-                enabled = !isNameEmpty && !isNameTooLong,
+                enabled = !isNameEmpty && !isNameTooLong && !isNameSame,
                 onClick = {
                     onConfirm(textFieldState.text.trim().toString())
                 }
@@ -115,7 +124,7 @@ fun BottomSheetPreview() {
                 onDismissRequest = {},
                 placeholderText = "New whatever",
                 nameTooLongLimit = 10,
-                focusRequester = remember { FocusRequester() }
+//                focusRequester = remember { FocusRequester() }
             )
         }
     }

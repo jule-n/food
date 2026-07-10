@@ -85,6 +85,7 @@ import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -126,9 +127,9 @@ fun SpecificRecipeEditGroceriesScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    BackHandler(
-        onBack = onBack
-    )
+//    BackHandler(
+//        onBack = onBack
+//    )
 
     // Transfer on dispose event up the chain so the changes get saved to file
     DisposableEffect(Unit) {
@@ -173,7 +174,7 @@ fun SpecificRecipeEditGroceriesScreen(
                     focusRequesters[newItem.id] = FocusRequester()
                     scope.launch {
                         lazyListState.animateScrollToItem(localGroceryItems.count()-1)
-                        delay(100)
+                        delay(200.milliseconds)
                         focusRequesters[newItem.id]?.requestFocus()
                     }
                 },
@@ -259,7 +260,7 @@ fun SpecificRecipeEditGroceriesScreen(
                             start = 15.dp,
                             end = 15.dp,
                             top = 15.dp,
-                            bottom = 300.dp
+                            bottom = 500.dp
                         ),
                         modifier = Modifier.heightIn(min = 1000.dp)
                     ) {

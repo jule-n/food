@@ -1,6 +1,5 @@
 package com.jule.food.ui.groceries
 
-import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -14,11 +13,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,7 +72,6 @@ import com.jule.food.utils.DefaultDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
-import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -298,8 +294,8 @@ fun AddGroceryBottomSheet(
         SelectRecipeDialog(
             onDismissRequest = { showRecipeSelection = false},
             allRecipes = allRecipes,
-            selectedRecipeId = selectedRecipeId,
-            onSelectRecipe = { recipeId ->
+            selectedRecipeIds = if (selectedRecipeId != null) listOf(selectedRecipeId!!) else null,
+            onClickRecipe = { recipeId ->
                 selectedRecipeId = recipeId
                 showRecipeSelection = false
             },
@@ -319,6 +315,7 @@ fun AddGroceryBottomSheet(
                 onSelectLocation = { locationId ->
                     selectedGroceryLocationId = locationId
                     showLocationSelection = false
+                    changedGroceryLocationManually = true
                 },
                 onRemoveLocation = onRemoveGroceryLocation,
                 onChangeLocationName = onChangeLocationName,
@@ -614,7 +611,7 @@ fun GroceryBottomSheetContentWithRecipeSelection(
                     onCancel = onExitRecipeSelection,
                     searchFocusRequester = recipeSearchFocusRequester,
                     activeRecipeIds = activeRecipeIds,
-                    selectedRecipeId = selectedRecipeId,
+                    selectedRecipeIds = if (selectedRecipeId != null) listOf(selectedRecipeId) else null,
                     isBottomSheet = false
                 )
             }

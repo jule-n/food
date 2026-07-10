@@ -9,9 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -32,11 +30,11 @@ fun SelectRecipeDialog(
     modifier: Modifier = Modifier,
     allRecipes: List<Recipe>,
     activeRecipeIds: List<UUID>?,
-    selectedRecipeId: UUID?,
-    onSelectRecipe: (UUID) -> Unit,
+    selectedRecipeIds: List<UUID>?,
+    onClickRecipe: (UUID) -> Unit,
     onDismissRequest: () -> Unit,
-    showSubtitle: Boolean
-//    searchFocusRequester: FocusRequester
+    showSubtitle: Boolean,
+    showSelectionCheckboxes: Boolean = false
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -48,20 +46,17 @@ fun SelectRecipeDialog(
             searchFocusRequester.requestFocus()
         }
         Surface(color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(10.dp), modifier = modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { focusManager.clearFocus() }) {
-            Column(
-                modifier = Modifier.verticalScroll(state = rememberScrollState())
-            ) {
-                SelectRecipeGrid(
-                    recipes = allRecipes,
-                    searchFocusRequester = searchFocusRequester,
-                    activeRecipeIds = activeRecipeIds,
-                    onClickRecipe = onSelectRecipe,
-                    onCancel = onDismissRequest,
-                    selectedRecipeId = selectedRecipeId,
-                    isBottomSheet = false,
-                    subtitle = if (showSubtitle) stringResource(R.string.select_groceries_from_recipe_info) else null
-                )
-            }
+            SelectRecipeGrid(
+                recipes = allRecipes,
+                searchFocusRequester = searchFocusRequester,
+                activeRecipeIds = activeRecipeIds,
+                onClickRecipe = onClickRecipe,
+                onCancel = onDismissRequest,
+                selectedRecipeIds = selectedRecipeIds,
+                isBottomSheet = false,
+                subtitle = if (showSubtitle) stringResource(R.string.select_groceries_from_recipe_info) else null,
+                showSelectionCheckboxes = showSelectionCheckboxes
+            )
         }
     }
 }

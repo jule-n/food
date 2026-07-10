@@ -414,12 +414,6 @@ fun EditLocationButtons(
         }
 
 //    }
-    LaunchedEffect(showAddLocationSheet) {
-        if (showAddLocationSheet) {
-            addLocationFocusRequester.requestFocus()
-        }
-    }
-
     if (showAddLocationSheet) {
         SimpleAddEditBottomSheet(
             onDismissRequest = { showAddLocationSheet = false },
@@ -427,7 +421,6 @@ fun EditLocationButtons(
                 onAddLocation(it)
                 showAddLocationSheet = false
             },
-            focusRequester = addLocationFocusRequester,
             placeholderText = stringResource(R.string.new_location),
             nameTooLongLimit = 20
         )
