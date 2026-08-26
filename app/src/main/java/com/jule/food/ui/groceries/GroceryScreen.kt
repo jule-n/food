@@ -540,7 +540,6 @@ fun GroceryScreen(
             getRecipeNameFromId = getRecipeNameFromId
         )
     }
-
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class,

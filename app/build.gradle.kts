@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.jule.food"
-    compileSdk = 35
+    compileSdk = 37
 
     androidResources {
         generateLocaleConfig = true
@@ -62,7 +62,7 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+    implementation("androidx.compose.material3:material3:1.5.0-alpha26")
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.navigation.compose)
     implementation("sh.calvin.reorderable:reorderable:2.5.1")
@@ -94,6 +94,7 @@ dependencies {
 
     implementation("com.google.dagger:hilt-android:2.57.1")
     ksp("com.google.dagger:hilt-android-compiler:2.57.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // Preferences DataStore (SharedPreferences like APIs)
     implementation("androidx.datastore:datastore-preferences:1.2.1")

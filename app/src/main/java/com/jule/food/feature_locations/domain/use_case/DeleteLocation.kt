@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 class DeleteLocation(
     private val repository: LocationsRepository
 ) {
-    suspend fun invoke(location: GroceryLocationNew) {
+    suspend operator fun invoke(location: GroceryLocationNew) {
         return repository.deleteLocation(location)
     }
 }

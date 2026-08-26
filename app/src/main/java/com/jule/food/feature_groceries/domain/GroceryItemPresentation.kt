@@ -10,5 +10,19 @@ data class GroceryItemPresentation(
     val details: TextFieldState = TextFieldState(),
     val listId: MutableState<Int> = mutableIntStateOf(0),
     val recipeId: MutableState<Int?> = mutableStateOf(null),
-    val locationId: MutableState<Int?> = mutableStateOf(null)
-)
+    val locationId: MutableState<Int?> = mutableStateOf(null),
+    val locationName: MutableState<String> = mutableStateOf("NO_LOC"),
+    val isDeleted: MutableState<Boolean> = mutableStateOf(false),
+    val id: Int
+) {
+    fun toGroceryItem(): GroceryItemNew {
+        return GroceryItemNew(
+            text = text.text.toString(),
+            details = details.text.toString(),
+            listId = listId.value,
+            recipeId = recipeId.value,
+            isDeleted = isDeleted.value,
+            id = id
+        )
+    }
+}
