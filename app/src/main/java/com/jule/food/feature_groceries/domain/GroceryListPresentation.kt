@@ -2,19 +2,19 @@ package com.jule.food.feature_groceries.domain
 
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
+import com.jule.food.others.ErrorType
 
 data class GroceryListPresentation(
-    val text: TextFieldState = TextFieldState(),
+    val nameState: TextFieldState = TextFieldState(),
     val gridState: LazyGridState = LazyGridState(),
-    val showDeletedItems: MutableState<Boolean> = mutableStateOf(false),
+    val showFinishedItems: Boolean = false,
+    val isNameError: Boolean = false,
+    val nameErrorType: ErrorType? = null,
     val id: Int
 ) {
     fun toGroceryList(): GroceryListNew {
         return GroceryListNew(
-            name = text.text.toString(),
+            name = nameState.text.toString(),
             id = id
         )
     }

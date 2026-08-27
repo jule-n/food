@@ -6,8 +6,9 @@ import androidx.room.Room
 import com.jule.food.feature_groceries.data.GroceriesRepository
 import com.jule.food.feature_groceries.data.source.GroceriesDatabase
 import com.jule.food.feature_groceries.domain.use_case.AddGroceryItem
+import com.jule.food.feature_groceries.domain.use_case.AddGroceryItems
 import com.jule.food.feature_groceries.domain.use_case.AddGroceryList
-import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryItem
+import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryItems
 import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryList
 import com.jule.food.feature_groceries.domain.use_case.GetAllLists
 import com.jule.food.feature_groceries.domain.use_case.GetGroceriesInList
@@ -52,7 +53,8 @@ object AppModule {
         return GroceriesUseCases(
             addGroceryItem = AddGroceryItem(repository),
             addGroceryList = AddGroceryList(repository),
-            deleteGroceryItem = DeleteGroceryItem(repository),
+            addGroceryItems = AddGroceryItems(repository),
+            deleteGroceryItems = DeleteGroceryItems(repository),
             deleteGroceryList = DeleteGroceryList(repository),
             getGroceriesInList = GetGroceriesInList(repository),
             getAllLists = GetAllLists(repository),

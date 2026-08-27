@@ -4,6 +4,8 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+const val MAX_LENGTH_LIST_NAME = 30
+
 @Entity
 data class GroceryListNew (
     val name: String,
@@ -11,7 +13,7 @@ data class GroceryListNew (
 ) {
     fun toPresentationList(): GroceryListPresentation {
         return GroceryListPresentation(
-            text = TextFieldState(name),
+            nameState = TextFieldState(name),
             id = id!!
         )
     }

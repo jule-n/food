@@ -18,8 +18,12 @@ class GroceriesRepository(
         return dao.getAllLists()
     }
 
-    suspend fun deleteGroceryItem(groceryItem: GroceryItemNew) {
-        dao.deleteGroceryItem(groceryItem)
+    suspend fun deleteGroceryItems(groceryItems: List<GroceryItemNew>) {
+        dao.deleteGroceryItems(groceryItems)
+    }
+
+    suspend fun addGroceryItems(groceryItems: List<GroceryItemNew>) {
+        dao.addGroceryItems(groceryItems)
     }
 
     suspend fun addGroceryItem(groceryItem: GroceryItemNew) {

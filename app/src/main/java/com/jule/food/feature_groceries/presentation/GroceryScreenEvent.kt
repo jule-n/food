@@ -4,8 +4,10 @@ import com.jule.food.data.GroceryGroupingOption
 import com.jule.food.feature_groceries.domain.GroceryItemNew
 
 sealed class GroceryScreenEvent {
-    object ClearSelection: GroceryScreenEvent()
-    data class AddGrocery(val item: GroceryItemNew, val locationId: Int?): GroceryScreenEvent()
+    data class ChangeIsSelectionModeActive(val value: Boolean): GroceryScreenEvent()
+    data class AddItemIdsToSelection(val ids: List<Int>): GroceryScreenEvent()
+    data class RemoveItemIdsFromSelection(val ids: List<Int>): GroceryScreenEvent()
+    object AddGrocery: GroceryScreenEvent()
     data class ChangeShowAddGrocerySheet(val show: Boolean): GroceryScreenEvent()
     data class ChangeSelectedListId(val value: Int): GroceryScreenEvent()
     data class ChangeShowEditListScreen(val show: Boolean): GroceryScreenEvent()

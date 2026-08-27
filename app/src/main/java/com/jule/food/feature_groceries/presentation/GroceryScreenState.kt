@@ -1,5 +1,6 @@
 package com.jule.food.feature_groceries.presentation
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
@@ -9,6 +10,7 @@ import com.jule.food.feature_groceries.domain.GroceryItemPresentation
 import com.jule.food.feature_groceries.domain.GroceryListNew
 import com.jule.food.feature_groceries.domain.GroceryListPresentation
 import com.jule.food.feature_locations.domain.GroceryLocationPresentation
+import com.jule.food.others.ErrorType
 
 data class GroceryScreenState @OptIn(ExperimentalMaterial3Api::class) constructor(
     val lists: List<GroceryListPresentation> = listOf(),
@@ -25,7 +27,8 @@ data class GroceryScreenState @OptIn(ExperimentalMaterial3Api::class) constructo
     val showSelectLocationDialog: Boolean = false,
     val addSheetSelectedLocationId: Int? = null,
     val addSheetSelectedLocationName: String? = null,
-//    val showEditLocationDialog: Boolean = false,
+    val addSheetNameState: TextFieldState = TextFieldState(),
+    val addSheetDetailState: TextFieldState = TextFieldState(),
     val showGroupingOptionDialog: Boolean = false,
     val groupingOption: GroceryGroupingOption = GroceryGroupingOption.None,
 )

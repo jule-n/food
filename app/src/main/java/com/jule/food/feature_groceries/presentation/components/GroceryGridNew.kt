@@ -1,6 +1,5 @@
 package com.jule.food.feature_groceries.presentation.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,42 +24,25 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jule.food.data.GroceryGroupingOption
-import com.jule.food.data.GroceryItem
-import com.jule.food.data.GroceryItemCategory
 import com.jule.food.utils.IconButtonWithTooltip
 import com.jule.food.R
 import com.jule.food.feature_groceries.domain.GroceryItemPresentation
-import com.jule.food.feature_groceries.domain.GroceryListPresentation
 import com.jule.food.feature_groceries.presentation.GroceryScreenEvent
 import com.jule.food.feature_groceries.presentation.GroceryScreenState
-import com.jule.food.ui.groceries.GroceryItemDisplay
 import com.jule.food.ui.groceries.gridGroupTitle
 import com.jule.food.ui.groceries.gridSpacer
-import com.jule.food.utils.DefaultDialog
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.collections.map
 
@@ -223,12 +204,12 @@ fun GroceryGridNew(
                 key = 5092038540945087,
                 span = { GridItemSpan(maxLineSpan) }
             ) {
-                val alphaText by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showDeletedItems.value) 0.5f else 0.8f)
-                val alphaBackground by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showDeletedItems.value) 0.1f else 0.2f)
+                val alphaText by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems.value) 0.5f else 0.8f)
+                val alphaBackground by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems.value) 0.1f else 0.2f)
                 Box(modifier = Modifier.animateItem()) {
                     Row {
                         Surface(
-                            onClick = { onEvent(GroceryScreenEvent.ChangeShowFinishedItems(!state.selectedList.showDeletedItems.value)) },
+                            onClick = { onEvent(GroceryScreenEvent.ChangeShowFinishedItems(!state.selectedList.showFinishedItems.value)) },
                             shape = RoundedCornerShape(20),
                             enabled = true,
                             color = Color.Transparent
@@ -237,7 +218,7 @@ fun GroceryGridNew(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
                             ) {
-                                val degrees by animateFloatAsState(if (state.selectedList.showDeletedItems.value) 270f else 180f)
+                                val degrees by animateFloatAsState(if (state.selectedList.showFinishedItems.value) 270f else 180f)
                                 Spacer(Modifier.width(5.dp))
                                 Icon(
                                     painter = painterResource(R.drawable.arrow_left),
@@ -292,7 +273,7 @@ fun GroceryGridNew(
                     }
                 }
             }
-            if (state.selectedList.showDeletedItems.value) {
+            if (state.selectedList.showFinishedItems.value) {
                 items(
                     state.finishedItemsInCurrentList,
                     key = { it.id }

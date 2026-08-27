@@ -72,6 +72,7 @@ fun GroceryScreenNew(
     modifier: Modifier = Modifier
 ) {
     val state = viewModel.currentState
+    val onEvent = viewModel::onEvent
     val focusManager = LocalFocusManager.current
     val resources = LocalResources.current
 
@@ -167,7 +168,7 @@ fun GroceryScreenNew(
                 selectedList = state.selectedList,
                 isEditingLists = state.showEditListScreen,
                 onOpenSharingDialog = { },
-                onBackFromCategoryEditing = { viewModel.onEvent(GroceryScreenEvent.ChangeShowEditListScreen(false)) },
+                onBackFromCategoryEditing = { onEvent(GroceryScreenEvent.ChangeShowEditListScreen(false)) },
                 onPickJsonFile = { },
                 onOpenSettings = { },
                 onSelectAll = {
@@ -188,7 +189,7 @@ fun GroceryScreenNew(
                             leadingButton = {
                                 SplitButtonDefaults.LeadingButton(
                                     onClick = {
-                                        viewModel.onEvent(GroceryScreenEvent.ChangeShowAddGrocerySheet(true))
+                                        onEvent(GroceryScreenEvent.ChangeShowAddGrocerySheet(true))
                                     },
                                     elevation = elevation,
                                     modifier = Modifier.height(SplitButtonDefaults.MediumContainerHeight),
@@ -274,14 +275,18 @@ fun GroceryScreenNew(
 //    }
     if (state.showAddGrocerySheet && state.selectedList != null) {
         AddGroceryBottomSheetNew(
-            onDismissRequest = { viewModel.onEvent(GroceryScreenEvent.ChangeShowAddGrocerySheet(false) ) },
+            onDismissRequest = { onEvent(GroceryScreenEvent.ChangeShowAddGrocerySheet(false) ) },
             focusRequester = addGroceryFocusRequester,
-            onConfirm = { newItem, locationId ->
-                viewModel.onEvent(GroceryScreenEvent.AddGrocery(newItem, locationId))
+            onConfirm = {
+                onEvent(GroceryScreenEvent.AddGrocery)
             },
             selectedListId = state.selectedListId!!,
-            groceryLocations = state.locations,
-            onOpenLocationDialog = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) }
+            onOpenLocationDialog = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) },
+            selectedLocationId = state.addSheetSelectedLocationId,
+            selectedLocationName = state.addSheetSelectedLocationName,
+            onClearSelectedLocation = { onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(null)) },
+            nameTextState = state.addSheetNameState,
+            detailsTextState = state.addSheetDetailState
         )
     }
 //    val searchRecipesFocusRequester = remember { FocusRequester() }
@@ -296,17 +301,17 @@ fun GroceryScreenNew(
 
     if (state.showSelectLocationDialog) {
         Dialog(
-            onDismissRequest = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
+            onDismissRequest = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             SelectEditLocationButtonsNew(
-                onCancel = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
+                onCancel = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
                 allLocations = state.locations,
-                onAddLocation = { viewModel.onEvent(GroceryScreenEvent.AddLocation(it)) },
+                onAddLocation = { onEvent(GroceryScreenEvent.AddLocation(it)) },
                 onSelectLocationId = { locationId ->
-                    viewModel.onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(locationId))
+                    onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(locationId))
                 },
-                onRemoveLocationId = { viewModel.onEvent(GroceryScreenEvent.DeleteLocation(it)) },
+                onRemoveLocationId = { onEvent(GroceryScreenEvent.DeleteLocation(it)) },
                 onReorderLocations = { _, _ -> },
                 selectedLocationId = state.addSheetSelectedLocationId
             )

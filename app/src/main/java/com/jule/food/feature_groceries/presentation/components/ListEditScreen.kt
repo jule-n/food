@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -34,18 +33,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.jule.food.R
-import com.jule.food.data.GroceryItemCategory
-import com.jule.food.data.isCategoryNameTooLong
-import com.jule.food.feature_groceries.domain.GroceryListNew
 import com.jule.food.feature_groceries.domain.GroceryListPresentation
 import com.jule.food.ui.groceries_recipes.EditScreen
 import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.utils.BasicTextFieldWithBox
-import com.jule.food.utils.SheetErrorMessage
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import java.util.UUID
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class,
@@ -83,11 +77,11 @@ fun ListEditScreen(
             reorderableListState = reorderableListState,
             items = lists,
             key = { it.id },
-            itemName = { it.text.text.toString() },
+            itemName = { it.nameState.text.toString() },
             itemComposable = { item ->
                 EditScreenItem(
                     item = item,
-                    itemName = item.text.text.toString(),
+                    itemName = item.nameState.text.toString(),
                     itemBackgroundColor = MaterialTheme.colorScheme.tertiary,
                     sharedElementModifier = Modifier.sharedElement(rememberSharedContentState(item.id), LocalNavAnimatedVisibilityScope.current!!),
                     onDispose = { item, itemName ->
@@ -128,7 +122,7 @@ fun ListEditScreen(
             newButtonBackgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
             onDelete = { onDeleteList(it.id) },
             confirmDeleteDialogTitle = stringResource(R.string.delete_category),
-            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.text.toString()) },
+            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.nameState.toString()) },
             itemToDelete = listToDelete,
             onResetItemToDelete = { listToDelete = null }
         )

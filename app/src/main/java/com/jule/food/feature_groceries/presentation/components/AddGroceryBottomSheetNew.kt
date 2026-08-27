@@ -85,30 +85,23 @@ fun AddGroceryBottomSheetNew(
     selectedListId: Int,
     onDismissRequest: () -> Unit,
     focusRequester: FocusRequester,
-    onConfirm: (item: GroceryItemNew, locationId: Int?) -> Unit,
-//    allRecipes: List<Recipe>,
-//    getRecipeNameFromId: ((UUID) -> String),
-//    activeRecipeIds: List<UUID>,
-    groceryLocations: List<GroceryLocationPresentation>,
+    onConfirm: () -> Unit,
+    selectedLocationId: Int?,
+    selectedLocationName: String?,
+    onClearSelectedLocation: () -> Unit,
+    nameTextState: TextFieldState,
+    detailsTextState: TextFieldState,
     onOpenLocationDialog: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
-    val nameTextState = rememberTextFieldState()
-    val detailsTextState = rememberTextFieldState()
-
-//    var selectedRecipeId: UUID? by remember { mutableStateOf(null) }
-//    var showRecipeSelection by remember { mutableStateOf(false) }
-
-    var changedGroceryLocationManually by remember { mutableStateOf(false) }
-    var selectedGroceryLocationId: Int? by remember { mutableStateOf(null) }
-    val selectedGroceryLocation = groceryLocations.firstOrNull { it.id == selectedGroceryLocationId }
+//    val selectedGroceryLocation = groceryLocations.firstOrNull { it.id == selectedGroceryLocationId }
 
     val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
     val sheetState = remember { SheetState(skipPartiallyExpanded = true, positionalThreshold = { 0f }, velocityThreshold = { 0f }, initialValue = SheetValue.Expanded) }
 
-    val anythingChanged = nameTextState.text.isNotEmpty() || detailsTextState.text.isNotEmpty() || selectedGroceryLocationId != null
+    val anythingChanged = nameTextState.text.isNotEmpty() || detailsTextState.text.isNotEmpty() || selectedLocationId != null
     var showConfirmDiscardDialog by remember { mutableStateOf(false) }
 
 //    LaunchedEffect(groceryNameState.text) {
@@ -138,12 +131,7 @@ fun AddGroceryBottomSheetNew(
     }
 
     fun confirm(){
-        val newGroceryItem = GroceryItemNew(
-            nameTextState.text.toString().trim(),
-            detailsTextState.text.toString().trim(),
-            listId = selectedListId
-        )
-        onConfirm(newGroceryItem, selectedGroceryLocationId)
+        onConfirm()
 
 //        if (selectedGroceryLocationId == null && changedGroceryLocationManually) {
 //            onRemoveGroceryFromAllLocations(groceryNameState.text.toString().trim())
@@ -155,9 +143,6 @@ fun AddGroceryBottomSheetNew(
 //        }
 
 //        changedGroceryLocationManually = false
-
-        nameTextState.clearText()
-        detailsTextState.clearText()
         focusRequester.requestFocus()
     }
 
@@ -210,17 +195,12 @@ fun AddGroceryBottomSheetNew(
                     }
                     Row(modifier = Modifier.widthIn(max = width)) {
                         GroceryBottomSheetSelectionField(
-                            text = if (selectedGroceryLocationId != null) selectedGroceryLocation!!.name.toString() else stringResource(
-                                R.string.no_location
-                            ),
+                            text = selectedLocationName ?: stringResource(R.string.no_location),
                             icon = R.drawable.location,
-                            isActive = selectedGroceryLocationId != null,
+                            isActive = selectedLocationId != null,
                             inactiveColor = placeholderColor,
                             onClick = onOpenLocationDialog,
-                            onClear = {
-                                selectedGroceryLocationId = null
-                                changedGroceryLocationManually = true
-                            }
+                            onClear = onClearSelectedLocation
                         )
                     }
                         Row(

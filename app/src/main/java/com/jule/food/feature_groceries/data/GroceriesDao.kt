@@ -18,7 +18,10 @@ interface GroceriesDao {
     fun getAllLists(): Flow<List<GroceryListNew>>
 
     @Delete
-    suspend fun deleteGroceryItem(groceryItem: GroceryItemNew)
+    suspend fun deleteGroceryItems(groceryItems: List<GroceryItemNew>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addGroceryItems(groceryItems: List<GroceryItemNew>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addGroceryItem(groceryItem: GroceryItemNew)
