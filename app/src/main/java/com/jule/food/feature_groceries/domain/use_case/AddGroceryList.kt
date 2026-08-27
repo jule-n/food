@@ -6,7 +6,7 @@ import com.jule.food.feature_groceries.domain.GroceryListNew
 class AddGroceryList(
     private val repository: GroceriesRepository
 ) {
-    suspend fun invoke(groceryList: GroceryListNew) {
+    suspend operator fun invoke(groceryList: GroceryListNew) {
         repository.addGroceryList(groceryList)
     }
 }

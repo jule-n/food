@@ -203,7 +203,7 @@ fun <T> ReorderableCollectionItemScope.EditScreenItem(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = 10.dp)) {
                 prefixElement?.invoke()
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     BasicTextFieldWithBox(
                         state = textState,
                         lineLimits = TextFieldLineLimits.SingleLine,

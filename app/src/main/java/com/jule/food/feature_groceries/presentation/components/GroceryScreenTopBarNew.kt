@@ -101,8 +101,8 @@ fun GroceryScreenTopBarNew(
         if (!selectionMode || selectedList == null) {
             AnimatedContent(
                 targetState = isEditingLists
-            ) { editingCategories ->
-                if (!editingCategories) {
+            ) { editingLists ->
+                if (!editingLists) {
                     CenterAlignedTopAppBar(
                         title = { Text(stringResource(R.string.groceries)) },
                         actions = {

@@ -90,7 +90,7 @@ fun AddGroceryBottomSheetNew(
 //    getRecipeNameFromId: ((UUID) -> String),
 //    activeRecipeIds: List<UUID>,
     groceryLocations: List<GroceryLocationPresentation>,
-    onOpenEditLocationDialog: () -> Unit
+    onOpenLocationDialog: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -103,7 +103,6 @@ fun AddGroceryBottomSheetNew(
     var changedGroceryLocationManually by remember { mutableStateOf(false) }
     var selectedGroceryLocationId: Int? by remember { mutableStateOf(null) }
     val selectedGroceryLocation = groceryLocations.firstOrNull { it.id == selectedGroceryLocationId }
-    var showLocationSelection by remember { mutableStateOf(false) }
 
     val placeholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
 
@@ -178,7 +177,7 @@ fun AddGroceryBottomSheetNew(
                     groceryNameState = nameTextState,
                     groceryDetailState = detailsTextState,
                     focusRequester = focusRequester,
-                    onConfirm = { if (!showLocationSelection) confirm() else showLocationSelection = false }
+                    onConfirm = { confirm() }
                 )
                 Spacer(Modifier.height(10.dp))
                 BoxWithConstraints {
@@ -217,7 +216,7 @@ fun AddGroceryBottomSheetNew(
                             icon = R.drawable.location,
                             isActive = selectedGroceryLocationId != null,
                             inactiveColor = placeholderColor,
-                            onClick = { showLocationSelection = true },
+                            onClick = onOpenLocationDialog,
                             onClear = {
                                 selectedGroceryLocationId = null
                                 changedGroceryLocationManually = true

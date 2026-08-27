@@ -1,8 +1,6 @@
 package com.jule.food.feature_groceries.domain
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -12,16 +10,16 @@ data class GroceryItemNew(
     val details: String,
     val listId: Int,
     val recipeId: Int? = null,
-    val isDeleted: Boolean = false,
+    val isFinished: Boolean = false,
     @PrimaryKey val id: Int? = null
 ) {
     fun toPresentationItem(): GroceryItemPresentation {
         return GroceryItemPresentation(
             text = TextFieldState(text),
             details = TextFieldState(details),
-            listId = mutableIntStateOf(listId),
-            recipeId = mutableStateOf(recipeId),
-            isDeleted = mutableStateOf(isDeleted),
+            listId = listId,
+            recipeId = recipeId,
+            isFinished = isFinished,
             id = id ?: -1
         )
     }

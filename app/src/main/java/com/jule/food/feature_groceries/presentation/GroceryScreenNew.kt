@@ -1,8 +1,5 @@
 package com.jule.food.feature_groceries.presentation
 
-import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -36,61 +33,34 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SplitButton
 import androidx.compose.material3.SplitButtonDefaults
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastFirst
-import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jule.food.R
-import com.jule.food.data.GroceryItem
-import com.jule.food.data.ListOfSaveableGroceryItems
-import com.jule.food.data.getGroceriesFromSaveable
-import com.jule.food.data.getJsonFromString
 import com.jule.food.feature_groceries.presentation.components.AddGroceryBottomSheetNew
 import com.jule.food.feature_groceries.presentation.components.GroceryScreenContentNew
 import com.jule.food.feature_groceries.presentation.components.GroceryScreenTopBarNew
 import com.jule.food.feature_groceries.presentation.components.SelectEditLocationButtonsNew
-import com.jule.food.ui.groceries.AddGroceryBottomSheet
-import com.jule.food.ui.groceries.GroceryScreenContent
-import com.jule.food.ui.groceries.GroceryScreenTopBar
-import com.jule.food.ui.groceries.GroceryShareOption
-import com.jule.food.ui.groceries.ImportGroceriesSheet
 import com.jule.food.ui.groceries.LoadingGroceryGridScreen
-import com.jule.food.ui.groceries.SelectRecipeDialog
-import com.jule.food.ui.groceries.ShareGroceriesSheet
-import com.jule.food.ui.groceries.getShareTextFromGroceryItems
-import com.jule.food.ui.groceries_recipes.AddGroceriesFromRecipeDialog
-import com.jule.food.ui.groceries_recipes.SelectEditLocationButtons
-import com.jule.food.utils.getDownloadsDir
-import com.jule.food.utils.shareFile
-import com.jule.food.utils.shareText
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import java.io.File
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,11 +95,9 @@ fun GroceryScreenNew(
 //    val selectionModeActive = selectedGroceryItems.isNotEmpty()
 //    val selectedCategoryGridState = groceryViewModel.getGridStateForSelectedCategory()
 
-    var isEditingCategories by remember { mutableStateOf(false) }
-
 
     val scaffoldState = rememberBottomSheetScaffoldState(
-        bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded, enabledValues = setOf(SheetValue.Expanded))
+        bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
     )
 
     LaunchedEffect(Unit) {
@@ -197,9 +165,9 @@ fun GroceryScreenNew(
             GroceryScreenTopBarNew(
                 selectionModeActive = state.isSelectionModeActive,
                 selectedList = state.selectedList,
-                isEditingLists = isEditingCategories,
+                isEditingLists = state.showEditListScreen,
                 onOpenSharingDialog = { },
-                onBackFromCategoryEditing = { isEditingCategories = false },
+                onBackFromCategoryEditing = { viewModel.onEvent(GroceryScreenEvent.ChangeShowEditListScreen(false)) },
                 onPickJsonFile = { },
                 onOpenSettings = { },
                 onSelectAll = {
@@ -214,7 +182,7 @@ fun GroceryScreenNew(
             if (state.isDataLoaded && state.selectedList != null) {
                 Box(modifier = Modifier.fillMaxWidth()) {
 
-                    AnimatedVisibility(!state.isSelectionModeActive && !isEditingCategories, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut(), modifier = Modifier.align(Alignment.Center)) {
+                    AnimatedVisibility(!state.isSelectionModeActive && !state.showEditListScreen, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut(), modifier = Modifier.align(Alignment.Center)) {
                         val elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 6.dp, focusedElevation = 8.dp, hoveredElevation = 8.dp)
                         SplitButton(
                             leadingButton = {
@@ -278,7 +246,7 @@ fun GroceryScreenNew(
         }
     ) { innerPadding ->
         AnimatedContent(
-            targetState = state.isDataLoaded,
+            targetState = state.isDataLoaded && state.selectedList != null,
             transitionSpec = {
                 fadeIn() togetherWith fadeOut()
             },
@@ -313,7 +281,7 @@ fun GroceryScreenNew(
             },
             selectedListId = state.selectedListId!!,
             groceryLocations = state.locations,
-            onOpenEditLocationDialog = { viewModel.onEvent(GroceryScreenEvent.ChangeShowEditLocationScreen(true)) }
+            onOpenLocationDialog = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) }
         )
     }
 //    val searchRecipesFocusRequester = remember { FocusRequester() }
@@ -326,21 +294,21 @@ fun GroceryScreenNew(
 //        }
 //    }
 
-    if (state.showEditLocationDialog) {
+    if (state.showSelectLocationDialog) {
         Dialog(
-            onDismissRequest = { viewModel.onEvent(GroceryScreenEvent.ChangeShowEditLocationScreen(false)) },
+            onDismissRequest = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             SelectEditLocationButtonsNew(
-                onCancel = { viewModel.onEvent(GroceryScreenEvent.ChangeShowEditLocationScreen(false)) },
+                onCancel = { viewModel.onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(false)) },
                 allLocations = state.locations,
                 onAddLocation = { viewModel.onEvent(GroceryScreenEvent.AddLocation(it)) },
                 onSelectLocationId = { locationId ->
-
+                    viewModel.onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(locationId))
                 },
                 onRemoveLocationId = { viewModel.onEvent(GroceryScreenEvent.DeleteLocation(it)) },
                 onReorderLocations = { _, _ -> },
-                selectedLocationId = null
+                selectedLocationId = state.addSheetSelectedLocationId
             )
         }
     }

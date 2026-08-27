@@ -7,8 +7,8 @@ import com.jule.food.feature_groceries.domain.GroceryListNew
 class DeleteGroceryList(
     private val repository: GroceriesRepository
 ) {
-    suspend fun invoke(groceryList: GroceryListNew) {
-        repository.removeListIdFromGroceries(groceryList.id)
+    suspend operator fun invoke(groceryList: GroceryListNew) {
+        repository.removeListIdFromGroceries(groceryList.id!!)
         repository.deleteGroceryList(groceryList)
     }
 }

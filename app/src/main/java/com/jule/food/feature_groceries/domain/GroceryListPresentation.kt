@@ -11,4 +11,11 @@ data class GroceryListPresentation(
     val gridState: LazyGridState = LazyGridState(),
     val showDeletedItems: MutableState<Boolean> = mutableStateOf(false),
     val id: Int
-)
+) {
+    fun toGroceryList(): GroceryListNew {
+        return GroceryListNew(
+            name = text.text.toString(),
+            id = id
+        )
+    }
+}

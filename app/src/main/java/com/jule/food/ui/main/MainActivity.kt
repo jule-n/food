@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,12 +61,15 @@ import com.jule.food.data.handleJsonIntent
 import com.jule.food.data.localeOptions
 import com.jule.food.data.readJsonFromUri
 import com.jule.food.feature_groceries.presentation.GroceryScreenNew
+import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
+import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.ui.theme.FoodTheme
 import com.jule.food.utils.getFileNameFromUri
 import com.jule.food.utils.openFolder
+import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 // Import
 //    private var importingFileName = "Test"
@@ -167,27 +172,35 @@ class MainActivity : AppCompatActivity() {
             val navController = rememberNavController()
 
             FoodTheme {
-                NavHost(
-                    navController = navController, startDestination = Screen.GroceryScreen
-                ) {
-                    composable<Screen.GroceryScreen>() {
-                        GroceryScreenNew(
-                            viewModel = hiltViewModel(),
-                            onNavigateToRecipes = { },
-                            onNavigateToSettings = { },
-                            bottomBar = { BottomNavigationBarNew(navController = navController) }
-                        )
-                    }
-                    composable<Screen.RecipeScreen>() {
-                        Scaffold(
-                            bottomBar = { BottomNavigationBarNew(navController = navController) }
+
+                // Contained in SharedTransitionLayout to enable shared element transitions between destinations
+                SharedTransitionLayout() {
+                    CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                        NavHost(
+                            navController = navController, startDestination = Screen.GroceryScreen
                         ) {
-                            Box(modifier = Modifier.padding(it)) {
-                                Text(
-                                    "Recipe Screen",
-                                    style = MaterialTheme.typography.displayMediumEmphasized,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
+                            composable<Screen.GroceryScreen>() {
+                                CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this@composable) {
+                                    GroceryScreenNew(
+                                        viewModel = hiltViewModel(),
+                                        onNavigateToRecipes = { },
+                                        onNavigateToSettings = { },
+                                        bottomBar = { BottomNavigationBarNew(navController = navController) }
+                                    )
+                                }
+                            }
+                            composable<Screen.RecipeScreen>() {
+                                Scaffold(
+                                    bottomBar = { BottomNavigationBarNew(navController = navController) }
+                                ) {
+                                    Box(modifier = Modifier.padding(it)) {
+                                        Text(
+                                            "Recipe Screen",
+                                            style = MaterialTheme.typography.displayMediumEmphasized,
+                                            modifier = Modifier.align(Alignment.Center)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

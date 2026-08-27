@@ -1,5 +1,6 @@
 package com.jule.food.feature_groceries.data
 
+import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -8,6 +9,7 @@ import com.jule.food.feature_groceries.domain.GroceryItemNew
 import com.jule.food.feature_groceries.domain.GroceryListNew
 import kotlinx.coroutines.flow.Flow
 
+@Dao
 interface GroceriesDao {
     @Query("SELECT * FROM GroceryItemNew WHERE listId = :listId ")
     fun getGroceriesInList(listId: Int): Flow<List<GroceryItemNew>>

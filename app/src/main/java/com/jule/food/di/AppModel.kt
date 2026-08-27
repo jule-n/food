@@ -23,6 +23,7 @@ import com.jule.food.others.SettingsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -86,7 +87,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSettingsRepository(context: Context): SettingsRepository {
+    fun provideSettingsRepository(@ApplicationContext context: Context): SettingsRepository {
         return SettingsRepository(context)
     }
 }

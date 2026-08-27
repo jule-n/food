@@ -95,7 +95,7 @@ fun ToggleButtonWithTooltip(
     tooltipText: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shapes: ToggleButtonShapes = ToggleButtonDefaults.shapes(),
+    shapes: ToggleButtonShapes = ToggleButtonDefaults.shapesFor(ToggleButtonDefaults.MinHeight),
     colors: ToggleButtonColors = ToggleButtonDefaults.toggleButtonColors(),
     content: @Composable RowScope.() -> Unit
 ) {

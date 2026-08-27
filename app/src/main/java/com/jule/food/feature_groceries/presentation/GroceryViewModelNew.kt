@@ -1,19 +1,15 @@
 package com.jule.food.feature_groceries.presentation
 
-import android.preference.PreferenceManager
 import android.util.Log
 import androidx.annotation.StringRes
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jule.food.R
 import com.jule.food.feature_groceries.domain.GroceryItemNew
+import com.jule.food.feature_groceries.domain.GroceryListNew
 import com.jule.food.feature_groceries.domain.use_case.GroceriesUseCases
 import com.jule.food.feature_locations.domain.GroceryLocationNew
 import com.jule.food.feature_locations.domain.use_case.LocationUseCases
@@ -21,10 +17,11 @@ import com.jule.food.others.SettingsRepository
 import com.jule.food.others.SettingsRepository.Companion.SELECTED_LIST_ID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -45,10 +42,13 @@ class GroceryViewModelNew @Inject constructor(
 
     var getSettingsJob: Job? = null
     var getGroceriesJob: Job? = null
+    var observeSelectedListIdJob: Job? = null
     var getListsJob: Job? = null
     var getLocationsJob: Job? = null
 
     var lastDeletedFinishedItems: List<GroceryItemNew>? = null
+
+    var listUpdateJobs: MutableMap<Int, Job> = mutableMapOf()
 
     init {
         getSettings()
@@ -67,6 +67,7 @@ class GroceryViewModelNew @Inject constructor(
                 }
             }
             is GroceryScreenEvent.AddGrocery -> {
+                Log.d("AddGrocery", "Adding new Grocery Item ${event.item.text}")
                 viewModelScope.launch {
                     groceriesUseCases.addGroceryItem(event.item)
                 }
@@ -88,13 +89,10 @@ class GroceryViewModelNew @Inject constructor(
                     showEditListScreen = event.show
                 )
             }
-            is GroceryScreenEvent.ChangeShowEditLocationScreen -> {
+            is GroceryScreenEvent.ChangeShowSelectLocationDialog -> {
                 _currentState.value = currentState.copy(
-                    showEditLocationDialog = event.show
+                    showSelectLocationDialog = event.show
                 )
-            }
-            is GroceryScreenEvent.ChangeSelectLocationScreen -> {
-
             }
             is GroceryScreenEvent.ChangeShowGroupingOptionDialog -> {
                 _currentState.value = currentState.copy(
@@ -113,17 +111,35 @@ class GroceryViewModelNew @Inject constructor(
                 }
             }
             is GroceryScreenEvent.FinishItem -> {
-                currentState.itemsInCurrentList.fastFirstOrNull { it.id == event.id }?.isDeleted?.value = true
+                // Finds item with its id
+                val item = currentState.activeItemsInCurrentList.fastFirstOrNull { it.id == event.id }
+                if (item == null) return
+                // Removes the item from the active items and adds it to the finished items
+                _currentState.value = currentState.copy(
+                    activeItemsInCurrentList = currentState.activeItemsInCurrentList - item,
+                    finishedItemsInCurrentList = currentState.finishedItemsInCurrentList + item.copy(
+                        isFinished = true
+                    )
+                )
             }
             is GroceryScreenEvent.RestoreFinishedItem -> {
-                currentState.itemsInCurrentList.fastFirstOrNull { it.id == event.id }?.isDeleted?.value = false
+                // Finds item with its id
+                val item = currentState.finishedItemsInCurrentList.fastFirstOrNull { it.id == event.id }
+                if (item == null) return
+                // Removes the item from the finished items and adds it to the active items
+                _currentState.value = currentState.copy(
+                    activeItemsInCurrentList = currentState.activeItemsInCurrentList + item.copy(
+                        isFinished = false
+                    ),
+                    finishedItemsInCurrentList = currentState.finishedItemsInCurrentList - item
+                )
             }
             is GroceryScreenEvent.ChangeShowFinishedItems -> {
                 currentState.selectedList?.showDeletedItems?.value = event.show
             }
             is GroceryScreenEvent.DeleteFinishedItems -> {
                 viewModelScope.launch {
-                    lastDeletedFinishedItems = currentState.itemsInCurrentList.filter { it.isDeleted.value }.map { it.toGroceryItem() }
+                    lastDeletedFinishedItems = currentState.finishedItemsInCurrentList.map { it.toGroceryItem() }
                     lastDeletedFinishedItems?.forEach {
                         groceriesUseCases.deleteGroceryItem(it)
                     }
@@ -165,6 +181,24 @@ class GroceryViewModelNew @Inject constructor(
                     showAddGrocerySheet = event.show
                 )
             }
+            is GroceryScreenEvent.ChangeAddSheetSelectedLocationId -> {
+                _currentState.value = currentState.copy(
+                    addSheetSelectedLocationId = event.id,
+                    addSheetSelectedLocationName = currentState.locations.fastFirstOrNull { it.id == event.id }?.name?.text.toString()
+                )
+            }
+            is GroceryScreenEvent.AddList -> {
+                viewModelScope.launch {
+                    groceriesUseCases.addGroceryList(GroceryListNew(event.name))
+                }
+            }
+            is GroceryScreenEvent.DeleteList -> {
+                val list = currentState.lists.fastFirstOrNull { it.id == event.id }?.toGroceryList()
+                if (list == null) return
+                viewModelScope.launch {
+                    groceriesUseCases.deleteGroceryList(list)
+                }
+            }
         }
     }
 
@@ -194,30 +228,71 @@ class GroceryViewModelNew @Inject constructor(
         getListsJob?.cancel()
         getListsJob = groceriesUseCases.getAllLists().onEach { lists ->
             Log.d("getLists", "Lists: $lists")
+            // Create UI Lists from data lists and update current state
+            val presLists = lists.map { it.toPresentationList() }
             _currentState.value = currentState.copy(
-                lists = lists.map { it.toPresentationList() }
+                lists = presLists
             )
+
+            // Add update jobs for each list and cancel old ones
+            presLists.forEach { list ->
+                listUpdateJobs[list.id]?.cancel()
+                listUpdateJobs[list.id] = viewModelScope.launch {
+                    snapshotFlow { list.text.text.toString() }.distinctUntilChanged { newName ->
+                        handleListNameChange(list.id, newName)
+                    }
+                }
+            }
+            // If there is a selected list ID, select that list
+            if (currentState.selectedListId != null) {
+                _currentState.value = currentState.copy(
+                    selectedList = currentState.lists.fastFirstOrNull { it.id == currentState.selectedListId }
+                )
+            }
+            // If no list corresponds to the selected list ID and there is a first list, select that first list
             if (!lists.any { it.id == currentState.selectedListId } && lists.isNotEmpty()) {
                 Log.d("getLists", "Setting selected list to first list: ${lists[0].id}")
-                settingsRepository.setSelectedListId(lists[0].id)
+                settingsRepository.setSelectedListId(lists[0].id!!)
+            }
+            // If there aren't any lists saved, add one with the name "Default"
+            if (lists.isEmpty()) {
+                groceriesUseCases.addGroceryList(GroceryListNew("Default"))
             }
         }.launchIn(viewModelScope)
 
-        getGroceriesJob?.cancel()
-        getGroceriesJob = groceriesUseCases.getGroceriesInList(currentState.selectedListId ?: 0).onEach { groceries ->
-            Log.d("getGroceries", "Groceries: $groceries")
-            val presentationItems = groceries.map { groceryItem ->
-                val presItem = groceryItem.toPresentationItem()
-                val location = currentState.locations.fastFirstOrNull { it.assignedGroceries.contains(groceryItem.text) }
-                presItem.locationId.value = location?.id
-                presItem.locationName.value = location?.name.toString()
-                return@map presItem
-            }
-            _currentState.value = currentState.copy(
-                itemsInCurrentList = presentationItems,
-                isDataLoaded = true
-            )
-        }.launchIn(viewModelScope)
+        observeSelectedListIdJob?.cancel()
+        observeSelectedListIdJob = snapshotFlow { currentState.selectedListId }
+            .distinctUntilChanged()
+            .onEach { listId ->
+                getGroceriesJob?.cancel()
+                getGroceriesJob = groceriesUseCases.getGroceriesInList(listId ?: 0).onEach { groceries ->
+                    Log.d("getGroceries", "Groceries: $groceries")
+                    val presentationItems = groceries.map { groceryItem ->
+                        val location = currentState.locations.fastFirstOrNull { it.assignedGroceries.contains(groceryItem.text) }
+                        val presItem = groceryItem.toPresentationItem().copy(
+                            locationId = location?.id,
+                            locationName = location?.name?.text.toString()
+                        )
+                        return@map presItem
+                    }
+                    _currentState.value = currentState.copy(
+                        activeItemsInCurrentList = presentationItems.filter { !it.isFinished },
+                        finishedItemsInCurrentList = presentationItems.filter { it.isFinished },
+                        isDataLoaded = true
+                    )
+                }.launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
+    }
+    fun handleListNameChange(id: Int, newName: String) {
+        // TODO: Check for errors
+        val list = currentState.lists.fastFirstOrNull { it.id == id }
+        if (list == null) return
+
+        Log.d("handleListNameChange", "Changed name of List \"${list.text.text.toString()}\" ($id) to $newName")
+        val dataList = list.toGroceryList()
+        viewModelScope.launch {
+            groceriesUseCases.addGroceryList(dataList.copy(name = newName))
+        }
     }
     sealed class UiEvent {
         data class ShowSnackbar(@StringRes val message: Int, @StringRes val action: Int? = null, val onAction: (() -> Unit)? = null): UiEvent()

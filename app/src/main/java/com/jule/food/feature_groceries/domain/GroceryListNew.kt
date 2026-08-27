@@ -7,12 +7,12 @@ import androidx.room.PrimaryKey
 @Entity
 data class GroceryListNew (
     val name: String,
-    @PrimaryKey val id: Int
+    @PrimaryKey val id: Int? = null
 ) {
     fun toPresentationList(): GroceryListPresentation {
         return GroceryListPresentation(
             text = TextFieldState(name),
-            id = id
+            id = id!!
         )
     }
 }

@@ -128,6 +128,7 @@ fun GroceryScreenContentNew(
                     .height(5.dp)) {}
             }
         },
+        sheetSwipeEnabled = false,
         containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
     ) {
         Column(
@@ -158,17 +159,12 @@ fun GroceryScreenContentNew(
                                     onChangeShowGroupingDialog = { onEvent(GroceryScreenEvent.ChangeShowGroupingOptionDialog(true)) },
                                 )
                             } else {
-                                Column {
-                                    Text("EDIT LIST SCREEN")
-                                    Button(onClick = { onEvent(GroceryScreenEvent.ChangeShowEditListScreen(false)) }) { Text("Back") }
-                                }
-//                                CategoriesEditScreen(
-//                                    allCategories = allCategories,
-//                                    onDeleteCategory = onDeleteCategory,
-//                                    onChangeCategoryName = onChangeCategoryName,
-//                                    onReorderCategories = onReorderCategories,
-//                                    onAddNewCategory = onAddNewCategory
-//                                )
+                                ListEditScreen(
+                                    lists = state.lists,
+                                    onAddNewList = { onEvent(GroceryScreenEvent.AddList(it)) },
+                                    onDeleteList = { onEvent(GroceryScreenEvent.DeleteList(it)) },
+                                    onReorderLists = { _, _ -> }
+                                )
                             }
                         }
                     }

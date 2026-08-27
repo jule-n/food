@@ -86,7 +86,7 @@ fun GroceryGridNew(
         shape = RoundedCornerShape(topStartPercent = 5, topEndPercent = 5),
         modifier = modifier
     ) {
-        if (state.itemsInCurrentList.isEmpty()) {
+        if (state.activeItemsInCurrentList.isEmpty() && state.finishedItemsInCurrentList.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,7 +98,7 @@ fun GroceryGridNew(
                 )
             }
         }
-        val spacerHeight = if (state.itemsInCurrentList.isEmpty()) 0.dp else 10.dp
+        val spacerHeight = if (state.activeItemsInCurrentList.isEmpty() && state.finishedItemsInCurrentList.isEmpty()) 0.dp else 10.dp
         LazyVerticalGrid(
             columns = GridCells.Adaptive(100.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -116,12 +116,12 @@ fun GroceryGridNew(
             when (state.groupingOption) {
                 GroceryGroupingOption.None -> {
                     groupNames.add("")
-                    groups.add(state.itemsInCurrentList)
+                    groups.add(state.activeItemsInCurrentList)
                 }
 
                 GroceryGroupingOption.Recipe -> {
                     groupNames.add("RECIPE")
-                    groups.add(state.itemsInCurrentList)
+                    groups.add(state.activeItemsInCurrentList)
 //                    val recipeGroups = state.itemsInCurrentList.groupBy { it.recipeId }.toSortedMap(compareBy { it.value })
 //                    groupNames.addAll(recipeGroups.keys.map { recipeId ->
 //                        if (recipeId != null) getRecipeNameFromId(recipeId) else resources.getString(
@@ -132,7 +132,7 @@ fun GroceryGridNew(
                 }
 
                 GroceryGroupingOption.Location -> {
-                    val locationGroups = state.itemsInCurrentList.groupBy { it.locationName.value }.toSortedMap(compareBy { it })
+                    val locationGroups = state.activeItemsInCurrentList.groupBy { it.locationName }.toSortedMap(compareBy { it })
                     groups.addAll(locationGroups.values)
                     groupNames.addAll(locationGroups.keys)
 //                    recipeIds = locationGroups.keys.toList()
@@ -223,8 +223,8 @@ fun GroceryGridNew(
                 key = 5092038540945087,
                 span = { GridItemSpan(maxLineSpan) }
             ) {
-                val alphaText by animateFloatAsState(if (state.itemsInCurrentList.none { it.isDeleted.value } || !state.selectedList.showDeletedItems.value) 0.5f else 0.8f)
-                val alphaBackground by animateFloatAsState(if (state.itemsInCurrentList.none { it.isDeleted.value } || !state.selectedList.showDeletedItems.value) 0.1f else 0.2f)
+                val alphaText by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showDeletedItems.value) 0.5f else 0.8f)
+                val alphaBackground by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showDeletedItems.value) 0.1f else 0.2f)
                 Box(modifier = Modifier.animateItem()) {
                     Row {
                         Surface(
@@ -253,7 +253,7 @@ fun GroceryGridNew(
                                 ) {
                                     Box {
                                         Text(
-                                            state.itemsInCurrentList.count { it.isDeleted.value == true }.toString(),
+                                            state.finishedItemsInCurrentList.size.toString(),
                                             modifier = Modifier.align(Alignment.Center),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onBackground.copy(
@@ -278,10 +278,9 @@ fun GroceryGridNew(
                         }
                         IconButtonWithTooltip(
                             onClick = {
-                                val finishedItems = state.itemsInCurrentList.filter { it.isDeleted.value }
                                 onEvent(GroceryScreenEvent.DeleteFinishedItems)
                             },
-                            enabled = state.itemsInCurrentList.any { it.isDeleted.value },
+                            enabled = state.finishedItemsInCurrentList.isNotEmpty(),
                             tooltipText = stringResource(R.string.delete_finished_items)
                         ) {
                             Icon(
@@ -295,7 +294,7 @@ fun GroceryGridNew(
             }
             if (state.selectedList.showDeletedItems.value) {
                 items(
-                    state.itemsInCurrentList.filter { it.isDeleted.value },
+                    state.finishedItemsInCurrentList,
                     key = { it.id }
                 ) { groceryItem ->
                     GroceryItemDisplayNew(

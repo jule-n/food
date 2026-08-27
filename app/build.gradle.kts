@@ -1,11 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.google.hilt.android)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
-    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -41,9 +40,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -92,17 +88,17 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
 
-    implementation("com.google.dagger:hilt-android:2.57.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.57.1")
+    implementation(libs.google.hilt.android)
+    ksp(libs.google.hilt.compiler)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // Preferences DataStore (SharedPreferences like APIs)
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 }
 
-configurations.all {
-    resolutionStrategy {
-        force("androidx.compose:compose-bom:2024.04.01")
-    }
-}
-
+//configurations.all {
+//    resolutionStrategy {
+//        force("androidx.compose:compose-bom:2024.04.01")
+//    }
+//}
+//

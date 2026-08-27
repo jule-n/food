@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -36,6 +37,7 @@ import com.jule.food.R
 import com.jule.food.data.GroceryItemCategory
 import com.jule.food.data.isCategoryNameTooLong
 import com.jule.food.feature_groceries.domain.GroceryListNew
+import com.jule.food.feature_groceries.domain.GroceryListPresentation
 import com.jule.food.ui.groceries_recipes.EditScreen
 import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
@@ -51,11 +53,10 @@ import java.util.UUID
 )
 @Composable
 fun ListEditScreen(
-    lists: List<GroceryListNew>,
-    onAddNewCategory: (GroceryListNew) -> Unit,
-    onDeleteCategory: (UUID) -> Unit,
-    onChangeCategoryName: (newName: String, id: UUID) -> Unit,
-    onReorderCategories: (fromIndex: Int, toIndex: Int) -> Unit,
+    lists: List<GroceryListPresentation>,
+    onAddNewList: (String) -> Unit,
+    onDeleteList: (Int) -> Unit,
+    onReorderLists: (fromIndex: Int, toIndex: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -64,70 +65,72 @@ fun ListEditScreen(
     val motionScheme = MaterialTheme.motionScheme
     val resources = LocalResources.current
 
-    val deleteEnabled = allCategories.size > 1
+    val deleteEnabled = lists.size > 1
     val lazyListState = rememberLazyListState()
     val reorderableListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        onReorderCategories(from.index, to.index)
+        onReorderLists(from.index, to.index)
         hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     }
 
-    var showAddCategorySheet by remember { mutableStateOf(false) }
-    val addCategoryFocusRequester = remember { FocusRequester() }
-    var showConfirmDeleteCategoryDialog by remember { mutableStateOf(false) }
-    var categoryToDelete: GroceryItemCategory? by remember { mutableStateOf(null) }
+    var showAddListSheet by remember { mutableStateOf(false) }
+    val addListFocusRequester = remember { FocusRequester() }
+    var showConfirmDeleteListDialog by remember { mutableStateOf(false) }
+    var listToDelete: GroceryListPresentation? by remember { mutableStateOf(null) }
 
     with (LocalSharedTransitionScope.current!!) {
-        EditScreen(
+        EditScreen<GroceryListPresentation>(
             lazyListState = lazyListState,
             reorderableListState = reorderableListState,
-            items = allCategories,
+            items = lists,
             key = { it.id },
-            itemName = { it.name },
+            itemName = { it.text.text.toString() },
             itemComposable = { item ->
                 EditScreenItem(
                     item = item,
-                    itemName = item.name,
+                    itemName = item.text.text.toString(),
                     itemBackgroundColor = MaterialTheme.colorScheme.tertiary,
                     sharedElementModifier = Modifier.sharedElement(rememberSharedContentState(item.id), LocalNavAnimatedVisibilityScope.current!!),
                     onDispose = { item, itemName ->
-                        if(isCategoryNameTooLong(itemName) ||
-                            itemName.isEmpty() ||
-                            allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
-                            return@EditScreenItem
-                        }
-                        onChangeCategoryName(itemName, item.id)
+//                        if(isCategoryNameTooLong(itemName) ||
+//                            itemName.isEmpty() ||
+//                            allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
+//                            return@EditScreenItem
+//                        }
+//                        onChangeCategoryName(itemName, item.id)
                     },
                     isError = { item, itemName ->
-                        isCategoryNameTooLong(itemName) ||
-                                itemName.isEmpty() ||
-                                allCategories.filter { it.id != item.id }.any { it.name == itemName}
+                        false
+//                        isCategoryNameTooLong(itemName) ||
+//                                itemName.isEmpty() ||
+//                                allCategories.filter { it.id != item.id }.any { it.name == itemName}
                     },
                     errorText = { item, itemName ->
-                        if (isCategoryNameTooLong(itemName)) {
-                            return@EditScreenItem resources.getString(R.string.name_too_long, 40)
-                        }
-                        if (itemName.isEmpty()) {
-                            return@EditScreenItem resources.getString(R.string.name_empty)
-                        }
-                        if (allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
-                            return@EditScreenItem resources.getString(R.string.name_already_exists)
-                        }
-                        return@EditScreenItem null
+                        "TEST"
+//                        if (isCategoryNameTooLong(itemName)) {
+//                            return@EditScreenItem resources.getString(R.string.name_too_long, 40)
+//                        }
+//                        if (itemName.isEmpty()) {
+//                            return@EditScreenItem resources.getString(R.string.name_empty)
+//                        }
+//                        if (allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
+//                            return@EditScreenItem resources.getString(R.string.name_already_exists)
+//                        }
+//                        return@EditScreenItem null
 
                     },
                     onClickDelete = {
-                        categoryToDelete = item
+                        listToDelete = item
                     }
                 )
             },
             newButtonText = stringResource(R.string.new_category),
-            onPressNewButton = { showAddCategorySheet = true },
+            onPressNewButton = { showAddListSheet = true },
             newButtonBackgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
-            onDelete = { onDeleteCategory(it.id) },
+            onDelete = { onDeleteList(it.id) },
             confirmDeleteDialogTitle = stringResource(R.string.delete_category),
-            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.name) },
-            itemToDelete = categoryToDelete,
-            onResetItemToDelete = { categoryToDelete = null }
+            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.text.toString()) },
+            itemToDelete = listToDelete,
+            onResetItemToDelete = { listToDelete = null }
         )
 //        LazyColumn(
 //            state = lazyListState,
@@ -259,36 +262,36 @@ fun ListEditScreen(
 //        }
     }
 
-    LaunchedEffect(showAddCategorySheet) {
-        if (showAddCategorySheet) {
-            addCategoryFocusRequester.requestFocus()
+    LaunchedEffect(showAddListSheet) {
+        if (showAddListSheet) {
+            addListFocusRequester.requestFocus()
         }
     }
 
-    if (showAddCategorySheet) {
+    if (showAddListSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showAddCategorySheet = false },
+            onDismissRequest = { showAddListSheet = false },
             dragHandle = null
         ) {
             val textFieldState = rememberTextFieldState()
 
-            var showEmptyCategoryError by remember { mutableStateOf(false) }
-            val isCategoryNameEmpty = textFieldState.text.isEmpty()
-            val isCategoryNameTooLong = isCategoryNameTooLong(textFieldState.text.toString())
-            val isCategoryNameSame = allCategories.any { it.name == textFieldState.text.trim().toString() }
-
-            if (!showEmptyCategoryError) {
-                LaunchedEffect(textFieldState.text) {
-                    if (textFieldState.text.isNotEmpty())
-                        showEmptyCategoryError = true
-                }
-            }
+//            var showEmptyCategoryError by remember { mutableStateOf(false) }
+//            val isCategoryNameEmpty = textFieldState.text.isEmpty()
+//            val isCategoryNameTooLong = isCategoryNameTooLong(textFieldState.text.toString())
+//            val isCategoryNameSame = allCategories.any { it.name == textFieldState.text.trim().toString() }
+//
+//            if (!showEmptyCategoryError) {
+//                LaunchedEffect(textFieldState.text) {
+//                    if (textFieldState.text.isNotEmpty())
+//                        showEmptyCategoryError = true
+//                }
+//            }
 
             BasicTextFieldWithBox(
                 state = textFieldState,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 textStyle = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.fillMaxWidth().focusRequester(addCategoryFocusRequester),
+                modifier = Modifier.fillMaxWidth().focusRequester(addListFocusRequester),
                 placeholder = {
                     Text(
                         text = "${stringResource(R.string.new_category)}...",
@@ -298,29 +301,30 @@ fun ListEditScreen(
                 contentPadding = PaddingValues(15.dp),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 onKeyboardAction = {
-                    if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame) {
-                        val name = textFieldState.text.trim().toString()
-                        onAddNewCategory(GroceryItemCategory(name))
-                        showAddCategorySheet = false
-                    }
+                    onAddNewList(textFieldState.text.toString())
+//                    if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame) {
+//                        val name = textFieldState.text.trim().toString()
+//                        onAddNewCategory(GroceryItemCategory(name))
+//                        showAddCategorySheet = false
+//                    }
                 }
             )
-            SheetErrorMessage(
-                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong || isCategoryNameSame,
-                message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
-                    if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
-                        if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
-            )
+//            SheetErrorMessage(
+//                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong || isCategoryNameSame,
+//                message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
+//                    if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
+//                        if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
+//            )
             Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TextButton(
-                    enabled = !isCategoryNameEmpty && !isCategoryNameTooLong,
+//                    enabled = !isCategoryNameEmpty && !isCategoryNameTooLong,
                     onClick = {
                         val name = textFieldState.text.trim().toString()
-                        onAddNewCategory(GroceryItemCategory(name))
-                        showAddCategorySheet = false
+                        onAddNewList(textFieldState.text.trim().toString())
+                        showAddListSheet = false
                     }
                 ) {
                     Text(stringResource(R.string.save))
