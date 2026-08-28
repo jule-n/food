@@ -75,48 +75,22 @@ import java.util.UUID
 fun GroceryScreenContentNew(
     state: GroceryScreenState,
     onEvent: (GroceryScreenEvent) -> Unit,
-    snackbarHostState: SnackbarHostState,
     scaffoldState: BottomSheetScaffoldState,
     modifier: Modifier = Modifier
 ) {
-    val focusManager = LocalFocusManager.current
-
-    val singleSelection = state.selectedItemIds.size == 1
-
-    val editGroceryNameState = rememberTextFieldState("")
-    val editGroceryDetailState = rememberTextFieldState("")
-
-    var showGroupingSheet by remember { mutableStateOf(false) }
-
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetContent = {
-            Text("Edit Groceries")
-//            EditGroceriesBottomSheetContent(
-//                category = category,
-//                allCategories = allCategories,
-//                allRecipes = allRecipes,
-//                onFinishAction = onClearSelection,
-//                editingGroceryItems = selectedGroceryItems,
-//                onMoveItemsToCategory = onMoveItemsToCategory,
-//                onChangeItemNameDetails = onChangeItemNameDetails,
-//                groceryNameState = editGroceryNameState,
-//                groceryDetailState = editGroceryDetailState,
-//                getRecipeNameFromId = getRecipeNameFromId,
-//                showRecipeSelection = isSelectingRecipeInBottomSheet,
-//                onChangeShowRecipeSelection = { isSelectingRecipeInBottomSheet = it },
-//                activeRecipeIds = activeRecipeIds,
-//                groceryLocations = groceryLocations,
-//                onAddGroceryLocation = onAddGroceryLocation,
-//                onRemoveGroceryLocation = onRemoveGroceryLocation,
-//                getLocationNameFromId = getLocationNameFromId,
-//                onAddGroceryToLocation = onAddGroceryToLocation,
-//                onRemoveGroceryFromAllLocations = onRemoveGroceryFromAllLocations,
-//                onChangeLocationName = onChangeLocationName,
-//                onReorderLocations = onReorderLocations,
-//                showLocationSelection = isSelectingLocationInBottomSheet,
-//                onChangeShowLocationSelection = { isSelectingLocationInBottomSheet = it }
-//            )
+            if (state.editingItem != null) {
+                EditGroceriesBottomSheetNew(
+                    editingGroceryItemIds = state.selectedItemIds,
+                    groceryNameState = state.editingItem.text,
+                    groceryDetailState = state.editingItem.details,
+                    onOpenListSelectionDialog = { },
+                    onOpenLocationSelectionDialog = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) },
+                    onOpenRecipeSelectionDialog = { }
+                )
+            }
         },
         sheetContainerColor = MaterialTheme.colorScheme.background,
         sheetDragHandle = {
@@ -139,7 +113,7 @@ fun GroceryScreenContentNew(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    onEvent(GroceryScreenEvent.ClearSelection)
+                    onEvent(GroceryScreenEvent.ChangeIsSelectionModeActive(false))
                 }
         ) {
             SharedTransitionLayout {

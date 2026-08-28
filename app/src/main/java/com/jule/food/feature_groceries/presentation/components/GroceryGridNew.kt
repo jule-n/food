@@ -172,26 +172,22 @@ fun GroceryGridNew(
                         GroceryItemDisplayNew(
                             item = groceryItem,
                             onClick = {
-//                                if (selectionModeActive) {
-//                                    if (selectedGroceryItems.contains(groceryItem.id))
-//                                        onRemoveFromSelection(groceryItem.id)
-//                                    else
-//                                        onAddToSelection(groceryItem.id)
-//                                } else {
-//                                    onRemoveFromGroceries(allItems.indexOf(groceryItem))
-//                                    onAddToDeletedItems(groceryItem)
-//                                }
-                                onEvent(GroceryScreenEvent.FinishItem(groceryItem.id))
+                                if (state.isSelectionModeActive) {
+                                    onEvent(GroceryScreenEvent.ToggleItemIdSelection(groceryItem.id))
+                                } else {
+                                    onEvent(GroceryScreenEvent.FinishItem(groceryItem.id))
+                                }
                             },
                             onLongClick = {
                                 if (!state.isSelectionModeActive) {
-//                                    onAddToSelection(groceryItem.id)
+                                    onEvent(GroceryScreenEvent.ChangeIsSelectionModeActive(true))
+                                    onEvent(GroceryScreenEvent.AddItemIdsToSelection(listOf(groceryItem.id)))
                                 }
                             },
                             showRecipeName = state.groupingOption != GroceryGroupingOption.Recipe,
                             deleted = false,
                             scaleSelection = true,
-                            isSelected = state.selectedItemIds.contains(groceryItem.id),
+                            isSelected = state.isSelectionModeActive && state.selectedItemIds.contains(groceryItem.id),
                             showSelection = state.isSelectionModeActive,
                             modifier = Modifier.animateItem()
                         )
@@ -204,12 +200,12 @@ fun GroceryGridNew(
                 key = 5092038540945087,
                 span = { GridItemSpan(maxLineSpan) }
             ) {
-                val alphaText by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems.value) 0.5f else 0.8f)
-                val alphaBackground by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems.value) 0.1f else 0.2f)
+                val alphaText by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems) 0.5f else 0.8f)
+                val alphaBackground by animateFloatAsState(if (state.finishedItemsInCurrentList.isEmpty() || !state.selectedList.showFinishedItems) 0.1f else 0.2f)
                 Box(modifier = Modifier.animateItem()) {
                     Row {
                         Surface(
-                            onClick = { onEvent(GroceryScreenEvent.ChangeShowFinishedItems(!state.selectedList.showFinishedItems.value)) },
+                            onClick = { onEvent(GroceryScreenEvent.ChangeShowFinishedItems(!state.selectedList.showFinishedItems)) },
                             shape = RoundedCornerShape(20),
                             enabled = true,
                             color = Color.Transparent
@@ -218,7 +214,7 @@ fun GroceryGridNew(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
                             ) {
-                                val degrees by animateFloatAsState(if (state.selectedList.showFinishedItems.value) 270f else 180f)
+                                val degrees by animateFloatAsState(if (state.selectedList.showFinishedItems) 270f else 180f)
                                 Spacer(Modifier.width(5.dp))
                                 Icon(
                                     painter = painterResource(R.drawable.arrow_left),
@@ -273,7 +269,7 @@ fun GroceryGridNew(
                     }
                 }
             }
-            if (state.selectedList.showFinishedItems.value) {
+            if (state.selectedList.showFinishedItems) {
                 items(
                     state.finishedItemsInCurrentList,
                     key = { it.id }

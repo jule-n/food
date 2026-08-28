@@ -171,7 +171,7 @@ fun SelectLocationButtonsNew(
                     color = color,
                     onClick = { if (!selected) onSelectLocationId(location.id!!) },
                 ) {
-                    Text(location.name.toString(), modifier = Modifier.padding(10.dp))
+                    Text(location.name.text.toString(), modifier = Modifier.padding(10.dp))
                 }
             }
         }

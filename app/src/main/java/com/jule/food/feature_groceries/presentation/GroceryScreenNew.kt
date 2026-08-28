@@ -54,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jule.food.R
 import com.jule.food.feature_groceries.presentation.components.AddGroceryBottomSheetNew
 import com.jule.food.feature_groceries.presentation.components.GroceryScreenContentNew
@@ -71,7 +72,7 @@ fun GroceryScreenNew(
     bottomBar: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val state = viewModel.currentState
+    val state = viewModel.currentState.collectAsStateWithLifecycle().value
     val onEvent = viewModel::onEvent
     val focusManager = LocalFocusManager.current
     val resources = LocalResources.current
@@ -115,6 +116,13 @@ fun GroceryScreenNew(
                 }
                 is GroceryViewModelNew.UiEvent.ClearFocus -> {
                     focusManager.clearFocus(true)
+                }
+                is GroceryViewModelNew.UiEvent.ChangeShowEditSheet -> {
+                    if (event.show) {
+                        scaffoldState.bottomSheetState.expand()
+                    } else {
+                        scaffoldState.bottomSheetState.hide()
+                    }
                 }
             }
         }
@@ -175,8 +183,8 @@ fun GroceryScreenNew(
 //                    selectedGroceryItems.clear()
 //                    selectedGroceryItems.addAll(selectedCategory!!.items.map { it.id })
                 },
-                selectedGroceryItemsNumber = 0,
-                onClearSelectedGroceryItems = { }
+                selectedGroceryItemsNumber = state.selectedItemIds.size,
+                onClearSelectedGroceryItems =  { onEvent(GroceryScreenEvent.ChangeIsSelectionModeActive(false)) }
             )
         },
         floatingActionButton = {
@@ -257,7 +265,6 @@ fun GroceryScreenNew(
                 GroceryScreenContentNew(
                     state = state,
                     onEvent = viewModel::onEvent,
-                    snackbarHostState = snackbarHostState,
                     scaffoldState = scaffoldState,
                     modifier = modifier
                 )
@@ -284,7 +291,7 @@ fun GroceryScreenNew(
             onOpenLocationDialog = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) },
             selectedLocationId = state.addSheetSelectedLocationId,
             selectedLocationName = state.addSheetSelectedLocationName,
-            onClearSelectedLocation = { onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(null)) },
+            onClearSelectedLocation = { onEvent(GroceryScreenEvent.SelectLocationId(null)) },
             nameTextState = state.addSheetNameState,
             detailsTextState = state.addSheetDetailState
         )
@@ -309,7 +316,7 @@ fun GroceryScreenNew(
                 allLocations = state.locations,
                 onAddLocation = { onEvent(GroceryScreenEvent.AddLocation(it)) },
                 onSelectLocationId = { locationId ->
-                    onEvent(GroceryScreenEvent.ChangeAddSheetSelectedLocationId(locationId))
+                    onEvent(GroceryScreenEvent.SelectLocationId(locationId))
                 },
                 onRemoveLocationId = { onEvent(GroceryScreenEvent.DeleteLocation(it)) },
                 onReorderLocations = { _, _ -> },

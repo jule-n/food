@@ -174,4 +174,7 @@
     <string name="n_items_selected">%d Items selected</string>
     <string name="deleted_tag_name">Deleted Tag \"%s\"</string>
     <string name="select_icon_for_tag">Select Icon for \"%s\"</string>
+    <string name="move_to_recipe">Move to recipe</string>
+    <string name="move_to_list">Move to List</string>
+    <string name="move_to_location">Move to Location</string>
 </resources>

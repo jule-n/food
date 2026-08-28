@@ -21,6 +21,7 @@ data class GroceryScreenState @OptIn(ExperimentalMaterial3Api::class) constructo
     val finishedItemsInCurrentList: List<GroceryItemPresentation> = listOf(),
     val isDataLoaded: Boolean = false,
     val selectedItemIds: List<Int> = listOf(),
+    val editingItem: GroceryItemPresentation? = null,
     val isSelectionModeActive: Boolean = false,
     val showAddGrocerySheet: Boolean = false,
     val showEditListScreen: Boolean = false,

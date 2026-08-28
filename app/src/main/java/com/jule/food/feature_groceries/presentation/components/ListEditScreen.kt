@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.jule.food.R
 import com.jule.food.feature_groceries.domain.GroceryListPresentation
+import com.jule.food.others.ErrorType
 import com.jule.food.ui.groceries_recipes.EditScreen
 import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
@@ -72,16 +73,16 @@ fun ListEditScreen(
     var listToDelete: GroceryListPresentation? by remember { mutableStateOf(null) }
 
     with (LocalSharedTransitionScope.current!!) {
-        EditScreen<GroceryListPresentation>(
+        EditScreenNew<GroceryListPresentation>(
             lazyListState = lazyListState,
             reorderableListState = reorderableListState,
             items = lists,
             key = { it.id },
             itemName = { it.nameState.text.toString() },
             itemComposable = { item ->
-                EditScreenItem(
+                EditScreenItemNew(
                     item = item,
-                    itemName = item.nameState.text.toString(),
+                    textState = item.nameState,
                     itemBackgroundColor = MaterialTheme.colorScheme.tertiary,
                     sharedElementModifier = Modifier.sharedElement(rememberSharedContentState(item.id), LocalNavAnimatedVisibilityScope.current!!),
                     onDispose = { item, itemName ->
@@ -93,23 +94,18 @@ fun ListEditScreen(
 //                        onChangeCategoryName(itemName, item.id)
                     },
                     isError = { item, itemName ->
-                        false
+                        item.isNameError
 //                        isCategoryNameTooLong(itemName) ||
 //                                itemName.isEmpty() ||
 //                                allCategories.filter { it.id != item.id }.any { it.name == itemName}
                     },
                     errorText = { item, itemName ->
-                        "TEST"
-//                        if (isCategoryNameTooLong(itemName)) {
-//                            return@EditScreenItem resources.getString(R.string.name_too_long, 40)
-//                        }
-//                        if (itemName.isEmpty()) {
-//                            return@EditScreenItem resources.getString(R.string.name_empty)
-//                        }
-//                        if (allCategories.filter { it.id != item.id }.any { it.name == itemName}) {
-//                            return@EditScreenItem resources.getString(R.string.name_already_exists)
-//                        }
-//                        return@EditScreenItem null
+                        return@EditScreenItemNew when (item.nameErrorType) {
+                            is ErrorType.IsEmpty -> resources.getString(R.string.name_empty)
+                            is ErrorType.TooLong -> resources.getString(R.string.name_too_long, item.nameErrorType.maxLength)
+                            is ErrorType.NameSame -> resources.getString(R.string.name_already_exists)
+                            null -> null
+                        }
 
                     },
                     onClickDelete = {

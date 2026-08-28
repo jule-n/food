@@ -7,6 +7,7 @@ sealed class GroceryScreenEvent {
     data class ChangeIsSelectionModeActive(val value: Boolean): GroceryScreenEvent()
     data class AddItemIdsToSelection(val ids: List<Int>): GroceryScreenEvent()
     data class RemoveItemIdsFromSelection(val ids: List<Int>): GroceryScreenEvent()
+    data class ToggleItemIdSelection(val id: Int): GroceryScreenEvent()
     object AddGrocery: GroceryScreenEvent()
     data class ChangeShowAddGrocerySheet(val show: Boolean): GroceryScreenEvent()
     data class ChangeSelectedListId(val value: Int): GroceryScreenEvent()
@@ -22,7 +23,7 @@ sealed class GroceryScreenEvent {
     object RestoreDeletedItems: GroceryScreenEvent()
     data class AddLocation(val name: String): GroceryScreenEvent()
     data class DeleteLocation(val id: Int): GroceryScreenEvent()
-    data class ChangeAddSheetSelectedLocationId(val id: Int?): GroceryScreenEvent()
+    data class SelectLocationId(val id: Int?): GroceryScreenEvent()
     data class AddList(val name: String): GroceryScreenEvent()
     data class DeleteList(val id: Int): GroceryScreenEvent()
 }

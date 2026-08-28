@@ -3,11 +3,14 @@ package com.jule.food.feature_groceries.presentation
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jule.food.R
 import com.jule.food.feature_groceries.domain.GroceryItemNew
 import com.jule.food.feature_groceries.domain.GroceryListNew
@@ -28,12 +31,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.collections.listOf
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @OptIn(FlowPreview::class)
@@ -44,10 +50,12 @@ class GroceryViewModelNew @Inject constructor(
     private val settingsRepository: SettingsRepository
 ): ViewModel() {
     private val _currentState = MutableStateFlow(GroceryScreenState())
-    val currentState get() = _currentState.asStateFlow().value
+    val currentState get() = _currentState.asStateFlow()
     
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
+
+    var dataLists: List<GroceryListNew> = listOf()
 
     var getSettingsJob: Job? = null
     var getGroceriesJob: Job? = null
@@ -65,7 +73,7 @@ class GroceryViewModelNew @Inject constructor(
         getGroceries()
 
         viewModelScope.launch {
-            snapshotFlow { currentState.addSheetNameState.text.toString() }.debounce(500).collectLatest {
+            snapshotFlow { currentState.value.addSheetNameState.text.toString() }.debounce(500.milliseconds).collectLatest {
                 handleAddSheetNameChange(it)
             }
         }
@@ -82,42 +90,69 @@ class GroceryViewModelNew @Inject constructor(
                     viewModelScope.launch {
                         _eventFlow.emit(UiEvent.ClearFocus)
                     }
+                } else {
+                    _currentState.update { it.copy(
+                        selectedItemIds = listOf()
+                    )}
+                }
+                viewModelScope.launch {
+                    _eventFlow.emit(UiEvent.ChangeShowEditSheet(event.value))
                 }
             }
             is GroceryScreenEvent.AddGrocery -> {
                 // Check for error
-                if (currentState.addSheetNameState.text.isBlank() || currentState.selectedListId == null) return
+                if (currentState.value.addSheetNameState.text.isBlank() || currentState.value.selectedListId == null) return
 
-                Log.d("AddGrocery", "Adding new Grocery Item ${currentState.addSheetNameState.text}")
+                Log.d("AddGrocery", "Adding new Grocery Item ${currentState.value.addSheetNameState.text}")
                 val item = GroceryItemNew(
-                    currentState.addSheetNameState.text.trim().toString(),
-                    currentState.addSheetDetailState.text.trim().toString(),
-                    listId = currentState.selectedListId!!
+                    currentState.value.addSheetNameState.text.trim().toString(),
+                    currentState.value.addSheetDetailState.text.trim().toString(),
+                    listId = currentState.value.selectedListId!!
                 )
                 viewModelScope.launch {
                     groceriesUseCases.addGroceryItem(item)
                 }
-                if (currentState.addSheetSelectedLocationId != null) {
-                    val location = currentState.locations.fastFirstOrNull { it.id == currentState.addSheetSelectedLocationId }?.toGroceryLocation()
-                    if (location != null) {
+                val itemText = currentState.value.addSheetNameState.text.trim().toString()
+                if (currentState.value.addSheetSelectedLocationId != null) {
+                    val location = currentState.value.locations.fastFirstOrNull { it.id == currentState.value.addSheetSelectedLocationId }?.toGroceryLocation()
+                    if (location != null && !location.assignedGroceries.contains(itemText)) {
                         viewModelScope.launch {
                             locationsUseCases.addLocation(
                                 location.copy(
-                                    assignedGroceries = location.assignedGroceries + currentState.addSheetNameState.text.trim().toString()
+                                    assignedGroceries = location.assignedGroceries + itemText
                                 )
                             )
+                        }
+                        Log.d("AddGrocery", "Added to Location ${location.name}")
+                    }
+                    // Get locations that have this text assigned but aren't the correct location
+                    val removeLocations = currentState.value.locations.filter { it.id != currentState.value.addSheetSelectedLocationId && it.assignedGroceries.contains(itemText) }.map { it.toGroceryLocation() }
+                    Log.d("AddGrocery", "Removing from locations: $removeLocations")
+                    viewModelScope.launch {
+                        removeLocations.forEach {
+                            // Update database where itemText is removed
+                            locationsUseCases.addLocation(it.copy(assignedGroceries = it.assignedGroceries - itemText))
                         }
                     }
                 }
 
                 // Empty the text fields
-                currentState.addSheetNameState.clearText()
-                currentState.addSheetDetailState.clearText()
+                currentState.value.addSheetNameState.clearText()
+                currentState.value.addSheetDetailState.clearText()
             }
             is GroceryScreenEvent.ChangeShowEditListScreen -> {
                 _currentState.update { it.copy(
                     showEditListScreen = event.show
                 )}
+                // If edit list screen is deactivated, remove errors from list text fields
+                if (!event.show) {
+                    currentState.value.lists.forEach { presList ->
+                        if (presList.isNameError) {
+                            val dataName = dataLists.fastFirstOrNull { it.id == presList.id }?.name ?: "NULL"
+                            presList.nameState.setTextAndPlaceCursorAtEnd(dataName)
+                        }
+                    }
+                }
             }
             is GroceryScreenEvent.ChangeShowSelectLocationDialog -> {
                 _currentState.update { it.copy(
@@ -142,42 +177,36 @@ class GroceryViewModelNew @Inject constructor(
             }
             is GroceryScreenEvent.FinishItem -> {
                 // Finds item with its id
-                val item = currentState.activeItemsInCurrentList.fastFirstOrNull { it.id == event.id }
+                val item = currentState.value.activeItemsInCurrentList.fastFirstOrNull { it.id == event.id }
                 if (item == null) return
-                // Removes the item from the active items and adds it to the finished items
-                _currentState.update { it.copy(
-                    activeItemsInCurrentList = currentState.activeItemsInCurrentList - item,
-                    finishedItemsInCurrentList = currentState.finishedItemsInCurrentList + item.copy(
-                        isFinished = true
-                    )
-                )}
+                // Updates isFinised value in Database
+                viewModelScope.launch {
+                    groceriesUseCases.addGroceryItem(item.toGroceryItem().copy(isFinished = true))
+                }
             }
             is GroceryScreenEvent.RestoreFinishedItem -> {
                 // Finds item with its id
-                val item = currentState.finishedItemsInCurrentList.fastFirstOrNull { it.id == event.id }
+                val item = currentState.value.finishedItemsInCurrentList.fastFirstOrNull { it.id == event.id }
                 if (item == null) return
-                // Removes the item from the finished items and adds it to the active items
-                _currentState.update { it.copy(
-                    activeItemsInCurrentList = currentState.activeItemsInCurrentList + item.copy(
-                        isFinished = false
-                    ),
-                    finishedItemsInCurrentList = currentState.finishedItemsInCurrentList - item
-                )}
+                // Updates isFinised value in Database
+                viewModelScope.launch {
+                    groceriesUseCases.addGroceryItem(item.toGroceryItem().copy(isFinished = false))
+                }
             }
             is GroceryScreenEvent.ChangeShowFinishedItems -> {
                 // Update list with new value of showFinishedItems
-                val list = currentState.selectedList ?: return
+                val list = currentState.value.selectedList ?: return
                 val newList = list.copy(showFinishedItems = !list.showFinishedItems)
                 _currentState.update { it.copy(
-                    lists = currentState.lists.map {
-                        if (it.id == currentState.selectedListId ) newList else it
+                    lists = currentState.value.lists.map {
+                        if (it.id == currentState.value.selectedListId ) newList else it
                     },
                     selectedList = newList
                 )}
             }
             is GroceryScreenEvent.DeleteFinishedItems -> {
                 viewModelScope.launch {
-                    lastDeletedFinishedItems = currentState.finishedItemsInCurrentList.map { it.toGroceryItem() }
+                    lastDeletedFinishedItems = currentState.value.finishedItemsInCurrentList.map { it.toGroceryItem() }
                     groceriesUseCases.deleteGroceryItems(lastDeletedFinishedItems!!)
                     _eventFlow.emit(UiEvent.ShowSnackbar(
                         message = R.string.delete_finished_items,
@@ -205,7 +234,7 @@ class GroceryViewModelNew @Inject constructor(
                 }
             }
             is GroceryScreenEvent.DeleteLocation -> {
-                val location = currentState.locations.fastFirstOrNull { it.id == event.id }?.toGroceryLocation()
+                val location = currentState.value.locations.fastFirstOrNull { it.id == event.id }?.toGroceryLocation()
                 if (location != null) {
                     viewModelScope.launch {
                         locationsUseCases.deleteLocation(location)
@@ -217,11 +246,44 @@ class GroceryViewModelNew @Inject constructor(
                     showAddGrocerySheet = event.show
                 )}
             }
-            is GroceryScreenEvent.ChangeAddSheetSelectedLocationId -> {
-                _currentState.update { it.copy(
-                    addSheetSelectedLocationId = event.id,
-                    addSheetSelectedLocationName = currentState.locations.fastFirstOrNull { it.id == event.id }?.name?.text.toString()
-                )}
+            is GroceryScreenEvent.SelectLocationId -> {
+                val location = currentState.value.locations.fastFirstOrNull { it.id == event.id } ?: return
+                // If the add sheet is active, change add sheet location ID
+                if (currentState.value.showAddGrocerySheet) {
+                    _currentState.update { it.copy(
+                        addSheetSelectedLocationId = event.id,
+                        addSheetSelectedLocationName = location.name.text.toString()
+                    )}
+                    return
+                }
+                // If the selection mode is active, change the location ID of selected items
+                if (currentState.value.isSelectionModeActive) {
+                    _currentState.update { it.copy(
+                        activeItemsInCurrentList = currentState.value.activeItemsInCurrentList.map {
+                            if (currentState.value.selectedItemIds.contains(it.id)) it.copy(locationId = event.id, locationName = location.name.text.toString()) else it
+                        }
+                    )}
+                    val itemNames = currentState.value.selectedItemIds.mapNotNull { selectedItemId ->
+                        currentState.value.activeItemsInCurrentList.fastFirstOrNull { it.id == selectedItemId }?.text?.text?.trim()?.toString() ?: null
+                    }
+                    val newAssignedGroceries = (location.assignedGroceries + itemNames).distinct()
+                    // Add all item names to the selected location
+                    viewModelScope.launch {
+                        locationsUseCases.addLocation(location.toGroceryLocation().copy(assignedGroceries = newAssignedGroceries))
+                    }
+                    Log.d("SelectLocationId", "Selected Location: $location for items ${itemNames}")
+                    // Get all locations that have any of these texts assigned
+                    val removeLocations = currentState.value.locations.filter {
+                        it.assignedGroceries.any { itemNames.contains(it) } && it.id != event.id
+                    }.map { it.toGroceryLocation() }
+                    viewModelScope.launch {
+                        removeLocations.forEach { loc ->
+                            val newAssignedGroceries = loc.assignedGroceries - itemNames.toSet()
+                            locationsUseCases.addLocation(loc.copy(assignedGroceries = newAssignedGroceries))
+                        }
+                    }
+                    Log.d("SelectLocationId", "Removed Item names from locations: ${removeLocations.map { it.name }}")
+                }
             }
             is GroceryScreenEvent.AddList -> {
                 viewModelScope.launch {
@@ -229,10 +291,51 @@ class GroceryViewModelNew @Inject constructor(
                 }
             }
             is GroceryScreenEvent.DeleteList -> {
-                val list = currentState.lists.fastFirstOrNull { it.id == event.id }?.toGroceryList()
+                val list = currentState.value.lists.fastFirstOrNull { it.id == event.id }?.toGroceryList()
                 if (list == null) return
                 viewModelScope.launch {
                     groceriesUseCases.deleteGroceryList(list)
+                }
+            }
+            is GroceryScreenEvent.AddItemIdsToSelection -> {
+                val newSelectedItems = (currentState.value.selectedItemIds + event.ids).distinct()
+                // If there is just one item selected, update the editing item
+                if (newSelectedItems.size == 1) {
+                    _currentState.update { it.copy(
+                        editingItem = currentState.value.activeItemsInCurrentList.fastFirstOrNull { it.id == newSelectedItems[0] }
+                    )}
+                }
+                // Update item ids and set selection mode active to true
+                _currentState.update { it.copy(
+                    selectedItemIds = newSelectedItems,
+                    isSelectionModeActive = true
+                )}
+            }
+            is GroceryScreenEvent.RemoveItemIdsFromSelection -> {
+                // If all remaining items should be removed, deactivate selection mode instead of removing the items
+                if (currentState.value.selectedItemIds.size == event.ids.size) {
+                    _currentState.update { it.copy(
+                        isSelectionModeActive = false
+                    )}
+                    return
+                }
+                val newSelectedItems = currentState.value.selectedItemIds - event.ids.toSet()
+                // If there is just one item selected, update the editing item
+                if (newSelectedItems.size == 1) {
+                    _currentState.update { it.copy(
+                        editingItem = currentState.value.activeItemsInCurrentList.fastFirstOrNull { it.id == newSelectedItems[0] }
+                    )}
+                }
+                // Update selected item ids
+                _currentState.update { it.copy(
+                    selectedItemIds = newSelectedItems
+                )}
+            }
+            is GroceryScreenEvent.ToggleItemIdSelection -> {
+                if (currentState.value.selectedItemIds.contains(event.id)) {
+                    onEvent(GroceryScreenEvent.RemoveItemIdsFromSelection(listOf(event.id)))
+                } else {
+                    onEvent(GroceryScreenEvent.AddItemIdsToSelection(listOf(event.id)))
                 }
             }
         }
@@ -244,7 +347,7 @@ class GroceryViewModelNew @Inject constructor(
             Log.d("getSettings", "Settings: $settings")
             _currentState.update { it.copy(
                 selectedListId = settings[SELECTED_LIST_ID],
-                selectedList = currentState.lists.fastFirstOrNull { it.id == settings[SELECTED_LIST_ID] }
+                selectedList = currentState.value.lists.fastFirstOrNull { it.id == settings[SELECTED_LIST_ID] }
             )}
         }.launchIn(viewModelScope)
     }
@@ -253,8 +356,18 @@ class GroceryViewModelNew @Inject constructor(
         getLocationsJob?.cancel()
         getLocationsJob = locationsUseCases.getAllLocations().onEach { locs ->
             Log.d("getLocations", "Locations: $locs")
+            val newGroceryItems = currentState.value.activeItemsInCurrentList.map { item ->
+                val location = locs.fastFirstOrNull { it.assignedGroceries.contains(item.text.text.trim().toString()) }
+                if (location != null) item.copy(locationId = location.id, locationName = location.name) else item
+            }
+            val newFinishedGroceryItems = currentState.value.finishedItemsInCurrentList.map { item ->
+                val location = locs.fastFirstOrNull { it.assignedGroceries.contains(item.text.text.trim().toString()) }
+                if (location != null) item.copy(locationId = location.id, locationName = location.name) else item
+            }
             _currentState.update { it.copy(
-                locations = locs.map { it.toPresentationLocation() }
+                locations = locs.map { it.toPresentationLocation() },
+                activeItemsInCurrentList = newGroceryItems,
+                finishedItemsInCurrentList = newFinishedGroceryItems
             )}
         }.launchIn(viewModelScope)
     }
@@ -265,27 +378,49 @@ class GroceryViewModelNew @Inject constructor(
         getListsJob?.cancel()
         getListsJob = groceriesUseCases.getAllLists().onEach { lists ->
             Log.d("getLists", "Lists: $lists")
-            // Create UI Lists from data lists and update current state
-            val presLists = lists.map { it.toPresentationList() }
+            
+            // Reconcile lists to keep TextFieldState
+            val currentPresLists = _currentState.value.lists
+            val presLists = lists.map { list ->
+                currentPresLists.fastFirstOrNull { it.id == list.id } ?: list.toPresentationList()
+            }
+            dataLists = lists
+            
             _currentState.update { it.copy(
                 lists = presLists
             )}
 
-            // Add update jobs for each list and cancel old ones
-            presLists.forEach { list ->
-                listUpdateJobs[list.id]?.cancel()
-                listUpdateJobs[list.id] = snapshotFlow { list.nameState.text.toString() }.debounce(timeoutMillis = 500).distinctUntilChanged().onEach { newName ->
-                    handleListNameChange(list.id, newName)
-                }.launchIn(viewModelScope)
+            // Add update jobs for each list that doesn't have one yet
+            currentState.value.lists.forEach { list ->
+                if (listUpdateJobs[list.id] == null) {
+                    Log.d("getLists", "Adding update job for ID ${list.id}")
+                    listUpdateJobs[list.id] = viewModelScope.launch {
+                        snapshotFlow { list.nameState.text }
+                        .debounce(500.milliseconds)
+                        .distinctUntilChanged()
+                        .collect { newName ->
+                            handleListNameChange(list.id, newName.toString())
+                        }
+                    }
+                }
             }
+
+            val removeOldIds = listUpdateJobs.keys.filter { id -> !currentState.value.lists.any { id == it.id } }
+            removeOldIds.forEach {
+                Log.d("getLists", "Removing update job for ID ${it}")
+                listUpdateJobs[it]?.cancel()
+                listUpdateJobs.remove(it)
+            }
+
             // If there is a selected list ID, select that list
-            if (currentState.selectedListId != null) {
+            if (currentState.value.selectedListId != null) {
                 _currentState.update { it.copy(
-                    selectedList = currentState.lists.fastFirstOrNull { it.id == currentState.selectedListId }
+                    selectedList = currentState.value.lists.fastFirstOrNull { it.id == currentState.value.selectedListId }
                 )}
+                Log.d("getLists", "Selected List ${currentState.value.selectedListId}")
             }
             // If no list corresponds to the selected list ID and there is a first list, select that first list
-            if (!lists.any { it.id == currentState.selectedListId } && lists.isNotEmpty()) {
+            if (!lists.any { it.id == currentState.value.selectedListId } && lists.isNotEmpty()) {
                 Log.d("getLists", "Setting selected list to first list: ${lists[0].id}")
                 settingsRepository.setSelectedListId(lists[0].id!!)
             }
@@ -296,17 +431,18 @@ class GroceryViewModelNew @Inject constructor(
         }.launchIn(viewModelScope)
 
         observeSelectedListIdJob?.cancel()
-        observeSelectedListIdJob = snapshotFlow { currentState.selectedListId }
+        observeSelectedListIdJob = currentState.map { it.selectedListId }
             .distinctUntilChanged()
             .onEach { listId ->
+                Log.d("getGroceries", "listId has changed to $listId")
                 getGroceriesJob?.cancel()
                 getGroceriesJob = groceriesUseCases.getGroceriesInList(listId ?: 0).onEach { groceries ->
-                    Log.d("getGroceries", "Groceries: $groceries")
+                    Log.d("getGroceries", "Groceries: $groceries (ListId: $listId)")
                     val presentationItems = groceries.map { groceryItem ->
-                        val location = currentState.locations.fastFirstOrNull { it.assignedGroceries.contains(groceryItem.text) }
+                        val location = currentState.value.locations.fastFirstOrNull { it.assignedGroceries.contains(groceryItem.text) }
                         val presItem = groceryItem.toPresentationItem().copy(
                             locationId = location?.id,
-                            locationName = location?.name?.text.toString()
+                            locationName = location?.name?.text?.toString() ?: "No Location"
                         )
                         return@map presItem
                     }
@@ -319,13 +455,17 @@ class GroceryViewModelNew @Inject constructor(
             }.launchIn(viewModelScope)
     }
     fun handleListNameChange(id: Int, newName: String) {
-        val list = currentState.lists.fastFirstOrNull { it.id == id }
-        if (list == null) return
+        val list = currentState.value.lists.fastFirstOrNull { it.id == id } ?: run {
+            Log.d("handleListNameChange", "List $id not found")
+            return
+        }
+
+        Log.d("handleListNameChange", "List $id has new Name $newName")
 
         // Check for Errors
         val isBlank = newName.isBlank()
         val isTooLong = newName.length > MAX_LENGTH_LIST_NAME
-        val isNameSame = (currentState.lists - list).any { it.nameState.text.trim().toString() == newName.trim() }
+        val isNameSame = (currentState.value.lists - list).any { it.nameState.text.trim().toString() == newName.trim() }
         val isError = isBlank || isTooLong || isNameSame
         // If there is an error, update list with error type
         if (isError) {
@@ -336,16 +476,16 @@ class GroceryViewModelNew @Inject constructor(
                 nameErrorType = errorType
             )
             _currentState.update { it.copy(
-                lists = currentState.lists - list + newList
+                lists = currentState.value.lists.map { if (it.id == id) newList else it }
             )}
-            Log.d("handleListNameChange", "List \"${list.nameState.text.toString()}\" ($id) could not be changed to new Name  to $newName")
+            Log.d("handleListNameChange", "List \"${list.nameState.text.toString()}\" ($id) could not be changed to \"$newName\" ($errorType)")
             return
         }
         // If there is no error
         // Update state to reflect that there is no error
         if (list.isNameError) {
             _currentState.update { it.copy(
-                lists = currentState.lists - list + list.copy(isNameError = false)
+                lists = currentState.value.lists.map { if (it.id == id) list.copy(isNameError = false) else it}
             )}
         }
         // Convert UI list to Data list and update it in the database
@@ -356,14 +496,15 @@ class GroceryViewModelNew @Inject constructor(
     }
     fun handleAddSheetNameChange(newName: String) {
         // Check for Locations
-        val location = currentState.locations.fastFirstOrNull { it.assignedGroceries.contains(newName.trim()) } ?: return
+        val location = currentState.value.locations.fastFirstOrNull { it.assignedGroceries.contains(newName.trim()) }
         _currentState.update { it.copy(
-            addSheetSelectedLocationId = location.id,
-            addSheetSelectedLocationName = location.name.text.toString()
+            addSheetSelectedLocationId = location?.id,
+            addSheetSelectedLocationName = location?.name?.text?.toString()
         )}
     }
     sealed class UiEvent {
         data class ShowSnackbar(@StringRes val message: Int, @StringRes val action: Int? = null, val onAction: (() -> Unit)? = null): UiEvent()
         object ClearFocus: UiEvent()
+        data class ChangeShowEditSheet(val show: Boolean): UiEvent()
     }
 }
