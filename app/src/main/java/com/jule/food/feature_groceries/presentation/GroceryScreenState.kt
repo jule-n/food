@@ -14,13 +14,14 @@ import com.jule.food.others.ErrorType
 
 data class GroceryScreenState @OptIn(ExperimentalMaterial3Api::class) constructor(
     val lists: List<GroceryListPresentation> = listOf(),
+    val dataLists: List<GroceryListNew> = listOf(),
     val locations: List<GroceryLocationPresentation> = listOf(),
     val selectedListId: Int? = null,
     val selectedList: GroceryListPresentation? = null,
     val activeItemsInCurrentList: List<GroceryItemPresentation> = listOf(),
     val finishedItemsInCurrentList: List<GroceryItemPresentation> = listOf(),
     val isDataLoaded: Boolean = false,
-    val selectedItemIds: List<Int> = listOf(),
+    val selectedItemIds: Set<Int> = setOf(),
     val editingItem: GroceryItemPresentation? = null,
     val isSelectionModeActive: Boolean = false,
     val showAddGrocerySheet: Boolean = false,

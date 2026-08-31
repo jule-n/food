@@ -173,15 +173,14 @@ fun GroceryGridNew(
                             item = groceryItem,
                             onClick = {
                                 if (state.isSelectionModeActive) {
-                                    onEvent(GroceryScreenEvent.ToggleItemIdSelection(groceryItem.id))
+                                    onEvent(GroceryScreenEvent.ItemEvent.ToggleItemIdSelection(groceryItem.id))
                                 } else {
-                                    onEvent(GroceryScreenEvent.FinishItem(groceryItem.id))
+                                    onEvent(GroceryScreenEvent.ItemEvent.FinishItem(groceryItem.id))
                                 }
                             },
                             onLongClick = {
                                 if (!state.isSelectionModeActive) {
-                                    onEvent(GroceryScreenEvent.ChangeIsSelectionModeActive(true))
-                                    onEvent(GroceryScreenEvent.AddItemIdsToSelection(listOf(groceryItem.id)))
+                                    onEvent(GroceryScreenEvent.ItemEvent.AddItemIdsToSelection(listOf(groceryItem.id)))
                                 }
                             },
                             showRecipeName = state.groupingOption != GroceryGroupingOption.Recipe,
@@ -205,7 +204,7 @@ fun GroceryGridNew(
                 Box(modifier = Modifier.animateItem()) {
                     Row {
                         Surface(
-                            onClick = { onEvent(GroceryScreenEvent.ChangeShowFinishedItems(!state.selectedList.showFinishedItems)) },
+                            onClick = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowFinishedItems(!state.selectedList.showFinishedItems)) },
                             shape = RoundedCornerShape(20),
                             enabled = true,
                             color = Color.Transparent
@@ -255,7 +254,7 @@ fun GroceryGridNew(
                         }
                         IconButtonWithTooltip(
                             onClick = {
-                                onEvent(GroceryScreenEvent.DeleteFinishedItems)
+                                onEvent(GroceryScreenEvent.ItemEvent.DeleteFinishedItems)
                             },
                             enabled = state.finishedItemsInCurrentList.isNotEmpty(),
                             tooltipText = stringResource(R.string.delete_finished_items)
@@ -278,7 +277,7 @@ fun GroceryGridNew(
                         item = groceryItem,
                         onClick = {
                             if (!state.isSelectionModeActive) {
-                                onEvent(GroceryScreenEvent.RestoreFinishedItem(groceryItem.id))
+                                onEvent(GroceryScreenEvent.ItemEvent.RestoreFinishedItem(groceryItem.id))
                             }
                         },
                         onLongClick = null,

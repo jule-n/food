@@ -69,7 +69,7 @@ import java.util.UUID
 @Composable
 fun EditGroceriesBottomSheetNew(
     modifier: Modifier = Modifier,
-    editingGroceryItemIds: List<Int>,
+    editingGroceryItemIds: Set<Int>,
     groceryNameState: TextFieldState,
     groceryDetailState: TextFieldState,
     onOpenLocationSelectionDialog: () -> Unit,

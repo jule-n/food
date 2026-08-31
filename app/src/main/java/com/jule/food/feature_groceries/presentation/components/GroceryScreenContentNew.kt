@@ -87,7 +87,7 @@ fun GroceryScreenContentNew(
                     groceryNameState = state.editingItem.text,
                     groceryDetailState = state.editingItem.details,
                     onOpenListSelectionDialog = { },
-                    onOpenLocationSelectionDialog = { onEvent(GroceryScreenEvent.ChangeShowSelectLocationDialog(true)) },
+                    onOpenLocationSelectionDialog = { onEvent(GroceryScreenEvent.LocationEvent.ChangeShowSelectLocationDialog(true)) },
                     onOpenRecipeSelectionDialog = { }
                 )
             }
@@ -113,7 +113,7 @@ fun GroceryScreenContentNew(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    onEvent(GroceryScreenEvent.ChangeIsSelectionModeActive(false))
+                    onEvent(GroceryScreenEvent.ItemEvent.ChangeIsSelectionModeActive(false))
                 }
         ) {
             SharedTransitionLayout {
@@ -127,16 +127,16 @@ fun GroceryScreenContentNew(
                                 GroceryScreenTopNew(
                                     lists = state.lists,
                                     selectedListId = state.selectedListId,
-                                    onChangeSelectedListId = { onEvent(GroceryScreenEvent.ChangeSelectedListId(it)) },
-                                    onOpenListEditScreen = { onEvent(GroceryScreenEvent.ChangeShowEditListScreen(true)) },
+                                    onChangeSelectedListId = { onEvent(GroceryScreenEvent.ListEvent.ChangeSelectedListId(it)) },
+                                    onOpenListEditScreen = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowEditListScreen(true)) },
                                     groupingOption = state.groupingOption,
-                                    onChangeShowGroupingDialog = { onEvent(GroceryScreenEvent.ChangeShowGroupingOptionDialog(true)) },
+                                    onChangeShowGroupingDialog = { onEvent(GroceryScreenEvent.ItemEvent.ChangeShowGroupingOptionDialog(true)) },
                                 )
                             } else {
                                 ListEditScreen(
                                     lists = state.lists,
-                                    onAddNewList = { onEvent(GroceryScreenEvent.AddList(it)) },
-                                    onDeleteList = { onEvent(GroceryScreenEvent.DeleteList(it)) },
+                                    onAddNewList = { onEvent(GroceryScreenEvent.ListEvent.AddList(it)) },
+                                    onDeleteList = { onEvent(GroceryScreenEvent.ListEvent.DeleteList(it)) },
                                     onReorderLists = { _, _ -> }
                                 )
                             }
@@ -160,7 +160,7 @@ fun GroceryScreenContentNew(
             SettingDialog(
                 title = stringResource(R.string.group_by),
                 onDismissRequest = {
-                    onEvent(GroceryScreenEvent.ChangeShowGroupingOptionDialog(false))
+                    onEvent(GroceryScreenEvent.ItemEvent.ChangeShowGroupingOptionDialog(false))
                 }
             ) {
                 GroceryGroupingOption.entries.forEachIndexed { index, option ->
@@ -169,7 +169,7 @@ fun GroceryScreenContentNew(
                         title = stringResource(groceryGroupingOptionsDisplay[option]!!),
                         selected = selected,
                         onClick = {
-                            onEvent(GroceryScreenEvent.ChangeGroupingOption(option))
+                            onEvent(GroceryScreenEvent.ItemEvent.ChangeGroupingOption(option))
                         },
                         leadingIcon = {
                             Icon(
