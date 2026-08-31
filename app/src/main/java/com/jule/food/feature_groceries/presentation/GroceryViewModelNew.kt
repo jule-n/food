@@ -80,6 +80,11 @@ class GroceryViewModelNew @Inject constructor(
                 handleAddSheetNameChange(it)
             }
         }
+        viewModelScope.launch {
+            snapshotFlow { currentState.value.addListNameState.text.toString() }.debounce(500.milliseconds).collectLatest {
+                handleAddListNameChange(it)
+            }
+        }
     }
 
     fun onEvent(event: GroceryScreenEvent) {
@@ -117,17 +122,22 @@ class GroceryViewModelNew @Inject constructor(
                 }
             }
             is GroceryScreenEvent.ItemEvent.AddGrocery -> {
+                val name = currentState.value.addSheetNameState.text.trim().toString()
+                if (name.isBlank()) return
 
-                Log.d("AddGrocery", "Adding new Grocery Item ${currentState.value.addSheetNameState.text}")
+                Log.d("AddGrocery", "Adding new Grocery Item \"${name}\"")
                 val item = GroceryItemNew(
-                    currentState.value.addSheetNameState.text.trim().toString(),
+                    name,
                     currentState.value.addSheetDetailState.text.trim().toString(),
                     listId = currentState.value.selectedListId!!
                 )
                 viewModelScope.launch {
                     groceriesUseCases.addGroceryItem(item)
                 }
-                val itemText = currentState.value.addSheetNameState.text.trim().toString()
+                currentState.value.addSheetNameState.clearText()
+                currentState.value.addSheetDetailState.clearText()
+
+                val itemText = item.text
                 if (currentState.value.addSheetSelectedLocationId != null) {
                     val location = currentState.value.locations.fastFirstOrNull { it.id == currentState.value.addSheetSelectedLocationId }?.toGroceryLocation()
                     if (location != null && !location.assignedGroceries.contains(itemText)) {
@@ -174,8 +184,8 @@ class GroceryViewModelNew @Inject constructor(
                     lastDeletedFinishedItems = currentState.value.finishedItemsInCurrentList.map { it.toGroceryItem() }
                     groceriesUseCases.deleteGroceryItems(lastDeletedFinishedItems!!)
                     _eventFlow.emit(UiEvent.ShowSnackbar(
-                        message = R.string.delete_finished_items,
-                        action = R.string.undo,
+                        messageType = UiEvent.SnackbarMessageType.DeletedNFinishedItems,
+                        extraArgs = listOf(lastDeletedFinishedItems?.size?.toString() ?: "0"),
                         onAction = {
                             onEvent(GroceryScreenEvent.ItemEvent.RestoreDeletedItems)
                         }
@@ -196,6 +206,7 @@ class GroceryViewModelNew @Inject constructor(
                 viewModelScope.launch {
                     groceriesUseCases.addGroceryList(GroceryListNew(event.name))
                 }
+                currentState.value.addListNameState.clearText()
             }
             is GroceryScreenEvent.ListEvent.DeleteList -> {
                 val list = currentState.value.lists.fastFirstOrNull { it.id == event.id }?.toGroceryList()
@@ -207,6 +218,9 @@ class GroceryViewModelNew @Inject constructor(
 
 
             is GroceryScreenEvent.LocationEvent.AddLocation -> {
+                handleAddListNameChange(newName = event.name)
+                if (currentState.value.isAddListError) return
+
                 viewModelScope.launch {
                     locationsUseCases.addLocation(GroceryLocationNew(
                         name = event.name,
@@ -414,10 +428,35 @@ class GroceryViewModelNew @Inject constructor(
             addSheetSelectedLocationName = location?.name?.text?.toString()
         )}
     }
+    fun handleAddListNameChange(newName: String) {
+        // Check for Errors
+        val isBlank = newName.isBlank()
+        val isTooLong = newName.length > MAX_LENGTH_LIST_NAME
+        val isNameSame = currentState.value.lists.any { it.nameState.text.trim().toString() == newName.trim() }
+        val isError = isBlank || isTooLong || isNameSame
+        // If there is an error, update list with error type
+        if (isError) {
+            val errorType = if (isBlank) ErrorType.IsEmpty else
+                ( if (isTooLong) ErrorType.TooLong(MAX_LENGTH_LIST_NAME) else ErrorType.NameSame )
+            _currentState.update { it.copy(
+                isAddListError = true,
+                addListErrorType = errorType
+            )}
+            return
+        }
+        _currentState.update { it.copy(
+            isAddListError = false
+        )}
+    }
 
 
     sealed class UiEvent {
-        data class ShowSnackbar(@StringRes val message: Int, @StringRes val action: Int? = null, val onAction: (() -> Unit)? = null): UiEvent()
+        enum class SnackbarMessageType { DeletedNFinishedItems }
+        data class ShowSnackbar(
+            val messageType: SnackbarMessageType,
+            val extraArgs: List<String>? = null,
+            val onAction: (() -> Unit)? = null
+        ): UiEvent()
         object ClearFocus: UiEvent()
         data class ChangeShowEditSheet(val show: Boolean): UiEvent()
     }

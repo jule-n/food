@@ -37,7 +37,7 @@ class GroceryItemReducer: MviReducer<GroceryScreenState, GroceryScreenEvent.Item
             is GroceryScreenEvent.ItemEvent.ToggleItemIdSelection -> state.onToggleItemIdSelection(event.id)
 
             is GroceryScreenEvent.ItemEvent.ChangeShowAddGrocerySheet -> state.onChangeShowAddGrocerySheet(event.show)
-            is GroceryScreenEvent.ItemEvent.AddGrocery -> state.onAddGrocery()
+            is GroceryScreenEvent.ItemEvent.AddGrocery -> state
 
             is GroceryScreenEvent.ItemEvent.ChangeShowGroupingOptionDialog -> state.onChangeShowGroupingDialog(event.show)
             is GroceryScreenEvent.ItemEvent.ChangeGroupingOption -> state.onChangeGroupingOption(event.value)
@@ -63,7 +63,7 @@ class GroceryItemReducer: MviReducer<GroceryScreenState, GroceryScreenEvent.Item
         return state
     }
     fun GroceryScreenState.onAddItemIdsToSelection(itemIds: List<Int>): GroceryScreenState {
-        if (itemIds.isEmpty() || selectedItemIds.containsAll(itemIds)) return this
+        if (itemIds.isEmpty()) return this
 
         var editingItem = editingItem
 //        // If there is just one item selected, update the editing item
@@ -110,14 +110,14 @@ class GroceryItemReducer: MviReducer<GroceryScreenState, GroceryScreenEvent.Item
         if (showAddGrocerySheet == show) return this
         return copy(showAddGrocerySheet = show)
     }
-    fun GroceryScreenState.onAddGrocery(): GroceryScreenState {
-        // Check for error
-        if (addSheetNameState.text.isBlank() || selectedListId == null) return this
-        // Empty the text fields
-        addSheetNameState.clearText()
-        addSheetDetailState.clearText()
-        return this
-    }
+//    fun GroceryScreenState.onAddGrocery(): GroceryScreenState {
+//        // Check for error
+//        if (addSheetNameState.text.isBlank() || selectedListId == null) return this
+//        // Empty the text fields
+//        addSheetNameState.clearText()
+//        addSheetDetailState.clearText()
+//        return this
+//    }
 
     fun GroceryScreenState.onChangeShowGroupingDialog(show: Boolean): GroceryScreenState {
         if (showGroupingOptionDialog == show) return this

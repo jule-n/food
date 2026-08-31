@@ -180,6 +180,7 @@ fun GroceryGridNew(
                             },
                             onLongClick = {
                                 if (!state.isSelectionModeActive) {
+                                    onEvent(GroceryScreenEvent.ItemEvent.ChangeIsSelectionModeActive(true))
                                     onEvent(GroceryScreenEvent.ItemEvent.AddItemIdsToSelection(listOf(groceryItem.id)))
                                 }
                             },

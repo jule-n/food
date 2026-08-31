@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -35,11 +36,13 @@ import androidx.compose.ui.unit.dp
 import com.jule.food.R
 import com.jule.food.feature_groceries.domain.GroceryListPresentation
 import com.jule.food.others.ErrorType
+import com.jule.food.others.getLabelFromErrorType
 import com.jule.food.ui.groceries_recipes.EditScreen
 import com.jule.food.ui.groceries_recipes.EditScreenItem
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.utils.BasicTextFieldWithBox
+import com.jule.food.utils.SheetErrorMessage
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
@@ -49,6 +52,9 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ListEditScreen(
     lists: List<GroceryListPresentation>,
+    addListNameState: TextFieldState,
+    isAddListError: Boolean,
+    addListErrorType: ErrorType?,
     onAddNewList: (String) -> Unit,
     onDeleteList: (Int) -> Unit,
     onReorderLists: (fromIndex: Int, toIndex: Int) -> Unit,
@@ -69,11 +75,11 @@ fun ListEditScreen(
 
     var showAddListSheet by remember { mutableStateOf(false) }
     val addListFocusRequester = remember { FocusRequester() }
-    var showConfirmDeleteListDialog by remember { mutableStateOf(false) }
     var listToDelete: GroceryListPresentation? by remember { mutableStateOf(null) }
 
     with (LocalSharedTransitionScope.current!!) {
         EditScreenNew<GroceryListPresentation>(
+            modifier = modifier,
             lazyListState = lazyListState,
             reorderableListState = reorderableListState,
             items = lists,
@@ -118,7 +124,7 @@ fun ListEditScreen(
             newButtonBackgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
             onDelete = { onDeleteList(it.id) },
             confirmDeleteDialogTitle = stringResource(R.string.delete_category),
-            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.nameState.toString()) },
+            onDeleteToastText = { resources.getString(R.string.deleted_category_name, it.nameState.text.toString()) },
             itemToDelete = listToDelete,
             onResetItemToDelete = { listToDelete = null }
         )
@@ -259,26 +265,20 @@ fun ListEditScreen(
     }
 
     if (showAddListSheet) {
+        // Don't show it is empty for the first time it is empty, only show it after text has been entered for the first time
+        var showEmptyListError by remember { mutableStateOf(false) }
+        LaunchedEffect(addListNameState.text) {
+            if (!showEmptyListError && addListNameState.text.isNotEmpty()) {
+                showEmptyListError = true
+            }
+        }
         ModalBottomSheet(
             onDismissRequest = { showAddListSheet = false },
             dragHandle = null
         ) {
-            val textFieldState = rememberTextFieldState()
-
-//            var showEmptyCategoryError by remember { mutableStateOf(false) }
-//            val isCategoryNameEmpty = textFieldState.text.isEmpty()
-//            val isCategoryNameTooLong = isCategoryNameTooLong(textFieldState.text.toString())
-//            val isCategoryNameSame = allCategories.any { it.name == textFieldState.text.trim().toString() }
-//
-//            if (!showEmptyCategoryError) {
-//                LaunchedEffect(textFieldState.text) {
-//                    if (textFieldState.text.isNotEmpty())
-//                        showEmptyCategoryError = true
-//                }
-//            }
 
             BasicTextFieldWithBox(
-                state = textFieldState,
+                state = addListNameState,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 textStyle = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.fillMaxWidth().focusRequester(addListFocusRequester),
@@ -291,29 +291,24 @@ fun ListEditScreen(
                 contentPadding = PaddingValues(15.dp),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 onKeyboardAction = {
-                    onAddNewList(textFieldState.text.toString())
-//                    if (!isCategoryNameEmpty && !isCategoryNameTooLong && !isCategoryNameSame) {
-//                        val name = textFieldState.text.trim().toString()
-//                        onAddNewCategory(GroceryItemCategory(name))
-//                        showAddCategorySheet = false
-//                    }
+                    if (!isAddListError) {
+                        onAddNewList(addListNameState.text.trim().toString())
+                        showAddListSheet = false
+                    }
                 }
             )
-//            SheetErrorMessage(
-//                isError = (showEmptyCategoryError && isCategoryNameEmpty) || isCategoryNameTooLong || isCategoryNameSame,
-//                message = if (isCategoryNameTooLong) stringResource(R.string.name_too_long, 40) else
-//                    if (isCategoryNameEmpty) stringResource(R.string.name_empty) else
-//                        if (isCategoryNameSame) stringResource(R.string.name_already_exists) else ""
-//            )
+            SheetErrorMessage(
+                isError = isAddListError,
+                message = getLabelFromErrorType(addListErrorType!!, resources)
+            )
             Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TextButton(
-//                    enabled = !isCategoryNameEmpty && !isCategoryNameTooLong,
+                    enabled = !isAddListError,
                     onClick = {
-                        val name = textFieldState.text.trim().toString()
-                        onAddNewList(textFieldState.text.trim().toString())
+                        onAddNewList(addListNameState.text.trim().toString())
                         showAddListSheet = false
                     }
                 ) {

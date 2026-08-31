@@ -135,6 +135,9 @@ fun GroceryScreenContentNew(
                             } else {
                                 ListEditScreen(
                                     lists = state.lists,
+                                    addListNameState = state.addListNameState,
+                                    isAddListError = state.isAddListError,
+                                    addListErrorType = state.addListErrorType,
                                     onAddNewList = { onEvent(GroceryScreenEvent.ListEvent.AddList(it)) },
                                     onDeleteList = { onEvent(GroceryScreenEvent.ListEvent.DeleteList(it)) },
                                     onReorderLists = { _, _ -> }

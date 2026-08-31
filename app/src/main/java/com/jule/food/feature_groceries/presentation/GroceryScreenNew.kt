@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -106,9 +107,14 @@ fun GroceryScreenNew(
         viewModel.eventFlow.collectLatest { event ->
             when (event) {
                 is GroceryViewModelNew.UiEvent.ShowSnackbar -> {
+                    val (message, actionLabel) = when (event.messageType) {
+                        GroceryViewModelNew.UiEvent.SnackbarMessageType.DeletedNFinishedItems ->
+                            Pair(resources.getString(R.string.deleted_n_finished_items, event.extraArgs!![0].toInt()), resources.getString(R.string.undo))
+                    }
                     val result = snackbarHostState.showSnackbar(
-                        message = resources.getString(event.message),
-                        actionLabel = if (event.action != null) resources.getString(event.action) else null
+                        message = message,
+                        actionLabel = actionLabel,
+                        duration = if (event.onAction == null) SnackbarDuration.Short else SnackbarDuration.Long
                     )
                     if (event.onAction != null && result == SnackbarResult.ActionPerformed) {
                         event.onAction()

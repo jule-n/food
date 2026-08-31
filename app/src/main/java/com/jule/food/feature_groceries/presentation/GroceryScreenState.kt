@@ -14,6 +14,9 @@ import com.jule.food.others.ErrorType
 
 data class GroceryScreenState @OptIn(ExperimentalMaterial3Api::class) constructor(
     val lists: List<GroceryListPresentation> = listOf(),
+    val addListNameState: TextFieldState = TextFieldState(),
+    val isAddListError: Boolean = false,
+    val addListErrorType: ErrorType? = null,
     val dataLists: List<GroceryListNew> = listOf(),
     val locations: List<GroceryLocationPresentation> = listOf(),
     val selectedListId: Int? = null,
