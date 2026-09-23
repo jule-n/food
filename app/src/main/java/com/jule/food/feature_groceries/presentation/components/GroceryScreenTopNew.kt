@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,9 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -35,23 +32,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.jule.food.data.GroceryGroupingOption
-import com.jule.food.data.GroceryItemCategory
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.R
 import com.jule.food.data.groceryGroupingOptionsDisplay
 import com.jule.food.data.groceryGroupingOptionsIcons
-import com.jule.food.feature_groceries.domain.GroceryListNew
-import com.jule.food.feature_groceries.domain.GroceryListPresentation
-import com.jule.food.ui.groceries.CategoriesConnectedButtonsCustom
+import com.jule.food.feature_groceries.domain.GroceryListUI
 import com.jule.food.ui.theme.FoodTheme
-import java.util.UUID
 
 
 @Composable
 fun GroceryScreenTopNew(
     modifier: Modifier = Modifier,
-    lists: List<GroceryListPresentation>,
+    lists: List<GroceryListUI>,
     selectedListId: Int,
     onChangeSelectedListId: (Int) -> Unit,
     onOpenListEditScreen: () -> Unit,
@@ -104,10 +97,10 @@ fun GroceryScreenTopNew(
 @Composable
 fun GroceryScreenTopNewPreview() {
     val lists = remember { mutableStateListOf(
-        GroceryListPresentation(TextFieldState("Edeka"), id = 0),
-        GroceryListPresentation(TextFieldState("Bdeka"), id = 0),
-        GroceryListPresentation(TextFieldState("Lebensmittelfachgeschäft"), id = 0),
-        GroceryListPresentation(TextFieldState("Garn und Nadeln"), id = 0)
+        GroceryListUI("Edeka", "Edeka", id = 0),
+        GroceryListUI("Bdeka", "Bdeka", id = 1),
+        GroceryListUI("Lebensmittelfachgeschäft", "Lebensmittelfachgeschäft", id = 2),
+        GroceryListUI("Garn und Nadeln", "Garn und Nadeln", id = 3)
     )}
 
 

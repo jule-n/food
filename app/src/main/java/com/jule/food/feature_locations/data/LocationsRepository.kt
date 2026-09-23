@@ -14,11 +14,11 @@ class LocationsRepository(
         return dao.getAllLocations()
     }
 
-    suspend fun addLocation(location: GroceryLocationNew) {
-        dao.addLocation(location)
+    suspend fun addLocations(locations: List<GroceryLocationNew>) {
+        dao.addLocations(locations)
     }
 
-    suspend fun deleteLocation(location: GroceryLocationNew) {
-        dao.deleteLocation(location)
+    suspend fun deleteLocations(locationIds: List<Int>) {
+        dao.deleteLocations(locationIds)
     }
 }

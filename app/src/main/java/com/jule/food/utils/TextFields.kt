@@ -76,6 +76,8 @@ fun BasicTextFieldWithBox(
     lineLimits: TextFieldLineLimits,
     placeholder: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    prefix: (@Composable () -> Unit)? = null,
+    suffix: (@Composable () -> Unit)? = null,
     textColor: Color = MaterialTheme.colorScheme.onBackground,
     colors: TextFieldColors = TextFieldDefaults.colors().copy(
         unfocusedIndicatorColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
@@ -104,6 +106,8 @@ fun BasicTextFieldWithBox(
                 visualTransformation = VisualTransformation.None,
                 interactionSource = interactionSource,
                 trailingIcon = trailingIcon,
+                prefix = prefix,
+                suffix = suffix,
                 placeholder = placeholder,
                 colors = colors,
                 contentPadding = contentPadding,

@@ -76,10 +76,17 @@ class GroceryItemReducer: MviReducer<GroceryScreenState, GroceryScreenEvent.Item
         if (!isSelectionModeActive) {
             state = state.onChangeIsSelectionModeActive(true)
         }
+        val newSelectedItemIds = selectedItemIds + itemIds
+        val newSelectedItems = newSelectedItemIds.mapNotNull { id -> activeItemsInCurrentList.firstOrNull { it.id == id } }
+        // Do they all have the same location?
+        val allSameLocation = newSelectedItems.all { it.locationId == newSelectedItems[0].locationId }
+        val sameLocationId = newSelectedItems[0].locationId
 
         return state.copy(
-            selectedItemIds = selectedItemIds + itemIds,
-            editingItem = editingItem
+            selectedItemIds = newSelectedItemIds,
+            editingItem = editingItem,
+            isSelectedItemsSameLocation = allSameLocation,
+            selectedItemsLocationId = sameLocationId
         )
     }
     fun GroceryScreenState.onRemoveItemIdsFromSelection(itemIds: List<Int>): GroceryScreenState {
@@ -124,7 +131,7 @@ class GroceryItemReducer: MviReducer<GroceryScreenState, GroceryScreenEvent.Item
         return copy(showGroupingOptionDialog = show)
     }
     fun GroceryScreenState.onChangeGroupingOption(value: GroceryGroupingOption): GroceryScreenState {
-        if (groupingOption == value) return this
-        return copy(groupingOption = value)
+        if (groupingOption == value || !showGroupingOptionDialog) return this
+        return copy(showGroupingOptionDialog = false)
     }
 }

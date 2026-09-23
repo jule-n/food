@@ -21,12 +21,12 @@ import com.jule.food.utils.IconButtonWithTooltip
 import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
 import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.R
-import com.jule.food.feature_groceries.domain.GroceryListPresentation
+import com.jule.food.feature_groceries.domain.GroceryListUI
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun ListConnectedButtons(
-    lists: List<GroceryListPresentation>,
+    lists: List<GroceryListUI>,
     selectedListId: Int,
     onChangeSelectedListId: (Int) -> Unit,
     onEnableEditMode: () -> Unit,
@@ -57,13 +57,13 @@ fun ListConnectedButtons(
             }
             items(lists) { list ->
                 ListButton(
-                    name = list.nameState.text.toString(),
+                    name = list.currentName,
                     selected = list.id == selectedListId,
                     onClick = {
                         onChangeSelectedListId(list.id)
                     },
                     modifier = Modifier.sharedElement(
-                        sharedContentState = rememberSharedContentState(list.id),
+                        sharedContentState = rememberSharedContentState(list.id!!),
                         animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current!!
                     )
                 )

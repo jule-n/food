@@ -8,16 +8,19 @@ import com.jule.food.feature_groceries.data.source.GroceriesDatabase
 import com.jule.food.feature_groceries.domain.use_case.AddGroceryItem
 import com.jule.food.feature_groceries.domain.use_case.AddGroceryItems
 import com.jule.food.feature_groceries.domain.use_case.AddGroceryList
+import com.jule.food.feature_groceries.domain.use_case.AddGroceryLists
 import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryItems
-import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryList
+import com.jule.food.feature_groceries.domain.use_case.DeleteGroceryLists
 import com.jule.food.feature_groceries.domain.use_case.GetAllLists
 import com.jule.food.feature_groceries.domain.use_case.GetGroceriesInList
 import com.jule.food.feature_groceries.domain.use_case.GroceriesUseCases
 import com.jule.food.feature_groceries.domain.use_case.RemoveRecipeIdFromGroceries
 import com.jule.food.feature_locations.data.LocationsRepository
 import com.jule.food.feature_locations.data.source.LocationsDatabase
-import com.jule.food.feature_locations.domain.use_case.AddLocation
-import com.jule.food.feature_locations.domain.use_case.DeleteLocation
+import com.jule.food.feature_locations.domain.use_case.AddItemNameToLocation
+import com.jule.food.feature_locations.domain.use_case.AddItemNamesToLocation
+import com.jule.food.feature_locations.domain.use_case.AddLocations
+import com.jule.food.feature_locations.domain.use_case.DeleteLocations
 import com.jule.food.feature_locations.domain.use_case.GetAllLocations
 import com.jule.food.feature_locations.domain.use_case.LocationUseCases
 import com.jule.food.others.SettingsRepository
@@ -53,9 +56,10 @@ object AppModule {
         return GroceriesUseCases(
             addGroceryItem = AddGroceryItem(repository),
             addGroceryList = AddGroceryList(repository),
+            addGroceryLists = AddGroceryLists(repository),
             addGroceryItems = AddGroceryItems(repository),
             deleteGroceryItems = DeleteGroceryItems(repository),
-            deleteGroceryList = DeleteGroceryList(repository),
+            deleteGroceryLists = DeleteGroceryLists(repository),
             getGroceriesInList = GetGroceriesInList(repository),
             getAllLists = GetAllLists(repository),
             removeRecipeIdFromGroceries = RemoveRecipeIdFromGroceries(repository)
@@ -81,9 +85,11 @@ object AppModule {
     @Singleton
     fun provideLocationsUseCases(repository: LocationsRepository): LocationUseCases {
         return LocationUseCases(
-            addLocation = AddLocation(repository),
-            deleteLocation = DeleteLocation(repository),
-            getAllLocations = GetAllLocations(repository)
+            addLocations = AddLocations(repository),
+            deleteLocations = DeleteLocations(repository),
+            getAllLocations = GetAllLocations(repository),
+            addItemNameToLocation = AddItemNameToLocation(repository),
+            addItemNamesToLocation = AddItemNamesToLocation(repository),
         )
     }
 

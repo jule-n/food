@@ -1,21 +1,13 @@
 package com.jule.food.feature_groceries.presentation.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +15,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -38,11 +29,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,23 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.jule.food.data.GroceryGroupingOption
-import com.jule.food.data.GroceryItemCategory
-import com.jule.food.ui.recipes.LocalNavAnimatedVisibilityScope
-import com.jule.food.ui.recipes.LocalSharedTransitionScope
 import com.jule.food.R
-import com.jule.food.data.groceryGroupingOptionsDisplay
-import com.jule.food.data.groceryGroupingOptionsIcons
-import com.jule.food.feature_groceries.domain.GroceryListNew
-import com.jule.food.feature_groceries.domain.GroceryListPresentation
-import com.jule.food.ui.recipes.EditScreenTopBar
-import com.jule.food.ui.theme.FoodTheme
-import com.jule.food.utils.FilledIconButtonWithTooltip
+import com.jule.food.feature_groceries.domain.GroceryListUI
 import com.jule.food.utils.IconButtonWithTooltip
 import com.jule.food.utils.SurfaceWithTooltip
-import java.util.UUID
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,10 +52,11 @@ import java.util.UUID
 fun GroceryScreenTopBarNew(
     modifier: Modifier = Modifier,
     selectionModeActive: Boolean,
-    selectedList: GroceryListPresentation?,
+    selectedList: GroceryListUI?,
     isEditingLists: Boolean,
     onOpenSharingDialog: () -> Unit,
-    onBackFromCategoryEditing: () -> Unit,
+    isDoneListEditingEnabled: Boolean,
+    onDoneListEditing: () -> Unit,
     onPickJsonFile: () -> Unit,
     onOpenSettings: () -> Unit,
     onSelectAll: () -> Unit,
@@ -150,12 +128,11 @@ fun GroceryScreenTopBarNew(
                         colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                     )
                 } else {
-                    EditScreenTopBar(
+                    EditScreenTopBarNew(
                         title = stringResource(R.string.edit_categories),
                         backgroundColor = MaterialTheme.colorScheme.background,
-                        onBack = {
-                            onBackFromCategoryEditing()
-                        },
+                        onDone = onDoneListEditing,
+                        doneEnabled = isDoneListEditingEnabled,
                         modifier = Modifier.windowInsetsPadding(insets = WindowInsets.statusBars)
                     )
                 }

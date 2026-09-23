@@ -8,7 +8,7 @@ data class GroceryItemPresentation(
     val listId: Int,
     val recipeId: Int? = null,
     val locationId: Int? = null,
-    val locationName: String = "NO_LOC",
+    val locationName: String = "",
     val isFinished: Boolean = false,
     val id: Int
 ) {

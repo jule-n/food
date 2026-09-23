@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.jule.food.data.GroceryGroupingOption
 import com.jule.food.ui.main.dataStore
 
 class SettingsRepository(
@@ -15,11 +16,17 @@ class SettingsRepository(
 
     companion object {
         val SELECTED_LIST_ID = intPreferencesKey("selectedListId")
+        val GROCERY_GROUPING_OPTION = intPreferencesKey("groceryGroupingOption")
     }
 
     suspend fun setSelectedListId(listId: Int) {
         context.dataStore.edit { prefs ->
             prefs[SELECTED_LIST_ID] = listId
+        }
+    }
+    suspend fun setGroceryGroupingOption(groupingOption: GroceryGroupingOption) {
+        context.dataStore.edit { prefs ->
+            prefs[GROCERY_GROUPING_OPTION] = groupingOption.ordinal
         }
     }
 }

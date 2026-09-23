@@ -1,5 +1,6 @@
 package com.jule.food.feature_groceries.presentation
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -61,6 +63,7 @@ import com.jule.food.feature_groceries.presentation.components.AddGroceryBottomS
 import com.jule.food.feature_groceries.presentation.components.GroceryScreenContentNew
 import com.jule.food.feature_groceries.presentation.components.GroceryScreenTopBarNew
 import com.jule.food.feature_groceries.presentation.components.SelectEditLocationButtonsNew
+import com.jule.food.feature_groceries.presentation.components.SelectListDialog
 import com.jule.food.ui.groceries.LoadingGroceryGridScreen
 import kotlinx.coroutines.flow.collectLatest
 
@@ -77,12 +80,16 @@ fun GroceryScreenNew(
     val onEvent = viewModel::onEvent
     val focusManager = LocalFocusManager.current
     val resources = LocalResources.current
+    val context = LocalContext.current
 
 //    var showAddGroceryDialog by remember { mutableStateOf(false) }
 //    var showSharingDialog by remember { mutableStateOf(false) }
 //    var showAddFromRecipeDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val lastListFocusRequester = remember { FocusRequester() }
+    val lastLocationFocusRequester = remember { FocusRequester() }
 
 
 //    val categories = groceryViewModel.groceryItemCategories
@@ -129,6 +136,19 @@ fun GroceryScreenNew(
                     } else {
                         scaffoldState.bottomSheetState.hide()
                     }
+                }
+                is GroceryViewModelNew.UiEvent.ShowToast -> {
+                    val message = when (event.messageType) {
+                        GroceryViewModelNew.UiEvent.ToastMessageType.MovedNItemsToList ->
+                            resources.getString(R.string.moved_n_groceries_to_category, event.extraArgs!![0].toInt(), event.extraArgs[1])
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+                is GroceryViewModelNew.UiEvent.FocusLastList -> {
+                    lastListFocusRequester.requestFocus()
+                }
+                is GroceryViewModelNew.UiEvent.FocusLastLocation -> {
+                    lastLocationFocusRequester.requestFocus()
                 }
             }
         }
@@ -182,10 +202,15 @@ fun GroceryScreenNew(
                 selectedList = state.selectedList,
                 isEditingLists = state.showEditListScreen,
                 onOpenSharingDialog = { },
-                onBackFromCategoryEditing = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowEditListScreen(false)) },
+                isDoneListEditingEnabled = state.isDoneEditListButtonEnabled,
+                onDoneListEditing = { onEvent(GroceryScreenEvent.ListEvent.DoneEditListScreen )},
                 onPickJsonFile = { },
                 onOpenSettings = { },
                 onSelectAll = {
+                    if (!state.isSelectionModeActive) {
+                        onEvent(GroceryScreenEvent.ItemEvent.ChangeIsSelectionModeActive(true))
+                        onEvent(GroceryScreenEvent.ItemEvent.AddItemIdsToSelection(state.activeItemsInCurrentList.map { it.id }))
+                    }
 //                    selectedGroceryItems.clear()
 //                    selectedGroceryItems.addAll(selectedCategory!!.items.map { it.id })
                 },
@@ -272,6 +297,7 @@ fun GroceryScreenNew(
                     state = state,
                     onEvent = viewModel::onEvent,
                     scaffoldState = scaffoldState,
+                    lastListFocusRequester = lastListFocusRequester,
                     modifier = modifier
                 )
             } else {
@@ -318,17 +344,33 @@ fun GroceryScreenNew(
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             SelectEditLocationButtonsNew(
-                onCancel = { onEvent(GroceryScreenEvent.LocationEvent.ChangeShowSelectLocationDialog(false)) },
                 allLocations = state.locations,
-                onAddLocation = { onEvent(GroceryScreenEvent.LocationEvent.AddLocation(it)) },
+                onAddLocation = { onEvent(GroceryScreenEvent.LocationEvent.AddLocation) },
                 onSelectLocationId = { locationId ->
                     onEvent(GroceryScreenEvent.LocationEvent.SelectLocationId(locationId))
                 },
-                onRemoveLocationId = { onEvent(GroceryScreenEvent.LocationEvent.DeleteLocation(it)) },
-                onReorderLocations = { _, _ -> },
-                selectedLocationId = state.addSheetSelectedLocationId
+                onDeleteLocationId = { onEvent(GroceryScreenEvent.LocationEvent.DeleteLocation(it)) },
+                onReorderLocations = { fromIndex, toIndex -> onEvent(GroceryScreenEvent.LocationEvent.ReorderLocations(fromIndex, toIndex)) },
+                showSelectedLocationId = state.showAddGrocerySheet || state.isSelectedItemsSameLocation,
+                selectedLocationId = if (state.showAddGrocerySheet) state.addSheetSelectedLocationId else state.selectedItemsLocationId,
+                isEditMode = state.showEditLocationDialog,
+                onChangeIsEditMode = { edit ->
+                    onEvent(if (edit) GroceryScreenEvent.LocationEvent.OpenEditLocationDialog else GroceryScreenEvent.LocationEvent.DoneEditLocationDialog)
+                },
+                onLocationNameChanged = { id, newName -> onEvent(GroceryScreenEvent.LocationEvent.LocationNameChanged(id, newName)) },
+                lastLocationFocusRequester = lastLocationFocusRequester,
+                doneEnabled = state.isDoneEditLocationButtonEnabled
             )
         }
+    }
+
+    if (state.showSelectListDialog && state.listDialogListIdSelected != null) {
+        SelectListDialog(
+            lists = state.lists,
+            selectedListId = state.listDialogListIdSelected,
+            onSelectListId = { onEvent(GroceryScreenEvent.ListEvent.SelectListInDialog(it)) },
+            onDismissRequest = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowListDialog(false)) }
+        )
     }
 //
 //    if (showAddFromRecipeDialog) {

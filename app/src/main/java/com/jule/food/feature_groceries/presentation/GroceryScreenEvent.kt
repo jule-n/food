@@ -24,16 +24,25 @@ sealed class GroceryScreenEvent {
     }
     sealed class ListEvent: GroceryScreenEvent() {
         data class ChangeSelectedListId(val value: Int): ListEvent()
-        data class ChangeShowEditListScreen(val show: Boolean): ListEvent()
+        object OpenEditListScreen: ListEvent()
+        object DoneEditListScreen: ListEvent()
         data class ChangeShowFinishedItems(val show: Boolean): ListEvent()
-        data class AddList(val name: String): ListEvent()
+        object AddList: ListEvent()
+        data class ListNameChanged(val id: Int, val newName: String): ListEvent()
         data class DeleteList(val id: Int): ListEvent()
+        data class ReorderLists(val fromIndex: Int, val toIndex: Int): ListEvent()
+        data class ChangeShowListDialog(val show: Boolean): ListEvent()
+        data class SelectListInDialog(val id: Int): ListEvent()
 
     }
     sealed class LocationEvent: GroceryScreenEvent() {
         data class ChangeShowSelectLocationDialog(val show: Boolean): LocationEvent()
-        data class AddLocation(val name: String): LocationEvent()
+        object OpenEditLocationDialog: LocationEvent()
+        object DoneEditLocationDialog: LocationEvent()
+        data class LocationNameChanged(val id: Int, val newName: String): LocationEvent()
+        object AddLocation: LocationEvent()
         data class DeleteLocation(val id: Int): LocationEvent()
         data class SelectLocationId(val id: Int?): LocationEvent()
+        data class ReorderLocations(val fromIndex: Int, val toIndex: Int): LocationEvent()
     }
 }

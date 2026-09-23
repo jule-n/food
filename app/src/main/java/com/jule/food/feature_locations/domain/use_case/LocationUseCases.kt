@@ -1,7 +1,9 @@
 package com.jule.food.feature_locations.domain.use_case
 
 data class LocationUseCases (
-    val addLocation: AddLocation,
-    val deleteLocation: DeleteLocation,
-    val getAllLocations: GetAllLocations
+    val addLocations: AddLocations,
+    val deleteLocations: DeleteLocations,
+    val getAllLocations: GetAllLocations,
+    val addItemNameToLocation: AddItemNameToLocation,
+    val addItemNamesToLocation: AddItemNamesToLocation
 )

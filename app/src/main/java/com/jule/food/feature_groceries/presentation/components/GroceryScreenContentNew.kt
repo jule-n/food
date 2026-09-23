@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -75,6 +76,7 @@ import java.util.UUID
 fun GroceryScreenContentNew(
     state: GroceryScreenState,
     onEvent: (GroceryScreenEvent) -> Unit,
+    lastListFocusRequester: FocusRequester,
     scaffoldState: BottomSheetScaffoldState,
     modifier: Modifier = Modifier
 ) {
@@ -86,22 +88,23 @@ fun GroceryScreenContentNew(
                     editingGroceryItemIds = state.selectedItemIds,
                     groceryNameState = state.editingItem.text,
                     groceryDetailState = state.editingItem.details,
-                    onOpenListSelectionDialog = { },
+                    onOpenListSelectionDialog = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowListDialog(true)) },
                     onOpenLocationSelectionDialog = { onEvent(GroceryScreenEvent.LocationEvent.ChangeShowSelectLocationDialog(true)) },
                     onOpenRecipeSelectionDialog = { }
                 )
             }
         },
         sheetContainerColor = MaterialTheme.colorScheme.background,
-        sheetDragHandle = {
-            Row(modifier = Modifier
-                .height(20.dp)
-                .fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f), modifier = Modifier
-                    .width(50.dp)
-                    .height(5.dp)) {}
-            }
-        },
+        sheetDragHandle = null,
+//        sheetDragHandle = {
+//            Row(modifier = Modifier
+//                .height(20.dp)
+//                .fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+//                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f), modifier = Modifier
+//                    .width(50.dp)
+//                    .height(5.dp)) {}
+//            }
+//        },
         sheetSwipeEnabled = false,
         containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
     ) {
@@ -128,19 +131,20 @@ fun GroceryScreenContentNew(
                                     lists = state.lists,
                                     selectedListId = state.selectedListId,
                                     onChangeSelectedListId = { onEvent(GroceryScreenEvent.ListEvent.ChangeSelectedListId(it)) },
-                                    onOpenListEditScreen = { onEvent(GroceryScreenEvent.ListEvent.ChangeShowEditListScreen(true)) },
+                                    onOpenListEditScreen = { onEvent(GroceryScreenEvent.ListEvent.OpenEditListScreen) },
                                     groupingOption = state.groupingOption,
                                     onChangeShowGroupingDialog = { onEvent(GroceryScreenEvent.ItemEvent.ChangeShowGroupingOptionDialog(true)) },
                                 )
                             } else {
                                 ListEditScreen(
                                     lists = state.lists,
-                                    addListNameState = state.addListNameState,
-                                    isAddListError = state.isAddListError,
-                                    addListErrorType = state.addListErrorType,
-                                    onAddNewList = { onEvent(GroceryScreenEvent.ListEvent.AddList(it)) },
+                                    onListNameChanged = { id, newName -> onEvent(GroceryScreenEvent.ListEvent.ListNameChanged(id, newName)) },
+                                    onAddList = { onEvent(GroceryScreenEvent.ListEvent.AddList) },
                                     onDeleteList = { onEvent(GroceryScreenEvent.ListEvent.DeleteList(it)) },
-                                    onReorderLists = { _, _ -> }
+                                    onReorderLists = { fromIndex, toIndex -> onEvent(
+                                        GroceryScreenEvent.ListEvent.ReorderLists(fromIndex, toIndex))
+                                    },
+                                    lastListFocusRequester = lastListFocusRequester
                                 )
                             }
                         }

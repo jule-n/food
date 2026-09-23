@@ -177,4 +177,5 @@
     <string name="move_to_recipe">Move to recipe</string>
     <string name="move_to_list">Move to List</string>
     <string name="move_to_location">Move to Location</string>
+    <string name="deleted_location_name">Deleted Location \"%s\"</string>
 </resources>

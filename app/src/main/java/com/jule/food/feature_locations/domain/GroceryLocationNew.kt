@@ -9,13 +9,14 @@ import androidx.room.PrimaryKey
 data class GroceryLocationNew(
     val name: String,
     val assignedGroceries: List<String>,
+    val sortOrder: Int,
     @PrimaryKey val id: Int? = null
 ) {
-    fun toPresentationLocation(): GroceryLocationPresentation {
-        return GroceryLocationPresentation(
-            name = TextFieldState(name),
-            assignedGroceries = assignedGroceries.toMutableStateList(),
-            id = id
+    fun toUILocation(): GroceryLocationUI {
+        return GroceryLocationUI(
+            currentName = name,
+            assignedGroceries = assignedGroceries,
+            id = id!!
         )
     }
 }

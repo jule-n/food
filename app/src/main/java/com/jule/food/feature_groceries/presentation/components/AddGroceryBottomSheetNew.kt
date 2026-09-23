@@ -66,10 +66,6 @@ import com.jule.food.utils.BasicTextFieldWithBox
 import com.jule.food.data.GroceryItem
 import com.jule.food.data.GroceryLocation
 import com.jule.food.R
-import com.jule.food.data.Recipe
-import com.jule.food.feature_groceries.domain.GroceryItemNew
-import com.jule.food.feature_locations.domain.GroceryLocationNew
-import com.jule.food.feature_locations.domain.GroceryLocationPresentation
 import com.jule.food.ui.groceries.SelectRecipeDialog
 import com.jule.food.ui.groceries.SelectRecipeGrid
 import com.jule.food.ui.groceries_recipes.SelectEditLocationButtons
@@ -101,7 +97,7 @@ fun AddGroceryBottomSheetNew(
 
     val sheetState = remember { SheetState(skipPartiallyExpanded = true, positionalThreshold = { 0f }, velocityThreshold = { 0f }, initialValue = SheetValue.Expanded) }
 
-    val anythingChanged = nameTextState.text.isNotEmpty() || detailsTextState.text.isNotEmpty() || selectedLocationId != null
+    val anythingChanged = nameTextState.text.isNotEmpty() || detailsTextState.text.isNotEmpty()
     var showConfirmDiscardDialog by remember { mutableStateOf(false) }
 
 //    LaunchedEffect(groceryNameState.text) {
@@ -132,17 +128,6 @@ fun AddGroceryBottomSheetNew(
 
     fun confirm(){
         onConfirm()
-
-//        if (selectedGroceryLocationId == null && changedGroceryLocationManually) {
-//            onRemoveGroceryFromAllLocations(groceryNameState.text.toString().trim())
-//        }
-
-//        if (selectedGroceryLocationId != null && changedGroceryLocationManually) {
-//            onAddGroceryToLocation(groceryNameState.text.toString().trim(), selectedGroceryLocationId!!)
-//            selectedGroceryLocationId = null
-//        }
-
-//        changedGroceryLocationManually = false
         focusRequester.requestFocus()
     }
 
@@ -177,8 +162,7 @@ fun AddGroceryBottomSheetNew(
                             icon = R.drawable.book,
                             isActive = false,
                             inactiveColor = placeholderColor,
-                            onClick = { },
-                            onClear = { }
+                            onClick = { }
                         )
 //                        GroceryBottomSheetSelectionField(
 //                            text = if (selectedRecipeId != null) getRecipeNameFromId(
@@ -199,8 +183,7 @@ fun AddGroceryBottomSheetNew(
                             icon = R.drawable.location,
                             isActive = selectedLocationId != null,
                             inactiveColor = placeholderColor,
-                            onClick = onOpenLocationDialog,
-                            onClear = onClearSelectedLocation
+                            onClick = onOpenLocationDialog
                         )
                     }
                         Row(
@@ -225,6 +208,7 @@ fun AddGroceryBottomSheetNew(
         DefaultDialog(
             title = stringResource(R.string.discard),
             buttons = true,
+            confirmText = R.string.discard,
             onConfirm = {
                 showConfirmDiscardDialog = false
                 onDismissRequest()
@@ -321,8 +305,6 @@ fun GroceryBottomSheetSelectionField(
     isActive: Boolean,
     inactiveColor: Color,
     onClick: () -> Unit,
-    showClearButton: Boolean = true,
-    onClear: (() -> Unit)? = null,
     activeIconColor: Color = MaterialTheme.colorScheme.primary,
     inactiveIconColor: Color = MaterialTheme.colorScheme.onBackground,
     activeColor: Color = MaterialTheme.colorScheme.onBackground,
@@ -359,16 +341,7 @@ fun GroceryBottomSheetSelectionField(
                     color = if (isActive) activeColor else inactiveColor,
                     modifier = Modifier.widthIn(max = textWidth)
                 )
-                if (isActive && showClearButton) {
-                    IconButton(
-                        modifier = Modifier.size(40.dp),
-                        onClick = { onClear?.invoke() }
-                    ) {
-                        Icon(painterResource(R.drawable.clear), contentDescription = "Clear")
-                    }
-                } else {
-                    Spacer(Modifier.width(10.dp))
-                }
+                Spacer(Modifier.width(10.dp))
             }
         }
     }

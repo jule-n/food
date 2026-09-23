@@ -16,6 +16,9 @@ interface LocationsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addLocation(location: GroceryLocationNew)
 
-    @Delete
-    suspend fun deleteLocation(location: GroceryLocationNew)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addLocations(locations: List<GroceryLocationNew>)
+
+    @Query("DELETE FROM GroceryLocationNew WHERE id IN (:locationIds)")
+    suspend fun deleteLocations(locationIds: List<Int>)
 }

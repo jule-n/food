@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ fun GroceryGridNew(
     onEvent: (GroceryScreenEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val resources = LocalResources.current
 //    var lastDeletedItemAlpha: Float? by remember { mutableStateOf(null) }
 //
 //    // Prevent flashing of last deleted item when changing categories
@@ -113,17 +115,19 @@ fun GroceryGridNew(
                 }
 
                 GroceryGroupingOption.Location -> {
-                    val locationGroups = state.activeItemsInCurrentList.groupBy { it.locationName }.toSortedMap(compareBy { it })
-                    groups.addAll(locationGroups.values)
-                    groupNames.addAll(locationGroups.keys)
-//                    recipeIds = locationGroups.keys.toList()
+                    val groupPairs: MutableList<Pair<String, List<GroceryItemPresentation>>> = state.locations.mapNotNull { loc ->
+                        val items = state.activeItemsInCurrentList.filter { it.locationId == loc.id }
+                        if (items.isEmpty()) return@mapNotNull null
+                        return@mapNotNull Pair(loc.currentName, items)
+                    }.toMutableList()
+                    val itemsNoLocation = state.activeItemsInCurrentList.filter { it.locationId == null }
+                    if (itemsNoLocation.isNotEmpty()) {
+                        groupPairs.add(0, Pair(resources.getString(R.string.no_location), itemsNoLocation))
+                    }
+                    groups.addAll(groupPairs.map { it.second })
+                    groupNames.addAll(groupPairs.map { it.first })
                 }
             }
-
-//                        if (showDeletedItems && deletedGroceryItems.isNotEmpty()) {
-//                            groupNames.add(context.getString(R.string.deleted))
-//                            groups.add(deletedGroceryItems)
-//                        }
             if (!(groupNames.count() == 1 && groups[0].isEmpty())) {
                 groups.forEachIndexed { index, groceryItems ->
                     if(state.groupingOption != GroceryGroupingOption.None) {

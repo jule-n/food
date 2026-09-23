@@ -30,15 +30,22 @@ class GroceriesRepository(
         dao.addGroceryItem(groceryItem)
     }
 
-    suspend fun deleteGroceryList(groceryList: GroceryListNew) {
-        dao.deleteGroceryList(groceryList)
+    suspend fun deleteGroceryLists(ids: List<Int>) {
+        dao.deleteGroceryLists(ids)
     }
 
-    suspend fun addGroceryList(groceryList: GroceryListNew) {
-        dao.addGroceryList(groceryList)
+    suspend fun addGroceryList(groceryList: GroceryListNew): Long {
+        return dao.addGroceryList(groceryList)
     }
-    suspend fun removeListIdFromGroceries(listId: Int) {
-        dao.removeListIdFromGroceries(listId)
+
+    suspend fun addGroceryLists(groceryLists: List<GroceryListNew>) {
+        return dao.addGroceryLists(groceryLists)
+    }
+//    suspend fun moveGroceryList(listId: Int, oldPos: Int, newPos: Int) {
+//        dao.moveGroceryList(listId, oldPos, newPos)
+//    }
+    suspend fun removeListIdsFromGroceries(listIds: List<Int>) {
+        dao.removeListIdsFromGroceries(listIds)
     }
     suspend fun removeRecipeIdFromGroceries(recipeId: Int) {
         dao.removeRecipeIdFromGroceries(recipeId)

@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.jule.food.feature_groceries.domain.GroceryItemNew
 import com.jule.food.feature_groceries.domain.GroceryListNew
 import kotlinx.coroutines.flow.Flow
@@ -26,14 +27,18 @@ interface GroceriesDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addGroceryItem(groceryItem: GroceryItemNew)
 
-    @Delete
-    suspend fun deleteGroceryList(groceryList: GroceryListNew)
+    @Query("DELETE FROM GroceryListNew WHERE id IN (:ids)")
+    suspend fun deleteGroceryLists(ids: List<Int>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun addGroceryList(groceryList: GroceryListNew)
+    suspend fun addGroceryList(groceryList: GroceryListNew): Long
 
-    @Query("UPDATE GroceryItemNew SET listId = null WHERE listId = :listId")
-    suspend fun removeListIdFromGroceries(listId: Int)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addGroceryLists(groceryLists: List<GroceryListNew>)
+
+
+    @Query("UPDATE GroceryItemNew SET listId = null WHERE listId IN (:listIds)")
+    suspend fun removeListIdsFromGroceries(listIds: List<Int>)
 
     @Query("UPDATE GroceryItemNew SET recipeId = null WHERE recipeId = :recipeId")
     suspend fun removeRecipeIdFromGroceries(recipeId: Int)
